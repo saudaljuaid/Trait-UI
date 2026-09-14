@@ -37,7 +37,14 @@ def main():
         # press before the shot, so a frame can show a window open rather
         # than only ever an empty desktop.
         for what in sys.argv[4:]:
-            page.click('[data-launch="%s"]' % what)
+            if what == "menu":
+                page.click("#menu-button")
+            elif what.startswith("hover:"):
+                page.hover(what.split(":", 1)[1])
+            elif what.startswith("click:"):
+                page.click(what.split(":", 1)[1])
+            else:
+                page.click('[data-launch="%s"]' % what)
             page.wait_for_timeout(250)
         page.wait_for_timeout(300)
         page.screenshot(path=str(out))

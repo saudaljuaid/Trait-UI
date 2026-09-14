@@ -34,7 +34,7 @@ html, body {
 #wallpaper {
     position: absolute;
     inset: 0;
-    background: #2b2f3a url("../assets/wallpaper/wallpaper.png") center / cover no-repeat;
+    background: #ffffff url("../assets/wallpaper/wallpaper.png") center / cover no-repeat;
 }
 
 /* ------------------------------------------------------------- the panel */
@@ -298,4 +298,167 @@ html, body {
     height: 12px;
     background: #d0d0d0;
     vertical-align: -2px;
+}
+
+/* ---------------------------------------------------------- the menu */
+
+/*
+ * THE PANEL'S MENU IS WHAT ITS PROFILE SAYS IT IS.
+ *
+ * The menu plugin's Config block in the LXDE profile reads, in order:
+ *
+ *     system { }        the application menu, built from .desktop files
+ *     separator { }
+ *     item { command=run }
+ *     separator { }
+ *     item { image=gnome-logout  command=logout }
+ *
+ * so the menu is the applications, a rule, Run, a rule, and Logout - and
+ * nothing else.  It opens UPWARDS from the button, because the panel is
+ * at the foot of the screen.
+ */
+#menu-popup {
+    position: absolute;
+    left: 0;
+    display: none;
+    min-width: 190px;
+    padding: 2px;
+    background: #ebebeb;
+    border: 1px solid #7a7a7a;
+    box-shadow: 1px 1px 4px rgba(0, 0, 0, 0.45);
+    color: #1a1a1a;
+    font-size: 13px;
+    z-index: 4000;
+}
+#menu-popup.open { display: block; }
+
+.menu-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 18px 3px 5px;
+    white-space: nowrap;
+    cursor: default;
+    position: relative;
+}
+.menu-item:hover { background: #4a6c9b; color: #ffffff; }
+.menu-item img { width: 16px; height: 16px; flex: 0 0 auto; }
+.menu-item .arrow { position: absolute; right: 5px; font-size: 10px; }
+.menu-rule {
+    height: 1px;
+    margin: 3px 2px;
+    background: #c3c3c3;
+    border-bottom: 1px solid #fbfbfb;
+}
+
+/* A category's own list, which opens to the right of the row it hangs
+ * off - and upwards enough to stay on the screen, the way a menu at the
+ * foot of a screen has to. */
+.submenu {
+    position: absolute;
+    display: none;
+    min-width: 170px;
+    padding: 2px;
+    background: #ebebeb;
+    border: 1px solid #7a7a7a;
+    box-shadow: 1px 1px 4px rgba(0, 0, 0, 0.45);
+    color: #1a1a1a;
+}
+.menu-item:hover > .submenu { display: block; }
+
+/* ------------------------------------------------- dialogs and flyouts */
+
+.dialog {
+    position: absolute;
+    z-index: 5000;
+    background: #ebebeb;
+    border: 1px solid #0d0d0d;
+    box-shadow: 0 3px 14px rgba(0, 0, 0, 0.5);
+    color: #1a1a1a;
+    display: flex;
+    flex-direction: column;
+}
+.dialog .titlebar { background: linear-gradient(#5b6472, #38404c); }
+.dialog .body { padding: 10px; font-size: 13px; }
+.dialog .row { display: flex; gap: 6px; justify-content: flex-end;
+               padding: 0 10px 10px; }
+.dialog input[type="text"] {
+    width: 100%;
+    padding: 3px 4px;
+    font: 13px "DejaVu Sans", sans-serif;
+    border: 1px solid #8f8f8f;
+    background: #ffffff;
+}
+.dialog button {
+    padding: 3px 12px;
+    font: 13px "DejaVu Sans", sans-serif;
+    background: linear-gradient(#fcfcfc, #dedede);
+    border: 1px solid #8f8f8f;
+    cursor: default;
+}
+.dialog button:hover { background: linear-gradient(#ffffff, #e9e9e9); }
+.dialog button:active { background: linear-gradient(#d4d4d4, #e6e6e6); }
+
+/*
+ * lxpanel's volume plugin opens a slider above its icon, and the icon
+ * follows the level: a speaker with no waves when it is down, with waves
+ * when it is up, and a crossed speaker when it is muted.  Three marks and
+ * not one, so the state is readable without opening anything.
+ */
+#volume-popup {
+    position: absolute;
+    display: none;
+    z-index: 4000;
+    width: 34px;
+    padding: 8px 4px;
+    background: #ebebeb;
+    border: 1px solid #7a7a7a;
+    box-shadow: 1px 1px 4px rgba(0, 0, 0, 0.45);
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+#volume-popup.open { display: flex; }
+#volume-popup input[type="range"] {
+    writing-mode: vertical-lr;
+    direction: rtl;
+    width: 18px;
+    height: 110px;
+}
+#volume-popup .mute {
+    font: 11px "DejaVu Sans", sans-serif;
+    border: 1px solid #8f8f8f;
+    background: linear-gradient(#fcfcfc, #dedede);
+    padding: 1px 4px;
+    cursor: default;
+}
+
+/*
+ * The lock screen covers everything, panel included, which is the point
+ * of it.  A lock you could click past would be a picture of a lock.
+ */
+#lockscreen {
+    position: absolute;
+    inset: 0;
+    z-index: 9000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 14px;
+    background: #05070b;
+    color: #c8ccd2;
+    font-size: 13px;
+}
+#lockscreen.open { display: flex; }
+#lockscreen .box {
+    display: flex;
+    gap: 6px;
+}
+#lockscreen input {
+    padding: 4px 6px;
+    font: 13px "DejaVu Sans", sans-serif;
+    border: 1px solid #444;
+    background: #12161d;
+    color: #e6e9ee;
 }

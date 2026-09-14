@@ -447,3 +447,406 @@ paintTaskbar();
 primeCpu();
 setInterval(paintClock, 1000);
 setInterval(sampleCpu, 250);
+
+/* ------------------------------------------------------------- the menu */
+
+/*
+ * WHAT IS IN IT IS NOT A CHOICE MADE HERE.
+ *
+ * The panel profile's menu plugin lists its contents literally:
+ *
+ *     system { }  |  separator  |  item{command=run}  |  separator  |
+ *     item{image=gnome-logout  command=logout}
+ *
+ * `system` is the application menu, which LXDE builds from the .desktop
+ * files on the machine and groups by their freedesktop category.  There
+ * are no .desktop files in a browser, so the categories here are the
+ * freedesktop registered ones that LXDE shows, holding the applications
+ * this desktop actually has.  A category with nothing in it is not drawn:
+ * LXDE does not draw one either.
+ */
+const MENU_CATEGORIES = [
+    ["Accessories", "applications-accessories", [
+        ["Terminal", "terminal", "terminal"]
+    ]],
+    ["Graphics", "applications-graphics", []],
+    ["Internet", "applications-internet", [
+        ["Web Browser", "browser", "browser"]
+    ]],
+    ["Office", "applications-office", []],
+    ["Sound & Video", "applications-multimedia", []],
+    ["System Tools", "applications-system", [
+        ["File Manager", "file-manager", "files"]
+    ]],
+    ["Preferences", "gtk-preferences", []]
+];
+
+const MENU16 = "assets/icons/nuoveXT2/16/";
+
+function menuRow(label, icon, onPick) {
+    const row = document.createElement("div");
+    const mark = document.createElement("img");
+    const text = document.createElement("span");
+
+    row.className = "menu-item";
+    row.setAttribute("role", "menuitem");
+    mark.src = MENU16 + icon + ".png";
+    mark.alt = "";
+    text.textContent = label;
+    row.appendChild(mark);
+    row.appendChild(text);
+    if (onPick) {
+        row.addEventListener("click", (event) => {
+            event.stopPropagation();
+            closeMenu();
+            onPick();
+        });
+    }
+    return row;
+}
+
+function menuRule() {
+    const rule = document.createElement("div");
+
+    rule.className = "menu-rule";
+    return rule;
+}
+
+function buildMenu() {
+    const popup = document.getElementById("menu-popup");
+
+    popup.textContent = "";
+    MENU_CATEGORIES.forEach(([label, icon, entries]) => {
+        if (entries.length === 0) {
+            return;   /* LXDE leaves an empty category out */
+        }
+        const row = menuRow(label, icon, null);
+        const arrow = document.createElement("span");
+        const sub = document.createElement("div");
+
+        arrow.className = "arrow";
+        arrow.textContent = "▸";
+        row.appendChild(arrow);
+        sub.className = "submenu";
+        entries.forEach(([name, mark, what]) => {
+            sub.appendChild(menuRow(name, mark, () => launch(what)));
+        });
+        /* The submenu hangs off the right of its row and is pulled up so
+         * that its foot sits on the row rather than below the screen. */
+        sub.style.left = "100%";
+        sub.style.bottom = "0";
+        row.appendChild(sub);
+        popup.appendChild(row);
+    });
+    popup.appendChild(menuRule());
+    popup.appendChild(menuRow("Run...", "applications-system", () => {
+        openRunBox();
+    }));
+    popup.appendChild(menuRule());
+    popup.appendChild(menuRow("Logout", "gnome-logout", () => {
+        openLogoutBox();
+    }));
+}
+
+function menuOpen() {
+    return document.getElementById("menu-popup").classList.contains("open");
+}
+
+function closeMenu() {
+    document.getElementById("menu-popup").classList.remove("open");
+}
+
+function openMenu() {
+    const popup = document.getElementById("menu-popup");
+    const button = document.getElementById("menu-button");
+    const panel = document.getElementById("panel");
+
+    popup.classList.add("open");
+    /* Above the panel and lined up with the button, which is where a menu
+     * on a bottom panel goes. */
+    popup.style.left = button.getBoundingClientRect().left + "px";
+    popup.style.top = (panel.getBoundingClientRect().top -
+        popup.offsetHeight) + "px";
+}
+
+document.getElementById("menu-button").addEventListener("click", (event) => {
+    event.stopPropagation();
+    if (menuOpen()) {
+        closeMenu();
+    } else {
+        openMenu();
+    }
+});
+
+document.addEventListener("click", () => {
+    if (menuOpen()) {
+        closeMenu();
+    }
+});
+
+buildMenu();
+
+/* --------------------------------------------------------- the Run box */
+
+/*
+ * lxpanel's Run dialog: one field, Cancel and OK.  It runs what the menu
+ * can run, which is this desktop's own applications - anything else comes
+ * back as "no such program", because a Run box that silently did nothing
+ * would be a field with no bottom to it.
+ */
+const RUNNABLE = { terminal: "terminal", "lxterminal": "terminal",
+                   "x-terminal-emulator": "terminal",
+                   pcmanfm: "files", "file-manager": "files",
+                   browser: "browser", "x-www-browser": "browser" };
+
+function makeDialog(title, width) {
+    const frame = document.createElement("div");
+    const bar = document.createElement("div");
+    const label = document.createElement("span");
+    const close = document.createElement("button");
+
+    frame.className = "dialog";
+    frame.style.width = width + "px";
+    frame.style.left = Math.round((window.innerWidth - width) / 2) + "px";
+    frame.style.top = "220px";
+    bar.className = "titlebar";
+    label.className = "title";
+    label.textContent = title;
+    close.className = "close";
+    close.textContent = "✕";
+    close.title = "Close";
+    close.addEventListener("click", () => frame.remove());
+    bar.appendChild(label);
+    bar.appendChild(close);
+    frame.appendChild(bar);
+    document.getElementById("desktop").appendChild(frame);
+    return frame;
+}
+
+function openRunBox() {
+    const frame = makeDialog("Run", 320);
+    const body = document.createElement("div");
+    const field = document.createElement("input");
+    const note = document.createElement("div");
+    const row = document.createElement("div");
+    const cancel = document.createElement("button");
+    const ok = document.createElement("button");
+
+    body.className = "body";
+    field.type = "text";
+    field.placeholder = "Enter the command to run";
+    note.style.cssText = "min-height:16px;margin-top:6px;color:#a22;" +
+        "font-size:12px";
+    body.appendChild(field);
+    body.appendChild(note);
+    row.className = "row";
+    cancel.textContent = "Cancel";
+    ok.textContent = "OK";
+    row.appendChild(cancel);
+    row.appendChild(ok);
+    frame.appendChild(body);
+    frame.appendChild(row);
+
+    const run = () => {
+        const what = RUNNABLE[field.value.trim().toLowerCase()];
+
+        if (what) {
+            frame.remove();
+            launch(what);
+        } else {
+            note.textContent = field.value.trim() === "" ?
+                "" : field.value.trim() + ": no such program";
+        }
+    };
+
+    cancel.addEventListener("click", () => frame.remove());
+    ok.addEventListener("click", run);
+    field.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+            run();
+        }
+        if (event.key === "Escape") {
+            frame.remove();
+        }
+    });
+    field.focus();
+    return frame;
+}
+
+/* ------------------------------------------------------ the logout box */
+
+/*
+ * lxsession-logout offers Shut down, Reboot, Suspend, Hibernate, Log out
+ * and Cancel.  Four of those six are things a page cannot do, and a
+ * button that cannot do what it says is a button that lies - so this
+ * offers the two it can honour and says plainly why the others are not
+ * here.  Log out closes every window and puts the desktop back as it was
+ * found.
+ */
+function openLogoutBox() {
+    const frame = makeDialog("Log out", 320);
+    const body = document.createElement("div");
+    const row = document.createElement("div");
+    const cancel = document.createElement("button");
+    const out = document.createElement("button");
+
+    body.className = "body";
+    body.innerHTML = "Close every window and clear the desktop?<br>" +
+        "<span style=\"color:#666;font-size:12px\">Shut down, reboot, " +
+        "suspend and hibernate are not offered: a page cannot do them, " +
+        "and a button that cannot do what it says is not drawn.</span>";
+    row.className = "row";
+    cancel.textContent = "Cancel";
+    out.textContent = "Log out";
+    row.appendChild(cancel);
+    row.appendChild(out);
+    frame.appendChild(body);
+    frame.appendChild(row);
+    cancel.addEventListener("click", () => frame.remove());
+    out.addEventListener("click", () => {
+        frame.remove();
+        windows.slice().forEach(closeWindow);
+    });
+    return frame;
+}
+
+/* -------------------------------------------------------- the volume */
+
+/*
+ * lxpanel's volume plugin: a slider above the icon, and the icon reads
+ * the level - volume-2 with waves, volume-1 without, volume-x when muted.
+ * Three marks rather than one, so the state is legible without opening
+ * anything and without relying on colour.
+ */
+let volumeLevel = 65;
+let volumeMuted = false;
+
+/*
+ * TWO MARKS, WHICH IS WHAT LXPANEL SHIPS FOR THIS.
+ *
+ * Its images directory holds stock_volume.png and mute.png and that is
+ * the whole set the volume plugin draws from - a speaker, and a speaker
+ * with a cross.  Two wrong turns got here:
+ *
+ *   - volume-low/medium/high are also in that directory, and they are
+ *     COLOURED CONES rather than speakers.  The panel drew a green
+ *     triangle where the reference has a speaker.
+ *   - nuoveXT2 has a full audio-volume-* family, and every one of them
+ *     points LEFT.  The reference's speaker points right, because it is
+ *     lxpanel's own file and not the icon theme's.
+ *
+ * So a four-level scheme was this project inventing a set nobody ships.
+ * Two marks, from the two files.
+ */
+function volumeMark() {
+    return (volumeMuted || volumeLevel === 0) ? "mute" : "stock_volume";
+}
+
+function paintVolume() {
+    const img = document.querySelector("#volume img");
+
+    img.src = "assets/icons/lxpanel/" + volumeMark() + ".png";
+    img.alt = volumeMuted ? "Muted" : "Volume " + volumeLevel + "%";
+    document.getElementById("volume").title = img.alt;
+}
+
+function buildVolumePopup() {
+    const popup = document.createElement("div");
+    const slider = document.createElement("input");
+    const mute = document.createElement("button");
+
+    popup.id = "volume-popup";
+    slider.type = "range";
+    slider.min = "0";
+    slider.max = "100";
+    slider.value = String(volumeLevel);
+    mute.className = "mute";
+    mute.textContent = "×";
+    mute.title = "Mute";
+    slider.addEventListener("input", () => {
+        volumeLevel = Number(slider.value);
+        volumeMuted = false;
+        paintVolume();
+    });
+    mute.addEventListener("click", (event) => {
+        event.stopPropagation();
+        volumeMuted = !volumeMuted;
+        paintVolume();
+    });
+    popup.appendChild(slider);
+    popup.appendChild(mute);
+    popup.addEventListener("click", (e) => e.stopPropagation());
+    document.getElementById("desktop").appendChild(popup);
+    return popup;
+}
+
+const volumePopup = buildVolumePopup();
+
+document.getElementById("volume").addEventListener("click", (event) => {
+    const button = event.currentTarget.getBoundingClientRect();
+    const panel = document.getElementById("panel").getBoundingClientRect();
+
+    event.stopPropagation();
+    volumePopup.classList.toggle("open");
+    if (volumePopup.classList.contains("open")) {
+        volumePopup.style.left = Math.round(button.left) + "px";
+        volumePopup.style.top =
+            (panel.top - volumePopup.offsetHeight) + "px";
+    }
+});
+document.addEventListener("click", () => {
+    volumePopup.classList.remove("open");
+});
+
+/* ---------------------------------------------------- the lock screen */
+
+/*
+ * A lock that covers the panel too, because a lock you could click past
+ * would be a picture of a lock.  Any password unlocks it: there is no
+ * account here to check one against, and pretending to check would be
+ * worse than saying so.
+ */
+function buildLockScreen() {
+    const lock = document.createElement("div");
+    const note = document.createElement("div");
+    const box = document.createElement("div");
+    const field = document.createElement("input");
+    const enter = document.createElement("button");
+
+    lock.id = "lockscreen";
+    note.textContent = "This screen is locked.";
+    field.type = "password";
+    field.placeholder = "Password";
+    enter.textContent = "Unlock";
+    enter.className = "mute";
+    const unlock = () => {
+        lock.classList.remove("open");
+        field.value = "";
+    };
+    enter.addEventListener("click", unlock);
+    field.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+            unlock();
+        }
+    });
+    box.className = "box";
+    box.appendChild(field);
+    box.appendChild(enter);
+    lock.appendChild(note);
+    lock.appendChild(box);
+    document.getElementById("desktop").appendChild(lock);
+    return { lock: lock, field: field };
+}
+
+const lockScreen = buildLockScreen();
+
+document.querySelector('[data-launch="lock"]').addEventListener("click",
+    () => {
+        lockScreen.lock.classList.add("open");
+        lockScreen.field.focus();
+    });
+
+document.querySelector('[data-launch="logout"]').addEventListener("click",
+    () => { openLogoutBox(); });
+
+paintVolume();

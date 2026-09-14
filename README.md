@@ -52,6 +52,23 @@ near-black bar, where LXDE's own mark is light grey. That is the mark's
 own colour and it has not been repainted here; lightening it is one fill
 value in `assets/logo/phipia.svg`.
 
+## Every button on it does what it is drawn as
+
+The menu button opens the menu the profile describes — the applications
+by freedesktop category, a rule, `Run...`, a rule, `Logout` — upwards off
+the panel, because the panel is at the foot of the screen. A category
+with nothing in it is not drawn; LXDE does not draw one either.
+
+`Run...` runs this desktop's own programs and says `no such program` for
+anything else. The speaker opens a slider and its mark changes when you
+mute it. The padlock covers the whole screen, panel included — a lock you
+could click past would be a picture of a lock. `Logout` closes every
+window.
+
+Four of `lxsession-logout`'s six buttons — shut down, reboot, suspend,
+hibernate — are **not** offered, because a page cannot do them and the
+dialog says so rather than drawing a button that lies.
+
 ## The terminal
 
 `assets/icons/nuoveXT2/terminal.png` is nuoveXT2's own mark — a black
@@ -101,3 +118,19 @@ them did not fail the first time and were rewritten:
   searched the screen for it, which the prompt already contains, because
   the host is called `phipia`. It echoes a word the prompt cannot be
   saying, and matches a whole row rather than a substring.
+
+## The wallpaper
+
+White, with the mark and wordmark at the upper left and a run of
+thin-line towers climbing along the foot. It is this project's own art,
+rendered from `tools/wallpaper.html` by the same browser, with a seeded
+scatter so the file comes out identical every time:
+
+```
+python3 tools/make-wallpaper.py assets/wallpaper/wallpaper.png 1920 1080
+```
+
+It is composed for a 4:3 crop as well as its own 16:9 — the desktop draws
+it with `background-size: cover`, so a 4:3 screen loses 171 pixels off
+each side, and both the mark and the tallest tower sit inside that
+margin.

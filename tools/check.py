@@ -145,6 +145,107 @@ def check_close(page):
               "for a window that is not there")
 
 
+def check_menu(page):
+    """The menu button's menu is what the profile says it holds: the
+    applications, a rule, Run, a rule, Logout.  A button that opened
+    nothing would be the button that lies this panel is not allowed."""
+    page.click("#menu-button")
+    page.wait_for_timeout(150)
+    if not page.is_visible("#menu-popup.open"):
+        fails("the menu button opened nothing")
+        return
+    labels = page.eval_on_selector_all(
+        "#menu-popup > .menu-item > span:not(.arrow)",
+        "(e) => e.map((s) => s.textContent)")
+    for wanted in ("Run...", "Logout"):
+        if wanted not in labels:
+            fails("the menu has no %r row, which the profile names"
+                  % wanted)
+    box = page.eval_on_selector("#menu-popup",
+                                "(el) => el.getBoundingClientRect().bottom")
+    panel_top = page.eval_on_selector(
+        "#panel", "(el) => el.getBoundingClientRect().top")
+    if box > panel_top + 1:
+        fails("the menu runs down over the panel rather than opening "
+              "upwards off it")
+
+    # A category's own list has to appear under the pointer, or the arrow
+    # on the row is an arrow to nowhere.
+    page.hover("#menu-popup > .menu-item")
+    page.wait_for_timeout(150)
+    if not page.is_visible("#menu-popup .submenu"):
+        fails("resting on a category opened no list, so its arrow points "
+              "at nothing")
+    page.keyboard.press("Escape")
+    page.mouse.click(500, 300)
+    page.wait_for_timeout(120)
+
+
+def check_run_box(page):
+    """Run has to RUN something, and to say so when it cannot."""
+    page.click("#menu-button")
+    page.wait_for_timeout(120)
+    page.click("#menu-popup >> text=Run...")
+    page.wait_for_timeout(150)
+    if not page.is_visible(".dialog"):
+        fails("the Run row opened no dialog")
+        return
+    page.fill(".dialog input", "nosuchthing")
+    page.click(".dialog >> text=OK")
+    page.wait_for_timeout(120)
+    if "no such program" not in page.inner_text(".dialog .body"):
+        fails("Run accepted a program that does not exist in silence")
+    page.fill(".dialog input", "terminal")
+    page.click(".dialog >> text=OK")
+    page.wait_for_timeout(200)
+    if page.eval_on_selector_all(".window", "(e) => e.length") != 1:
+        fails("Run typed at with `terminal` opened no terminal")
+    page.click(".titlebar button.close")
+    page.wait_for_timeout(120)
+
+
+def check_volume(page):
+    """lxpanel's speaker opens a slider, and the icon reads the level."""
+    before = page.get_attribute("#volume img", "src")
+    page.click("#volume")
+    page.wait_for_timeout(150)
+    if not page.is_visible("#volume-popup.open"):
+        fails("the speaker opened no slider")
+        return
+    page.click("#volume-popup .mute")
+    page.wait_for_timeout(120)
+    after = page.get_attribute("#volume img", "src")
+    if after == before:
+        fails("muting did not change the speaker's mark, so the panel "
+              "cannot say whether it is muted")
+    page.click("#volume-popup .mute")
+    page.mouse.click(500, 300)
+    page.wait_for_timeout(120)
+
+
+def check_lock(page):
+    """A lock you could click past would be a picture of a lock, so it has
+    to cover the panel as well as the desktop."""
+    page.click('[data-launch="lock"]')
+    page.wait_for_timeout(200)
+    if not page.is_visible("#lockscreen.open"):
+        fails("the lock button locked nothing")
+        return
+    over = page.evaluate("""() => {
+        const p = document.getElementById('panel')
+            .getBoundingClientRect();
+        const at = document.elementFromPoint(p.left + 8, p.top + 13);
+        return at && at.closest('#lockscreen') !== null;
+    }""")
+    if not over:
+        fails("the lock screen leaves the panel reachable underneath it")
+    page.fill("#lockscreen input", "anything")
+    page.keyboard.press("Enter")
+    page.wait_for_timeout(150)
+    if page.is_visible("#lockscreen.open"):
+        fails("the lock screen would not unlock")
+
+
 def main():
     with sync_playwright() as play:
         browser = play.chromium.launch(
@@ -160,6 +261,10 @@ def main():
         check_panel(page)
         check_order(page)
         check_clock(page)
+        check_menu(page)
+        check_run_box(page)
+        check_volume(page)
+        check_lock(page)
         check_terminal(page)
         check_wincmd(page)
         check_close(page)
@@ -169,8 +274,10 @@ def main():
         print("%d check(s) failed" % len(failures), file=sys.stderr)
         return 1
     print("proof: a 26-pixel panel running %s, a clock at %%R, %d lit "
-          "pixels in the cpu graph, and a terminal that answers what is "
-          "typed at it" % (" ".join(PLUGIN_ORDER), green))
+          "pixels in the cpu graph, a menu that opens upwards off the "
+          "panel, a Run box that runs, a speaker that says when it is "
+          "muted, a lock that covers the panel, and a terminal that "
+          "answers what is typed at it" % (" ".join(PLUGIN_ORDER), green))
     return 0
 
 

@@ -771,6 +771,72 @@ def check_resize_and_switch(page):
     page.wait_for_timeout(150)
 
 
+def check_browser(page):
+    """The panel's second launcher opened a grey rectangle with the words
+    "Web Browser" on it.  It browses now, and a browser that cannot follow
+    a link is not one."""
+    page.evaluate("() => launch('browser')")
+    page.wait_for_timeout(300)
+    if not page.is_visible(".browser-view"):
+        fails("the browser launcher opened no browser")
+        return
+    if page.input_value(".files-toolbar .location") != "about:home":
+        fails("the browser opened somewhere other than its home page")
+    page.click(".browser-view a:has-text('The panel')")
+    page.wait_for_timeout(250)
+    if page.input_value(".files-toolbar .location") != "about:panel":
+        fails("following a link went nowhere")
+    if "ShowAllDesks" in page.inner_text(".browser-view"):
+        pass
+    page.click('.files-toolbar button[title="Back"]')
+    page.wait_for_timeout(200)
+    if page.input_value(".files-toolbar .location") != "about:home":
+        fails("Back did not return to the page the link was followed from")
+    page.fill(".files-toolbar .location", "about:nowhere")
+    page.press(".files-toolbar .location", "Enter")
+    page.wait_for_timeout(200)
+    if "Not found" not in page.inner_text(".browser-view"):
+        fails("an address that is not here was answered with a blank page")
+    page.evaluate("() => windows.slice().forEach(closeWindow)")
+    page.wait_for_timeout(150)
+
+
+def check_shortcuts(page):
+    """A binding for something the desktop cannot do would be the
+    keyboard's version of a button that lies, so each of these is checked
+    against what it claims to start."""
+    page.keyboard.press("Control+Alt+t")
+    page.wait_for_timeout(300)
+    if page.eval_on_selector_all(".terminal-body", "(e) => e.length") != 1:
+        fails("Ctrl+Alt+T opened no terminal")
+    page.keyboard.press("Alt+F4")
+    page.wait_for_timeout(250)
+    if page.eval_on_selector_all(".window", "(e) => e.length") != 0:
+        fails("Alt+F4 left the focused window standing")
+    page.keyboard.press("Meta+e")
+    page.wait_for_timeout(300)
+    if page.eval_on_selector_all(".files-view", "(e) => e.length") != 1:
+        fails("Super+E opened no file manager")
+    page.evaluate("() => windows.slice().forEach(closeWindow)")
+    page.wait_for_timeout(150)
+
+
+def check_logout_banner(page):
+    """lxsession-logout puts a banner across the top of its dialog, at
+    352 by 125.  The mechanism is copied; the identity on it is not."""
+    page.click('[data-launch="logout"]')
+    page.wait_for_timeout(250)
+    if not page.is_visible(".dialog .logout-banner"):
+        fails("the logout dialog carries no banner")
+        return
+    src = page.get_attribute(".dialog .logout-banner", "src")
+    if "lxpanel" in src:
+        fails("the logout banner is LXDE's own, so this desktop's dialog "
+              "carries another project's name")
+    page.click(".dialog >> text=Cancel")
+    page.wait_for_timeout(150)
+
+
 def main():
     with sync_playwright() as play:
         browser = play.chromium.launch(
@@ -790,6 +856,9 @@ def main():
         check_run_box(page)
         check_volume(page)
         check_lock(page)
+        check_browser(page)
+        check_shortcuts(page)
+        check_logout_banner(page)
         check_tooltip(page)
         check_panel_menu(page)
         check_desktops(page)
@@ -818,7 +887,8 @@ def main():
           "name, a Settings that reaches every window, and a task "
           "manager that ends what it lists, and a package manager "
           "whose Apply puts things in the menu, on two desktops a "
-          "pager really switches between"
+          "pager really switches between, reached by Openbox's own "
+          "keys"
           % (" ".join(PLUGIN_ORDER), green))
     return 0
 

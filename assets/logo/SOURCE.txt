@@ -11,3 +11,15 @@ folder, because the desktop it sits on is the grey Debian one and a
 saturated mark would be the only loud thing on the bar.  It is NOT
 nuoveXT2's file-manager.png, which is still vendored beside it and is
 what the panel drew before this.
+
+logout-banner.png is this project's own, at lxsession-logout's own
+352 by 125.  lxde-common ships a banner for that dialog and it is
+vendored in ../icons/lxpanel/ - but it carries LXDE's logo and wordmark,
+which on a desktop called Phipia would be another project's name on this
+one's dialog.  So the MECHANISM is copied, at the same size and in the
+same place, and the identity on it is this project's.  Rendered by
+
+    tools/banner.html
+
+in the same browser the screenshots come from, with the same seeded
+scatter the wallpaper uses.

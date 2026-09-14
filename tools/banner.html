@@ -1,0 +1,62 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+html,body{margin:0;padding:0}
+svg{display:block}
+.word{font-family:"DejaVu Sans",sans-serif;font-weight:700;letter-spacing:-0.01em}
+.sub{font-family:"DejaVu Sans",sans-serif;font-size:11px;letter-spacing:0.14em}
+</style></head><body>
+<!--
+  The logout dialog's banner, at lxsession-logout's own 352x125.
+  lxde-common ships one and it is vendored beside the panel's images, but
+  it carries LXDE's logo and wordmark - which in a desktop called Phipia
+  would be another project's name on this one's dialog.  So the MECHANISM
+  is copied, at the same size and in the same place, and the identity on
+  it is this project's.
+-->
+<svg width="352" height="125" viewBox="0 0 352 125" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0" stop-color="#2C3340"/>
+      <stop offset="0.55" stop-color="#20252F"/>
+      <stop offset="1" stop-color="#14171E"/>
+    </linearGradient>
+  </defs>
+  <rect width="352" height="125" fill="url(#sky)"/>
+  <!-- the same towers the wallpaper has, along the foot -->
+  <g id="towers" fill="none" stroke-linecap="round"></g>
+  <g transform="translate(26,30) scale(0.0455)">
+    <g fill="#E8EAEE" stroke="#E8EAEE" stroke-width="26"
+       stroke-linejoin="round" stroke-linecap="round">
+      <path d="M472 112 L946 348 L946 1030 L714 924 L714 566 L472 458 Z"/>
+      <path d="M160 412 L368 300 L368 664 L252 616 L252 968 L610 1140 L610 1252 L160 1034 Z"/>
+      <path d="M408 492 L612 592 L612 1074 L408 974 Z"/>
+    </g>
+  </g>
+  <text class="word" x="86" y="66" font-size="38" fill="#F2F4F7">phipia</text>
+  <text class="sub" x="88" y="86" fill="#8E96A4">DESKTOP ENVIRONMENT</text>
+</svg>
+<script>
+function rng(seed){return function(){seed|=0;seed=(seed+0x6D2B79F5)|0;
+let t=Math.imul(seed^(seed>>>15),1|seed);
+t=(t+Math.imul(t^(t>>>7),61|t))^t;return ((t^(t>>>14))>>>0)/4294967296;};}
+const random=rng(20260914);
+const g=document.getElementById("towers");
+const FLOOR=132;
+/* Clear of the wordmark: the subtitle runs to about x=278, and a tower
+   starting at 262 grew straight through it. */
+[{x:292,top:74,w:24,n:24},{x:314,top:52,w:26,n:34},
+ {x:340,top:26,w:28,n:46}].forEach(t=>{
+  const h=FLOOR-t.top;
+  function p(){const u=Math.pow(random(),0.65);
+    return [t.x+(random()-0.5)*t.w*(1-u*0.72), FLOOR-u*h];}
+  for(let i=0;i<t.n;i++){
+    const [x1,y1]=p(), [x2,y2]=p();
+    const l=document.createElementNS("http://www.w3.org/2000/svg","line");
+    const v=Math.round(120+Math.pow(random(),1.6)*110);
+    l.setAttribute("x1",x1.toFixed(1));l.setAttribute("y1",y1.toFixed(1));
+    l.setAttribute("x2",x2.toFixed(1));l.setAttribute("y2",y2.toFixed(1));
+    l.setAttribute("stroke","rgb("+v+","+v+","+v+")");
+    l.setAttribute("stroke-width",(0.5+random()*0.6).toFixed(2));
+    g.appendChild(l);}
+});
+</script>
+</body></html>

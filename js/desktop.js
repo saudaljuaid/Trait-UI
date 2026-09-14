@@ -599,19 +599,14 @@ function launch(what) {
                      files: files });
         return;
     }
-    const plain = { browser: ["Web Browser",
-                              "assets/icons/nuoveXT2/browser.png"] }[what];
-    if (!plain) {
-        return;
+    if (what === "browser") {
+        openWindow({ title: "Phipia - Web Browser",
+                     command: "x-www-browser",
+                     icon: "assets/icons/nuoveXT2/browser.png",
+                     x: 120 + step, y: 80 + step,
+                     width: 620, height: 460,
+                     body: makeBrowserWindow() });
     }
-    const body = document.createElement("div");
-
-    body.style.cssText = "flex:1 1 auto;background:#ededed;color:#333;" +
-        "padding:10px;font-size:13px";
-    body.textContent = plain[0];
-    openWindow({ title: plain[0], command: "x-www-browser",
-                 icon: plain[1], x: 120 + step,
-                 y: 90 + step, width: 560, height: 360, body: body });
 }
 
 /* ------------------------------------------------------------------ start */
@@ -955,12 +950,26 @@ function openRunBox() {
  * found.
  */
 function openLogoutBox() {
-    const frame = makeDialog("Log out", 320);
+    const frame = makeDialog("Log out", 340);
     const body = document.createElement("div");
     const row = document.createElement("div");
     const cancel = document.createElement("button");
     const out = document.createElement("button");
+    const banner = document.createElement("img");
 
+    /*
+     * lxsession-logout puts a banner across the top of its dialog.
+     * lxde-common ships one and it is vendored beside the panel's images
+     * - but it carries LXDE's own logo and wordmark, which on a desktop
+     * called Phipia would be another project's name on this one's
+     * dialog.  So the MECHANISM is copied, at lxsession-logout's own
+     * 352 by 125 and in the same place, and the identity on it is this
+     * project's: tools/banner.html renders it.
+     */
+    banner.src = "assets/logo/logout-banner.png";
+    banner.alt = "";
+    banner.className = "logout-banner";
+    frame.appendChild(banner);
     body.className = "body";
     body.innerHTML = "Close every window and clear the desktop?<br>" +
         "<span style=\"color:#666;font-size:12px\">Shut down, reboot, " +
@@ -1585,6 +1594,54 @@ document.addEventListener("keyup", (event) => {
             setMinimised(list[switcherAt], false);
         } else {
             focusWindow(list[switcherAt]);
+        }
+    }
+});
+
+/* ------------------------------------------------- keyboard shortcuts */
+
+/*
+ * LXDE binds these in Openbox's rc.xml, and they are the ones people
+ * actually reach for.  Each one is a thing this desktop can do; a binding
+ * for something it cannot would be a shortcut that does nothing, which is
+ * the keyboard's version of a button that lies.
+ *
+ *   W-e            the file manager
+ *   W-r            the Run box
+ *   W-d            show the desktop (the same as wincmd)
+ *   C-A-t          a terminal
+ *   C-A-l          lock the screen
+ *   C-A-Delete     log out
+ *   A-F4           close the window that has focus
+ */
+document.addEventListener("keydown", (event) => {
+    const key = event.key.toLowerCase();
+    const ctrlAlt = event.ctrlKey && event.altKey;
+
+    if (event.metaKey && key === "e") {
+        event.preventDefault();
+        launch("files");
+    } else if (event.metaKey && key === "r") {
+        event.preventDefault();
+        openRunBox();
+    } else if (event.metaKey && key === "d") {
+        event.preventDefault();
+        document.getElementById("wincmd").click();
+    } else if (ctrlAlt && key === "t") {
+        event.preventDefault();
+        launch("terminal");
+    } else if (ctrlAlt && key === "l") {
+        event.preventDefault();
+        document.querySelector('[data-launch="lock"]').click();
+    } else if (ctrlAlt && key === "delete") {
+        event.preventDefault();
+        openLogoutBox();
+    } else if (event.altKey && key === "f4") {
+        event.preventDefault();
+        const focused = windows.filter((win) => win.active)[0];
+
+        if (focused) {
+            closeWindow(focused);
         }
     }
 });

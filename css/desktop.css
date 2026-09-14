@@ -675,3 +675,11 @@ html, body {
 #switcher .row img { width: 20px; height: 20px; }
 #switcher .row.current { background: #86ABD9; color: #FFFFFF; }
 #switcher .empty { padding: 6px 10px; color: #6a6a6a; }
+
+/* lxsession-logout's banner, which lxde-common ships. */
+.logout-banner {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-bottom: 1px solid #0d0d0d;
+}

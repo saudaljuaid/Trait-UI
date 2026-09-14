@@ -89,6 +89,36 @@ to the **work area** — the screen less the panel, which is the space
 `setpartialstrut=1` in the panel's profile reserves — and restore to
 exactly where they were.
 
+## The browser
+
+The panel's second launcher is `lxde-x-www-browser.desktop`, and it used
+to open a grey rectangle with the words *Web Browser* on it — the last
+control on this desktop that did not do what it was drawn as.
+
+There is no network behind this desktop, so it browses the pages this
+desktop ships: local documents about the thing you are looking at, with
+Back, Forward, Reload and Home working and links between them that
+follow. An address that is not here gets a *Not found* page, the way a
+browser does. A browser of local documents is a browser; a rectangle with
+a name on it is not.
+
+## Keys
+
+LXDE binds these in Openbox's `rc.xml`, and each one is a thing this
+desktop can actually do — a binding for something it cannot would be the
+keyboard's version of a button that lies.
+
+| | |
+|---|---|
+| `Super+E` | the file manager |
+| `Super+R` | the Run box |
+| `Super+D` | show the desktop |
+| `Ctrl+Alt+T` | a terminal |
+| `Ctrl+Alt+L` | lock the screen |
+| `Ctrl+Alt+Delete` | log out |
+| `Alt+F4` | close the focused window |
+| `Alt+Tab` | cycle windows |
+
 ## The window manager
 
 Openbox's shape, and Openbox's behaviour:

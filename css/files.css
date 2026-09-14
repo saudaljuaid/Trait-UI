@@ -455,3 +455,32 @@ input[type="range"].gtk { padding: 0; border: 0; background: none; }
     color: var(--gtk-text);
 }
 .synaptic-detail b { display: block; margin-bottom: 3px; }
+
+/* ------------------------------------------------------- the browser */
+
+.browser-view {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    background: var(--gtk-base);
+    color: var(--gtk-text);
+    padding: 12px 16px;
+    font-size: 13px;
+    line-height: 1.5;
+}
+.browser-view h1 { font-size: 19px; margin-bottom: 8px; }
+.browser-view p, .browser-view ul, .browser-view dl,
+.browser-view pre { margin-bottom: 10px; }
+.browser-view ul { padding-left: 20px; }
+.browser-view dt { font-weight: bold; margin-top: 5px; }
+.browser-view dd { margin-left: 18px; }
+.browser-view code, .browser-view pre {
+    font-family: "DejaVu Sans Mono", monospace;
+    font-size: 12px;
+    background: var(--gtk-bg);
+    border: 1px solid var(--gtk-line);
+}
+.browser-view code { padding: 0 3px; }
+.browser-view pre { padding: 6px 8px; white-space: pre-wrap; }
+.browser-view a { color: #1A4F8C; cursor: default; }
+.browser-view a:hover { text-decoration: underline; }

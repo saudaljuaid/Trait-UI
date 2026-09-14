@@ -328,6 +328,93 @@ There is no maximise button on the frame, because there is nothing behind
 one. Nothing here is drawn as a control that does not do what it is drawn
 as.
 
+## Trait OS in C
+
+The desktop this page describes exists twice: as the HTML beside it, and
+as a C implementation that draws on a linear framebuffer. The HTML is the
+SPEC, not the source — nothing in the C is a transliteration of the
+JavaScript, and every number in it carries the Debian file it was read out
+of, the same ones this document names.
+
+```
+make -C tools/c run        # build, render frames into build/c
+```
+
+### What is in it
+
+```
+include/trait/surface.h    a 32-bit surface and a clipped plot
+include/trait/theme.h      the palette, as runtime state
+include/trait/font.h       text as coverage, three sizes and a mono face
+include/trait/input.h      pointer and key events
+include/trait/window.h     Openbox's frame
+include/trait/panel.h      lxpanel's bar
+include/trait/menu.h       the applications menu
+include/trait/files.h      pcmanfm
+include/trait/taskmgr.h    lxtask
+include/trait/settings.h   the GTK notebook
+include/trait/packages.h   synaptic
+include/trait/terminal.h   lxterminal
+include/trait/shell.h      what owns the windows and routes the events
+```
+
+Every module below the shell draws and models; none knows another exists.
+The shell is the one place that knows there is more than one window, which
+is why it is the one place that can say what a click on a given pixel
+means.
+
+### Two sets of flags, and the difference matters
+
+The shell's own sources build **freestanding**:
+
+```
+-std=c11 -ffreestanding -nostdlib -msoft-float
+-Wall -Wextra -Werror -Wpedantic -Wshadow -Wundef
+-Wstrict-prototypes -Wmissing-prototypes
+```
+
+That is not decoration. It is what they will be built as on the metal, and
+a warning that only appears there is a warning nobody sees. There is no
+libc down there, so the numbers are formatted by hand and the PNG encoder
+in `tools/c/` is the project's own. The harness is an ordinary host
+program and is built as one; the Makefile keeps the two sets apart on
+purpose.
+
+### Nothing is rasterised at runtime
+
+There is no font server and no image decoder behind a framebuffer, so both
+happen ahead of time:
+
+```
+python3 tools/c/make-font.py <ttf> <px> <out.h> <prefix>
+python3 tools/c/make-wallpaper.py [source.png] [out.bin] [WxH]
+python3 tools/c/make-app-icons.py <dir> <out.h> --prefix <p> --sizes 16,48
+```
+
+A glyph the font does not carry draws nothing rather than a box, because a
+box is a picture of a missing character pretending to be a character.
+
+### The checks are the point
+
+Each module carries a self-test that asks the question it would actually
+fail at, and the harness drives the shell with real events from screen
+coordinates — never by asking a module where its button is and then
+calling the function behind it, which proves the function and not the
+button. The run **fails the build** if any of twelve proofs does not hold.
+A sample of what they caught:
+
+| Failure | What was actually wrong |
+| --- | --- |
+| `Alt+Tab committed to the window that already had focus` | it enumerated by slot, not most-recently-used |
+| `End Task left the row` | slot 0 mapped to pid 1, the session, which refuses to be ended |
+| `the menu button did not close it` | the opener was treated as a dismiss, so one press closed and reopened |
+| `the rename did not take (the menu was about Downloads)` | the harness clicked a fixed offset that overshot an 18px list row |
+| `terminal self-test failed` | the old check asserted the buffer caps at one screen — it described the absence of scrollback |
+
+Three of those five were faults in the checks or the harness rather than
+in the code. That is what a check is for: a test that only ever agrees
+with the code is a second copy of the code.
+
 ## Integrating Trait OS into Phipia OS
 
 Phipia OS is the other half of this: a desktop shell written in freestanding

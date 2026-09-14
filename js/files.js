@@ -183,7 +183,10 @@ function makeFilesWindow() {
 
     menubar.className = "files-menubar";
     const MENUS = [
-        ["File", [["New Window", () => launch("files")],
+        ["File", [["Create Folder", () => createBox("folder")],
+                  ["Create Blank File", () => createBox("file")],
+                  null,
+                  ["New Window", () => launch("files")],
                   ["Open Terminal", () => launch("terminal")],
                   null,
                   ["Close", () => { closeFilesWindow(body); }]]],
@@ -665,6 +668,90 @@ function makeFilesWindow() {
         };
 
         setTimeout(() => document.addEventListener("click", away), 0);
+    }
+
+    /*
+     * pcmanfm's Create New: a folder, or an empty file.  Both are rows
+     * that were dimmed while this window could not make one; it can, so
+     * they are live.  A name already taken is refused rather than
+     * quietly overwriting what is there.
+     */
+    function createBox(kind) {
+        const here = FS[state.path];
+
+        askName(kind === "folder" ? "Create Folder" : "Create File",
+            "Create", kind === "folder" ? "New Folder" : "New File.txt",
+            (wanted) => {
+                if (wanted === "") {
+                    return "Give it a name";
+                }
+                if (wanted.indexOf("/") >= 0) {
+                    return "A name cannot hold a /";
+                }
+                if (here.dirs.indexOf(wanted) >= 0 ||
+                        here.files[wanted] !== undefined) {
+                    return "\u201C" + wanted + "\u201D is already here";
+                }
+                if (kind === "folder") {
+                    here.dirs.push(wanted);
+                    FS[fullPath(wanted)] = { dirs: [], files: {} };
+                } else {
+                    writeFile(fullPath(wanted), "");
+                }
+                state.selected = wanted;
+                draw();
+                return true;
+            });
+    }
+
+    /* One box for every "type a name and press a button" in this window,
+     * so Rename and Create cannot drift apart. */
+    function askName(title, action, start, then) {
+        const dialog = makeDialog(title, 330);
+        const wrap = document.createElement("div");
+        const field = document.createElement("input");
+        const note = document.createElement("div");
+        const row = document.createElement("div");
+        const cancel = document.createElement("button");
+        const ok = document.createElement("button");
+
+        wrap.className = "body";
+        field.type = "text";
+        field.value = start;
+        note.style.cssText = "min-height:16px;margin-top:6px;color:#a22;" +
+            "font-size:12px";
+        wrap.appendChild(field);
+        wrap.appendChild(note);
+        row.className = "row";
+        cancel.textContent = "Cancel";
+        ok.textContent = action;
+        row.appendChild(cancel);
+        row.appendChild(ok);
+        dialog.appendChild(wrap);
+        dialog.appendChild(row);
+        const go = () => {
+            const said = then(field.value.trim());
+
+            if (said === true) {
+                dialog.remove();
+            } else {
+                note.textContent = said;
+            }
+        };
+
+        cancel.addEventListener("click", () => dialog.remove());
+        ok.addEventListener("click", go);
+        field.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                go();
+            }
+            if (event.key === "Escape") {
+                dialog.remove();
+            }
+        });
+        field.focus();
+        field.select();
+        return dialog;
     }
 
     function renameBox(name, isDir) {

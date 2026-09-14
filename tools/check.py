@@ -1149,6 +1149,45 @@ def check_notifications(page):
     page.wait_for_timeout(150)
 
 
+def check_create(page):
+    """Create Folder and Create Blank File were dimmed while this window
+    could not make one.  It can, so they are live - and a name already
+    taken is refused rather than quietly overwriting what is there."""
+    page.evaluate("() => launch('files')")
+    page.wait_for_timeout(300)
+    page.click(".files-menubar .m:text-is('File')")
+    page.wait_for_timeout(120)
+    page.click(".files-menubar .drop .row:text-is('Create Folder')")
+    page.wait_for_timeout(200)
+    page.fill(".dialog input", "Desktop")
+    page.press(".dialog input", "Enter")
+    page.wait_for_timeout(200)
+    if not page.is_visible(".dialog"):
+        fails("Create Folder took a name that is already in the folder")
+    else:
+        page.fill(".dialog input", "Scratch")
+        page.press(".dialog input", "Enter")
+        page.wait_for_timeout(250)
+    names = page.eval_on_selector_all(
+        ".files-entry span", "(e) => e.map((x) => x.textContent)")
+    if "Scratch" not in names:
+        fails("Create Folder made nothing; the listing is %s"
+              % ", ".join(names))
+    page.dblclick(".files-entry:has-text('Scratch')")
+    page.wait_for_timeout(250)
+    if page.input_value(".files-toolbar .location") != \
+            "/home/user/Scratch":
+        fails("the folder that was just made cannot be entered")
+    page.evaluate("""() => {
+        windows.slice().forEach(closeWindow);
+        const home = FS['/home/user'];
+        const at = home.dirs.indexOf('Scratch');
+        if (at >= 0) { home.dirs.splice(at, 1); }
+        delete FS['/home/user/Scratch'];
+    }""")
+    page.wait_for_timeout(150)
+
+
 def main():
     with sync_playwright() as play:
         browser = play.chromium.launch(
@@ -1173,6 +1212,7 @@ def main():
         check_run_box(page)
         check_volume(page)
         check_lock(page)
+        check_create(page)
         check_item_menu(page)
         check_editor_files(page)
         check_window_menu(page)

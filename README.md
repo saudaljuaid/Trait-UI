@@ -215,6 +215,9 @@ so it reports what is actually in the folder. The first cut printed
 figure the desktop could stand behind — it was invented, and a status bar
 that makes up a number is worse than one that leaves the field out.
 
+`File` creates a folder or a blank file, and refuses a name that is
+already in use rather than quietly overwriting what is there.
+
 A right click on a file or folder drops pcmanfm's context menu — Open,
 Rename, Delete, Properties — and the two rows that change things change
 them: this window has a filesystem of its own. Renaming a folder carries

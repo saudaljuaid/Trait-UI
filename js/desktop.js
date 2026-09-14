@@ -1205,7 +1205,17 @@ document.getElementById("wallpaper").addEventListener("click", () => {
  * to work.
  */
 const DESKTOP_MENU = [
-    ["Create New...", null],
+    /* Create New opens the file manager at the desktop folder, which is
+     * where a desktop's own files live - the desktop IS that folder, and
+     * making a file on it means making one in there. */
+    ["Create New...", () => {
+        launch("files");
+        const opened = windows[windows.length - 1];
+
+        if (opened && opened.files) {
+            opened.files.go("/home/user/Desktop");
+        }
+    }],
     ["Paste", null],
     ["Select All", () => {
         desktopSelected = DESKTOP_ICONS[0][0];

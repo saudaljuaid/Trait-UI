@@ -16,6 +16,7 @@
 #include <trait/font.h>
 #include <trait/files.h>
 #include <trait/menu.h>
+#include <trait/shell.h>
 #include <trait/packages.h>
 #include <trait/terminal.h>
 #include <trait/panel.h>
@@ -537,6 +538,116 @@ int main(int argc, char **argv)
         }
         printf("proof: Apply put %u row(s) in the menu that were not "
                "there before it ran\n", after - before);
+    }
+
+    /*
+     * AND NOW IT ANSWERS.  Everything above draws; this drives the shell
+     * with real events and writes the frames either side of them, so a
+     * click is shown to do something rather than asserted to.
+     */
+    if (!trait_shell_self_test()) {
+        fprintf(stderr, "trait: shell self-test failed\n");
+        return 1;
+    }
+    {
+        struct trait_event press;
+        uint32_t taskmgr;
+        uint32_t settings;
+        struct trait_rect tab;
+        struct trait_rect head;
+        uint32_t was_page;
+        uint32_t was_sort;
+
+        memset(&press, 0, sizeof(press));
+        press.kind = TRAIT_EVENT_POINTER_DOWN;
+
+        trait_shell_reset(&screen);
+        taskmgr = trait_shell_open(TRAIT_APP_TASKMGR,
+            (struct trait_rect){ 120U, 120U, 520U, 340U });
+        settings = trait_shell_open(TRAIT_APP_SETTINGS,
+            (struct trait_rect){ 470U, 300U, 520U, 300U });
+        populate_taskmgr();
+        populate_settings();
+
+        if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
+            flat(0x212121U);
+        }
+        trait_shell_draw();
+        (void)trait_panel_draw(whole());
+        if (!emit(out, "live-before.png", whole())) {
+            return 1;
+        }
+
+        /* Click the Task Manager, which is UNDERNEATH: it must come to
+         * the front, which is the thing the picture shows. */
+        press.x = 200U;
+        press.y = 130U;
+        if (!trait_shell_handle(&press)) {
+            fprintf(stderr, "trait: a press on a window did nothing\n");
+            return 1;
+        }
+        if (trait_shell_focused() != taskmgr) {
+            fprintf(stderr, "trait: clicking a window did not raise it\n");
+            return 1;
+        }
+
+        /* Sort by RSS by pressing its header. */
+        was_sort = (uint32_t)trait_taskmgr_sort_column();
+        if (!trait_taskmgr_header_bounds(trait_shell_window(taskmgr),
+                TRAIT_TASKMGR_RSS, &head)) {
+            return 1;
+        }
+        press.x = head.x + head.width / 2U;
+        press.y = head.y + head.height / 2U;
+        (void)trait_shell_handle(&press);
+        if ((uint32_t)trait_taskmgr_sort_column() == was_sort) {
+            fprintf(stderr, "trait: pressing a column header did not "
+                            "sort by it\n");
+            return 1;
+        }
+
+        /*
+         * Then the Settings window.  The point has to be inside Settings
+         * and OUTSIDE the Task Manager, which is now on top: the first
+         * cut of this pressed (600,310), which is in both, and the press
+         * correctly went to the Task Manager - the harness caught the
+         * test, not the code. Settings spans x 470..990; the Task Manager
+         * ends at x 640, so 800 is unambiguously Settings.
+         */
+        press.x = 800U;
+        press.y = 310U;
+        (void)trait_shell_handle(&press);
+        if (trait_shell_focused() != settings) {
+            fprintf(stderr, "trait: clicking the other window did not "
+                            "raise it\n");
+            return 1;
+        }
+        was_page = trait_settings_selected();
+        if (!trait_settings_tab_bounds(trait_shell_window(settings), 3U,
+                                       &tab)) {
+            return 1;
+        }
+        press.x = tab.x + tab.width / 2U;
+        press.y = tab.y + tab.height / 2U;
+        (void)trait_shell_handle(&press);
+        if (trait_settings_selected() == was_page ||
+                trait_settings_selected() != 3U) {
+            fprintf(stderr, "trait: pressing a tab did not change the "
+                            "page\n");
+            return 1;
+        }
+
+        if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
+            flat(0x212121U);
+        }
+        trait_shell_draw();
+        (void)trait_panel_draw(whole());
+        if (!emit(out, "live-after.png", whole())) {
+            return 1;
+        }
+        printf("proof: a press raised a covered window, a press on a "
+               "column header sorted by it, and a press on a tab changed "
+               "the page - all through the shell's own hit test\n");
     }
     printf("proof: a %u-pixel panel over a %ux%u screen, %u tasks, a "
            "%u-column cpu graph and a clock that does not move when a "

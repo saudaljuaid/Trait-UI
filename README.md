@@ -131,6 +131,39 @@ fanned papers, drawn in the same geometry as the Phipia mark — the same
 shear, the same rounding — and grey rather than a bright folder, because
 the desktop it sits on is the grey Debian one.
 
+## Settings
+
+LXDE has no control panel: look and feel is `lxappearance`, the desktop's
+own settings are `pcmanfm`'s, and the bar's are `lxpanel`'s. They are one
+notebook here, a page per program — Widget, Icon Theme, Window Border,
+Desktop, Panel, Other.
+
+**Every control on it changes something.** A settings window whose
+switches do nothing is the largest possible version of a control that
+does not do what it is drawn as, so a setting this desktop cannot carry
+out is not offered. The Icon Theme page lists one theme because one is
+what is installed; `lxappearance` lists what is on the machine and so
+does this. The Other page says outright why there is no mouse-cursor
+theme and no toolbar style.
+
+Picking a widget theme repaints **every window at once**, not just the
+one it was set in. Moving the panel to the top takes the work area with
+it, so the desktop icons and any maximised window move too.
+
+## The Task Manager
+
+`lxtask`'s shape: a menu bar, a summary of the machine, and one list with
+Command, User, CPU%, RSS and PID. `File → End Task` ends the selected
+task; ending `phipia-session` is refused out loud, because it is the
+desktop itself.
+
+**What it reports is measured or it is not reported.** CPU% comes from
+the same probe the panel's monitor uses, shared between what is running.
+RSS comes from `performance.memory` where the browser offers it and reads
+`-` where it does not. PID is a number this desktop hands out when a
+window opens — which is what a process id is — and it is not a number
+from any operating system.
+
 ## The terminal
 
 `assets/icons/nuoveXT2/terminal.png` is nuoveXT2's own mark — a black

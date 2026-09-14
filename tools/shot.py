@@ -43,6 +43,19 @@ def main():
                 page.hover(what.split(":", 1)[1])
             elif what.startswith("click:"):
                 page.click(what.split(":", 1)[1])
+            elif what.startswith("pick:"):
+                # Choose a row in a theme list, so a frame can show a
+                # setting having been applied rather than only offered.
+                page.click(".gtk-list .item:text-is('%s')"
+                           % what.split(":", 1)[1])
+            elif what.startswith("tab:"):
+                page.click(".gtk-tabs .tab:text-is('%s')"
+                           % what.split(":", 1)[1])
+            elif what.startswith("run:"):
+                # Applications the panel has no launcher for - Settings
+                # and the Task Manager are reached from the menu, the way
+                # LXDE reaches them.
+                page.evaluate("(w) => launch(w)", what.split(":", 1)[1])
             else:
                 page.click('[data-launch="%s"]' % what)
             page.wait_for_timeout(250)

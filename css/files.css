@@ -221,3 +221,181 @@
     color: #3a3a3a;
     white-space: nowrap;
 }
+
+/* ====================================================== GTK2 widgets ==
+ *
+ * The pieces more than one window needs, in the same Clearlooks palette
+ * the file manager is drawn in: a notebook, a list view with columns, a
+ * button row along the foot of a dialog.  One look for one kind of thing,
+ * which is what a desktop with a theme means.
+ */
+
+/* --------------------------------------------------------- a notebook */
+
+/*
+ * GTK2 draws a notebook as tabs sitting ON the page: the active tab has
+ * no bottom edge, so it reads as continuous with what is under it, and
+ * the inactive ones are pushed down a pixel and shaded.
+ */
+.gtk-notebook { display: flex; flex-direction: column; min-height: 0;
+                flex: 1 1 auto; }
+.gtk-tabs {
+    display: flex;
+    gap: 2px;
+    padding: 4px 4px 0;
+    flex: 0 0 auto;
+}
+.gtk-tabs .tab {
+    padding: 3px 10px 4px;
+    font-size: 13px;
+    background: var(--gtk-bg-active);
+    border: 1px solid var(--gtk-line);
+    border-bottom: none;
+    border-radius: 3px 3px 0 0;
+    margin-top: 2px;
+    cursor: default;
+    white-space: nowrap;
+}
+.gtk-tabs .tab:hover { background: var(--gtk-bg-prelight); }
+.gtk-tabs .tab.current {
+    background: var(--gtk-bg);
+    margin-top: 0;
+    padding-bottom: 5px;
+    position: relative;
+    z-index: 2;
+}
+.gtk-page {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    border: 1px solid var(--gtk-line);
+    background: var(--gtk-bg);
+    padding: 10px;
+    margin: -1px 4px 4px;
+    font-size: 13px;
+}
+.gtk-page.hidden { display: none; }
+
+.gtk-field { margin-bottom: 12px; }
+.gtk-field > label {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: bold;
+    font-size: 12px;
+}
+.gtk-row { display: flex; align-items: center; gap: 6px;
+           margin-bottom: 5px; }
+.gtk-hint { color: #5a5a5a; font-size: 12px; margin-top: 4px; }
+
+select.gtk, input.gtk {
+    font: 13px "DejaVu Sans", sans-serif;
+    padding: 2px 4px;
+    border: 1px solid #9d9a96;
+    background: var(--gtk-base);
+    color: var(--gtk-text);
+}
+input[type="range"].gtk { padding: 0; border: 0; background: none; }
+
+/*
+ * A GTK list with a THEME to choose from is a scrolling list on the base
+ * colour, not a dropdown - which is what lxappearance shows, and what
+ * makes the choice a list you look down rather than one you open.
+ */
+.gtk-list {
+    height: 132px;
+    overflow: auto;
+    background: var(--gtk-base);
+    border: 1px solid #9d9a96;
+}
+.gtk-list .item { padding: 3px 6px; cursor: default; font-size: 13px; }
+.gtk-list .item:hover { background: var(--gtk-base-prelight); }
+.gtk-list .item.current {
+    background: var(--gtk-sel-bg);
+    color: var(--gtk-sel-fg);
+}
+
+/* ------------------------------------------------------ a column list */
+
+/*
+ * A GtkTreeView with columns: a header row of buttons, then rows on the
+ * base colour with the selection filling the whole row.
+ */
+.gtk-tree {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    background: var(--gtk-base);
+    border: 1px solid #9d9a96;
+    font-size: 12px;
+}
+.gtk-tree .head, .gtk-tree .line { display: flex; }
+.gtk-tree .head {
+    position: sticky;
+    top: 0;
+    background: var(--gtk-bg);
+    z-index: 2;
+}
+.gtk-tree .head > div {
+    padding: 3px 6px;
+    border-right: 1px solid var(--gtk-line);
+    border-bottom: 1px solid var(--gtk-line);
+    background: linear-gradient(var(--gtk-bg-prelight),
+                                var(--gtk-bg-active));
+    font-weight: bold;
+    cursor: default;
+    white-space: nowrap;
+    overflow: hidden;
+}
+.gtk-tree .line > div {
+    padding: 2px 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--gtk-text);
+}
+.gtk-tree .line:hover { background: var(--gtk-base-prelight); }
+.gtk-tree .line.selected { background: var(--gtk-sel-bg); }
+.gtk-tree .line.selected > div { color: var(--gtk-sel-fg); }
+.gtk-tree .num { text-align: right; }
+
+/* The row of buttons along the foot of a window, right aligned, which is
+ * where GTK puts them. */
+.gtk-actions {
+    flex: 0 0 auto;
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    padding: 6px 8px;
+    border-top: 1px solid var(--gtk-line-light);
+}
+.gtk-actions button, button.gtk {
+    padding: 3px 12px;
+    font: 13px "DejaVu Sans", sans-serif;
+    background: linear-gradient(#fcfcfc, #dedede);
+    border: 1px solid #8f8f8f;
+    cursor: default;
+}
+.gtk-actions button:hover, button.gtk:hover {
+    background: linear-gradient(#ffffff, #e9e9e9);
+}
+.gtk-actions button:active, button.gtk:active {
+    background: linear-gradient(#d4d4d4, #e6e6e6);
+}
+
+/* The task manager's summary strip, above its list. */
+.lxtask-summary {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 18px;
+    padding: 5px 8px;
+    font-size: 12px;
+    color: #2a2a2a;
+}
+.lxtask-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--gtk-bg);
+    padding: 0 4px 0;
+}

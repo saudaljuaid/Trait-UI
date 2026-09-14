@@ -413,6 +413,135 @@ def check_desktop_menu(page):
     page.wait_for_timeout(150)
 
 
+SETTINGS_TABS = ["Widget", "Icon Theme", "Window Border", "Desktop",
+                 "Panel", "Other"]
+
+
+def check_settings(page):
+    """A settings window whose switches do nothing is the largest possible
+    version of a control that does not do what it is drawn as, so each
+    check here picks a setting and then looks at the DESKTOP."""
+    page.evaluate("() => launch('files')")
+    page.evaluate("() => launch('settings')")
+    page.wait_for_timeout(300)
+    if not page.is_visible(".gtk-notebook"):
+        fails("Settings opened no notebook")
+        return
+    tabs = page.eval_on_selector_all(
+        ".gtk-tabs .tab", "(e) => e.map((t) => t.textContent)")
+    if tabs != SETTINGS_TABS:
+        fails("Settings runs %s rather than %s"
+              % (" ".join(tabs), " ".join(SETTINGS_TABS)))
+
+    # A widget theme reaches every window, not just the one it was set in.
+    page.click(".gtk-list .item:text-is('Adwaita-dark')")
+    page.wait_for_timeout(200)
+    bg = page.eval_on_selector(".files-view",
+                               "(el) => getComputedStyle(el).backgroundColor")
+    if bg.replace(" ", "") == "rgb(255,255,255)":
+        fails("picking a dark theme left the file manager behind it white,"
+              " so the theme reached only the window it was set in")
+    page.click(".gtk-list .item:text-is('Clearlooks')")
+    page.wait_for_timeout(150)
+
+    # The panel's height, from the panel's own page.
+    page.click(".gtk-tabs .tab:text-is('Panel')")
+    page.wait_for_timeout(120)
+    page.select_option('select[data-setting="panel-height"]', "36")
+    page.wait_for_timeout(200)
+    tall = page.eval_on_selector(
+        "#panel", "(el) => Math.round(el.getBoundingClientRect().height)")
+    if tall != 36:
+        fails("setting the panel to 36 left it %d tall" % tall)
+    page.select_option('select[data-setting="panel-height"]', "26")
+    page.wait_for_timeout(150)
+
+    # The clock format, which is the profile's ClockFmt.
+    page.select_option(
+        'select[data-setting="clock-format"]', "%T")
+    page.wait_for_timeout(200)
+    said = page.inner_text("#clock")
+    if len(said) != 8 or said.count(":") != 2:
+        fails("the clock reads %r under %%T, which wants two colons"
+              % said)
+    page.select_option(
+        'select[data-setting="clock-format"]', "%R")
+    page.wait_for_timeout(150)
+
+    # Moving the bar to the top has to take the work area with it.
+    page.select_option(
+        'select[data-setting="panel-edge"]', "top")
+    page.wait_for_timeout(250)
+    top = page.eval_on_selector(
+        "#panel", "(el) => Math.round(el.getBoundingClientRect().top)")
+    if top != 0:
+        fails("the panel moved to the top and its top edge is at %d" % top)
+    icons_top = page.eval_on_selector(
+        "#desktop-icons",
+        "(el) => Math.round(el.getBoundingClientRect().top)")
+    if icons_top < PANEL_HEIGHT:
+        fails("the panel moved to the top and the desktop icons stayed "
+              "under it, at %d" % icons_top)
+    page.select_option(
+        'select[data-setting="panel-edge"]', "bottom")
+    page.wait_for_timeout(200)
+
+    page.evaluate("""() => windows.slice().forEach(closeWindow)""")
+    page.wait_for_timeout(150)
+
+
+def check_taskmgr(page):
+    """lxtask lists what is running, and ending a task ends it."""
+    page.evaluate("() => launch('terminal')")
+    page.evaluate("() => launch('files')")
+    page.evaluate("() => launch('taskmgr')")
+    page.wait_for_timeout(400)
+    rows = page.eval_on_selector_all(
+        ".gtk-tree .line > div:first-child",
+        "(e) => e.map((c) => c.textContent)")
+    #
+    # The COMMAND, not the title.  The first cut listed "user@phipia: ~"
+    # and "user", which are what the title bars say - a task manager whose
+    # command column carries window titles is a window list wearing a
+    # task manager's headers.
+    #
+    for wanted in ("phipia-session", "lxterminal", "pcmanfm", "lxtask"):
+        if wanted not in rows:
+            fails("the task list has no %r row; it carries %s"
+                  % (wanted, ", ".join(rows)))
+    if len(rows) != 4:
+        fails("the task list holds %d rows for one shell and three "
+              "windows" % len(rows))
+
+    # Ending a task ends it, and the row goes with it.
+    page.click(".gtk-tree .line:has-text('lxterminal')")
+    page.wait_for_timeout(120)
+    page.click(".gtk-actions button:text-is('End Task')")
+    page.wait_for_timeout(300)
+    rows = page.eval_on_selector_all(
+        ".gtk-tree .line > div:first-child",
+        "(e) => e.map((c) => c.textContent)")
+    if "lxterminal" in rows:
+        fails("End Task left the task in the list")
+    if page.eval_on_selector_all(".window:has(.terminal-body)",
+                                 "(e) => e.length") != 0:
+        fails("End Task took the row away and left the window standing")
+
+    # Ending the session is refused OUT LOUD rather than ignored.
+    page.click(".gtk-tree .line:has-text('phipia-session')")
+    page.wait_for_timeout(120)
+    page.click(".gtk-actions button:text-is('End Task')")
+    page.wait_for_timeout(250)
+    if not page.is_visible(".dialog:has-text('phipia-session')"):
+        fails("ending the session was ignored rather than refused, so the "
+              "button looks broken rather than guarded")
+    page.evaluate("""() => {
+        document.querySelectorAll('.dialog').forEach((d) => d.remove());
+        windows.slice().forEach(closeWindow);
+    }""")
+    page.wait_for_timeout(150)
+
+
 def main():
     with sync_playwright() as play:
         browser = play.chromium.launch(
@@ -435,6 +564,8 @@ def main():
         check_desktop(page)
         check_desktop_menu(page)
         check_files(page)
+        check_settings(page)
+        check_taskmgr(page)
         check_terminal(page)
         check_wincmd(page)
         check_close(page)
@@ -449,7 +580,9 @@ def main():
           "muted, a lock that covers the panel, and a terminal that "
           "answers what is typed at it, and a 640x480 file manager "
           "that navigates, over a desktop whose icons open what they "
-          "name" % (" ".join(PLUGIN_ORDER), green))
+          "name, a Settings that reaches every window, and a task "
+          "manager that ends what it lists"
+          % (" ".join(PLUGIN_ORDER), green))
     return 0
 
 

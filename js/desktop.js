@@ -13,11 +13,35 @@
  * (%H:%M)".  Not a locale-formatted time: %R is the same two fields in
  * the same order wherever it runs.
  */
+const WEEKDAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+/*
+ * strftime, for the handful of fields the panel's ClockFmt uses.  %R is
+ * the profile's own and is "the time in 24-hour notation (%H:%M)"; the
+ * rest are there because Settings offers them, and Settings only offers
+ * what this can actually format.
+ */
+function strftime(fmt, now) {
+    const two = (n) => String(n).padStart(2, "0");
+    const hour12 = now.getHours() % 12 === 0 ? 12 : now.getHours() % 12;
+
+    return fmt
+        .replace(/%R/g, two(now.getHours()) + ":" + two(now.getMinutes()))
+        .replace(/%T/g, two(now.getHours()) + ":" + two(now.getMinutes()) +
+                 ":" + two(now.getSeconds()))
+        .replace(/%H/g, two(now.getHours()))
+        .replace(/%M/g, two(now.getMinutes()))
+        .replace(/%I/g, two(hour12))
+        .replace(/%p/g, now.getHours() < 12 ? "AM" : "PM")
+        .replace(/%a/g, WEEKDAY[now.getDay()]);
+}
+
 function paintClock() {
-    const now = new Date();
-    const hh = String(now.getHours()).padStart(2, "0");
-    const mm = String(now.getMinutes()).padStart(2, "0");
-    document.getElementById("clock").textContent = hh + ":" + mm;
+    const fmt = (typeof SETTINGS === "object" && SETTINGS.clockFormat) ||
+        "%R";
+
+    document.getElementById("clock").textContent =
+        strftime(fmt, new Date());
 }
 
 /* --------------------------------------------------------------- the cpu */
@@ -104,8 +128,29 @@ function paintPager() {
 
 const windows = [];
 
+/*
+ * Anything that shows the window list wants telling when the list moves.
+ * The task manager was drawing itself BEFORE openWindow() had added its
+ * own window, so it listed everything except itself until its next tick -
+ * a task manager with no row for the task manager.
+ */
+const windowWatchers = [];
+
+function watchWindows(fn) {
+    windowWatchers.push(fn);
+    return () => {
+        const at = windowWatchers.indexOf(fn);
+
+        if (at >= 0) {
+            windowWatchers.splice(at, 1);
+        }
+    };
+}
+
 function paintTaskbar() {
     const bar = document.getElementById("taskbar");
+
+    windowWatchers.forEach((fn) => fn());
 
     bar.textContent = "";
     windows.forEach((win) => {
@@ -143,6 +188,12 @@ function paintTaskbar() {
  */
 const stage = document.getElementById("windows");
 let topZ = 10;
+/*
+ * A window's id, handed out by the thing that starts it - which is what a
+ * process id is.  It starts at one because the desktop itself is one, the
+ * way a session leader is, and the task manager lists that row first.
+ */
+let nextPid = 1;
 
 function focusWindow(win) {
     windows.forEach((other) => {
@@ -162,6 +213,12 @@ function closeWindow(win) {
     if (at >= 0) {
         windows.splice(at, 1);
     }
+    /* So a window can take its timers down with it rather than leave
+     * them running against a frame nobody can see. */
+    win.frame.dispatchEvent(new CustomEvent("phipia-closed"));
+    win.frame.querySelectorAll("*").forEach((el) => {
+        el.dispatchEvent(new CustomEvent("phipia-closed"));
+    });
     win.frame.remove();
     const last = windows[windows.length - 1];
     if (last) {
@@ -227,9 +284,11 @@ function openWindow(spec) {
     const frame = document.createElement("div");
     const bar = document.createElement("div");
     const label = document.createElement("span");
+    nextPid += 1;
     const win = { title: spec.title, icon: spec.icon, frame: frame,
                   active: true, minimised: false, maximised: false,
-                  files: spec.files || null };
+                  files: spec.files || null,
+                  command: spec.command || spec.title, pid: nextPid };
 
     frame.className = "window";
     frame.style.left = spec.x + "px";
@@ -398,6 +457,7 @@ function launch(what) {
     cascade += 1;
     if (what === "terminal") {
         openWindow({ title: TERMINAL_USER + "@" + TERMINAL_HOST + ": ~",
+                     command: "lxterminal",
                      icon: "assets/icons/nuoveXT2/terminal.png",
                      x: 90 + step, y: 70 + step,
                      width: 620, height: 400,
@@ -408,6 +468,25 @@ function launch(what) {
         }
         return;
     }
+    if (what === "settings") {
+        openWindow({ title: "Desktop Preferences",
+                     command: "lxappearance",
+                     icon: "assets/icons/nuoveXT2/16/gtk-preferences.png",
+                     x: 150 + step, y: 90 + step,
+                     width: 540, height: 420,
+                     body: makeSettingsWindow() });
+        return;
+    }
+    if (what === "taskmgr") {
+        /* lxtask opens small: it is a list, and a list that fills the
+         * screen is a list you have to look around. */
+        openWindow({ title: "Task Manager", command: "lxtask",
+                     icon: "assets/icons/nuoveXT2/16/applications-system.png",
+                     x: 180 + step, y: 110 + step,
+                     width: 560, height: 360,
+                     body: makeTaskManagerWindow().body });
+        return;
+    }
     if (what === "files") {
         /*
          * 640 by 480, which is pcmanfm's own win_width and win_height in
@@ -415,7 +494,8 @@ function launch(what) {
          */
         const files = makeFilesWindow();
 
-        openWindow({ title: "user", icon: "assets/logo/files.svg",
+        openWindow({ title: "user", command: "pcmanfm",
+                     icon: "assets/logo/files.svg",
                      x: 120 + step, y: 70 + step,
                      width: 640, height: 480, body: files.body,
                      files: files });
@@ -431,7 +511,8 @@ function launch(what) {
     body.style.cssText = "flex:1 1 auto;background:#ededed;color:#333;" +
         "padding:10px;font-size:13px";
     body.textContent = plain[0];
-    openWindow({ title: plain[0], icon: plain[1], x: 120 + step,
+    openWindow({ title: plain[0], command: "x-www-browser",
+                 icon: plain[1], x: 120 + step,
                  y: 90 + step, width: 560, height: 360, body: body });
 }
 
@@ -518,9 +599,12 @@ const MENU_CATEGORIES = [
     ["Office", "applications-office", []],
     ["Sound & Video", "applications-multimedia", []],
     ["System Tools", "applications-system", [
-        ["File Manager", "file-manager", "files"]
+        ["File Manager", "file-manager", "files"],
+        ["Task Manager", "applications-system", "taskmgr"]
     ]],
-    ["Preferences", "gtk-preferences", []]
+    ["Preferences", "gtk-preferences", [
+        ["Desktop Preferences", "gtk-preferences", "settings"]
+    ]]
 ];
 
 const MENU16 = "assets/icons/nuoveXT2/16/";
@@ -604,11 +688,14 @@ function openMenu() {
     const panel = document.getElementById("panel");
 
     popup.classList.add("open");
-    /* Above the panel and lined up with the button, which is where a menu
-     * on a bottom panel goes. */
+    /* AWAY FROM WHATEVER EDGE THE PANEL IS ON.  A menu that always opened
+     * upwards would run off the top of the screen once Settings moves the
+     * bar to edge=top. */
+    const bar = panel.getBoundingClientRect();
+
     popup.style.left = button.getBoundingClientRect().left + "px";
-    popup.style.top = (panel.getBoundingClientRect().top -
-        popup.offsetHeight) + "px";
+    popup.style.top = (panel.classList.contains("top") ? bar.bottom :
+        bar.top - popup.offsetHeight) + "px";
 }
 
 document.getElementById("menu-button").addEventListener("click", (event) => {
@@ -639,7 +726,9 @@ buildMenu();
 const RUNNABLE = { terminal: "terminal", "lxterminal": "terminal",
                    "x-terminal-emulator": "terminal",
                    pcmanfm: "files", "file-manager": "files",
-                   browser: "browser", "x-www-browser": "browser" };
+                   browser: "browser", "x-www-browser": "browser",
+                   lxappearance: "settings", settings: "settings",
+                   lxtask: "taskmgr", "task-manager": "taskmgr" };
 
 function makeDialog(title, width) {
     const frame = document.createElement("div");
@@ -833,7 +922,9 @@ document.getElementById("volume").addEventListener("click", (event) => {
     if (volumePopup.classList.contains("open")) {
         volumePopup.style.left = Math.round(button.left) + "px";
         volumePopup.style.top =
-            (panel.top - volumePopup.offsetHeight) + "px";
+            (document.getElementById("panel").classList.contains("top") ?
+                panel.bottom :
+                panel.top - volumePopup.offsetHeight) + "px";
     }
 });
 document.addEventListener("click", () => {
@@ -969,8 +1060,9 @@ const DESKTOP_MENU = [
     null,
     ["Open in Terminal", () => launch("terminal")],
     ["Open Files", () => launch("files")],
+    ["Task Manager", () => launch("taskmgr")],
     null,
-    ["Desktop Preferences", null]
+    ["Desktop Preferences", () => launch("settings")]
 ];
 
 function buildDesktopMenu() {

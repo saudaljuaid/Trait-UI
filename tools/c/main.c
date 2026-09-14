@@ -1357,6 +1357,162 @@ int main(int argc, char **argv)
                     trait_shell_note_count());
             return 1;
         }
+        /*
+         * THE CONTEXT MENU AND THE RENAME BOX, driven from coordinates.
+         */
+        {
+            struct trait_rect cell;
+            uint32_t files_slot;
+            uint32_t user = populate_files();
+            uint32_t target;
+
+            trait_shell_reset(&screen);
+            trait_shell_set_screen(whole());
+            (void)trait_files_open(user);
+            files_slot = trait_shell_open(TRAIT_APP_FILES,
+                (struct trait_rect){ 180U, 140U, 640U, 460U });
+            if (files_slot >= TRAIT_SHELL_MAX_WINDOWS) {
+                return 1;
+            }
+            if (!trait_files_entry_bounds(trait_shell_window(files_slot),
+                    1U, &cell)) {
+                return 1;
+            }
+            target = trait_files_child(trait_files_here(), 1U);
+
+            memset(&event, 0, sizeof(event));
+            event.kind = TRAIT_EVENT_POINTER_DOWN;
+            event.secondary = true;
+            /*
+             * The CENTRE of the cell, not a fixed offset into it.  The
+             * first version used +20, which is inside a 72-pixel icon
+             * cell and past the end of an 18-pixel list row - and the
+             * view had been left in list mode by the Settings test
+             * above, so the press landed on the next entry and renamed
+             * the wrong thing.  A test that assumes a layout it did not
+             * ask for is a test that passes for the wrong reason when it
+             * passes at all.
+             */
+            event.x = cell.x + cell.width / 2U;
+            event.y = cell.y + cell.height / 2U;
+            if (!trait_shell_handle(&event) ||
+                    !trait_shell_context_open()) {
+                fprintf(stderr, "trait: a right-click opened no menu\n");
+                return 1;
+            }
+            if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
+                flat(0x212121U);
+            }
+            trait_shell_draw_desktop();
+            trait_shell_draw();
+            (void)trait_panel_draw(whole());
+            trait_shell_draw_overlays();
+            if (!emit(out, "context.png", whole())) {
+                return 1;
+            }
+
+            /* Rename: the row opens a box prefilled with the name. */
+            {
+                struct trait_rect menu = trait_shell_context_bounds();
+
+                event.secondary = false;
+                event.x = menu.x + 20U;
+                event.y = menu.y + 4U + 20U + 10U;
+                if (!trait_shell_handle(&event) ||
+                        !trait_shell_rename_open()) {
+                    fprintf(stderr, "trait: Rename opened no box\n");
+                    return 1;
+                }
+                if (trait_shell_rename_text()[0] == '\0') {
+                    fprintf(stderr, "trait: the rename box is empty "
+                                    "rather than prefilled\n");
+                    return 1;
+                }
+            }
+            /* A name already in the folder is refused OUT LOUD and the
+             * box stays up. */
+            {
+                static const char TAKEN[] = "Music";
+                uint32_t typed;
+
+                event.kind = TRAIT_EVENT_KEY;
+                for (typed = 0U; typed < 24U; ++typed) {
+                    event.key = 0;
+                    event.special = TRAIT_KEY_BACKSPACE;
+                    (void)trait_shell_handle(&event);
+                }
+                for (typed = 0U; TAKEN[typed] != '\0'; ++typed) {
+                    event.key = TAKEN[typed];
+                    event.special = 0U;
+                    (void)trait_shell_handle(&event);
+                }
+                event.key = 0;
+                event.special = TRAIT_KEY_ENTER;
+                (void)trait_shell_handle(&event);
+                if (!trait_shell_rename_open()) {
+                    fprintf(stderr, "trait: the rename box closed on a "
+                                    "name it refused\n");
+                    return 1;
+                }
+                if (trait_shell_rename_error()[0] == '\0') {
+                    fprintf(stderr, "trait: the rename was refused "
+                                    "silently\n");
+                    return 1;
+                }
+            }
+            /* And a free name goes through. */
+            {
+                static const char FREE[] = "Papers";
+                uint32_t typed;
+
+                for (typed = 0U; typed < 24U; ++typed) {
+                    event.key = 0;
+                    event.special = TRAIT_KEY_BACKSPACE;
+                    (void)trait_shell_handle(&event);
+                }
+                for (typed = 0U; FREE[typed] != '\0'; ++typed) {
+                    event.key = FREE[typed];
+                    event.special = 0U;
+                    (void)trait_shell_handle(&event);
+                }
+                event.key = 0;
+                event.special = TRAIT_KEY_ENTER;
+                (void)trait_shell_handle(&event);
+                if (trait_shell_rename_open()) {
+                    fprintf(stderr, "trait: the rename box stayed up on "
+                                    "a name it took\n");
+                    return 1;
+                }
+                {
+                    const char *now = trait_files_node_name(target);
+                    uint32_t byte = 0U;
+
+                    while (FREE[byte] != '\0' && now[byte] == FREE[byte]) {
+                        ++byte;
+                    }
+                    if (FREE[byte] != '\0' || now[byte] != '\0') {
+                        fprintf(stderr, "trait: the rename did not take "
+                                        "(the menu was about %s, not %s)\n",
+                                trait_files_node_name(
+                                    trait_shell_context_node()), now);
+                        return 1;
+                    }
+                }
+            }
+            if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
+                flat(0x212121U);
+            }
+            trait_shell_draw_desktop();
+            trait_shell_draw();
+            (void)trait_panel_draw(whole());
+            trait_shell_draw_overlays();
+            if (!emit(out, "renamed.png", whole())) {
+                return 1;
+            }
+            printf("proof: a right-click opened pcmanfm's menu, Rename "
+                   "refused \"Music\" out loud because the folder "
+                   "already had one, and took \"Papers\"\n");
+        }
         printf("proof: two notices queued and aged out, a tip appeared "
                "only after %u ticks of rest and went when the pointer "
                "left, and a corner drag resized both dimensions and came "

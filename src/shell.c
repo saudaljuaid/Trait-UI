@@ -20,6 +20,20 @@ static bool volume_open;
 static uint32_t volume_level = 65U;
 static bool volume_muted;
 
+static bool context_open;
+static uint32_t context_x;
+static uint32_t context_y;
+static uint32_t context_node = TRAIT_FILES_MAX_NODES;
+
+static bool rename_open;
+static char rename_text[TRAIT_FILES_NAME_BYTES];
+static uint32_t rename_length;
+static char rename_error[48];
+
+#define CONTEXT_ROWS 4U
+#define CONTEXT_ROW_H 20U
+#define CONTEXT_W 150U
+
 static bool run_open;
 static char run_text[48];
 static uint32_t run_length;
@@ -141,6 +155,11 @@ void trait_shell_reset(struct trait_surface *surface)
     tip_rested = 0U;
     tip_text[0] = '\0';
     resizing = false;
+    context_open = false;
+    rename_open = false;
+    rename_length = 0U;
+    rename_text[0] = '\0';
+    rename_error[0] = '\0';
     stack_depth = 0U;
     dragging = false;
     dragging_entry = false;
@@ -294,6 +313,66 @@ struct trait_rect trait_shell_tip_bounds(void)
 bool trait_shell_menu_open(void)
 {
     return menu_open;
+}
+
+static const char *const CONTEXT_LABELS[CONTEXT_ROWS] = {
+    "Open", "Rename", "Delete", "Properties"
+};
+
+bool trait_shell_context_open(void)
+{
+    return context_open;
+}
+
+uint32_t trait_shell_context_row_count(void)
+{
+    return CONTEXT_ROWS;
+}
+
+const char *trait_shell_context_row(uint32_t at)
+{
+    return at < CONTEXT_ROWS ? CONTEXT_LABELS[at] : "";
+}
+
+struct trait_rect trait_shell_context_bounds(void)
+{
+    struct trait_rect box;
+
+    box.width = CONTEXT_W;
+    box.height = CONTEXT_ROWS * CONTEXT_ROW_H + 8U;
+    box.x = context_x;
+    box.y = context_y;
+    /* Kept on the screen: a menu opened near the right edge would run
+     * off it, and near the foot would run under the panel. */
+    if (box.x + box.width > shell_screen.x + shell_screen.width) {
+        box.x = shell_screen.x + shell_screen.width - box.width;
+    }
+    if (box.y + box.height >
+            shell_screen.y + shell_screen.height - TRAIT_PANEL_HEIGHT) {
+        box.y = shell_screen.y + shell_screen.height -
+            TRAIT_PANEL_HEIGHT - box.height;
+    }
+    return box;
+}
+
+uint32_t trait_shell_context_node(void)
+{
+    return context_node;
+}
+
+bool trait_shell_rename_open(void)
+{
+    return rename_open;
+}
+
+const char *trait_shell_rename_text(void)
+{
+    return rename_text;
+}
+
+const char *trait_shell_rename_error(void)
+{
+    return rename_error;
 }
 
 bool trait_shell_run_open(void)
@@ -633,6 +712,16 @@ static bool handle_client(uint32_t slot, const struct trait_event *event)
                 continue;
             }
             node = trait_files_child(trait_files_here(), at);
+            if (event->secondary) {
+                /* pcmanfm selects what you right-clicked before opening
+                 * the menu, so the menu is unambiguously about it. */
+                trait_files_select(node, false);
+                context_open = true;
+                context_node = node;
+                context_x = event->x;
+                context_y = event->y;
+                return true;
+            }
             dragging_entry = true;
             drag_node = node;
             if (event->double_click) {
@@ -859,6 +948,87 @@ static void resize_to(uint32_t x, uint32_t y)
     window->frame = frame;
 }
 
+/*
+ * What the context menu's rows DO.  Open and Delete act at once; Rename
+ * puts up a box, because a rename needs a name and there is nowhere else
+ * to type one.  Properties is not built, so it does nothing and says so
+ * by refusing rather than closing as though it had.
+ */
+static bool shell_context_pick(uint32_t row)
+{
+    if (context_node >= TRAIT_FILES_MAX_NODES) {
+        return false;
+    }
+    switch (row) {
+    case 0U:     /* Open */
+        return trait_files_open(context_node);
+    case 1U: {   /* Rename */
+        const char *name = trait_files_node_name(context_node);
+        uint32_t at = 0U;
+
+        rename_open = true;
+        rename_error[0] = '\0';
+        /* Prefilled with the current name, because renaming is usually
+         * changing part of a name rather than writing a new one. */
+        while (name[at] != '\0' && at + 1U < sizeof(rename_text)) {
+            rename_text[at] = name[at];
+            ++at;
+        }
+        rename_text[at] = '\0';
+        rename_length = at;
+        return true;
+    }
+    case 2U: {   /* Delete */
+        char body[TRAIT_SHELL_NOTE_BYTES];
+        const char *name = trait_files_node_name(context_node);
+        uint32_t at = 0U;
+
+        while (name[at] != '\0' && at + 12U < sizeof(body)) {
+            body[at] = name[at];
+            ++at;
+        }
+        body[at] = '\0';
+        if (!trait_files_remove(context_node)) {
+            trait_shell_notify("Files", "That cannot be deleted");
+            return true;
+        }
+        {
+            static const char TAIL[] = " deleted";
+            uint32_t from = 0U;
+
+            while (TAIL[from] != '\0' && at + 1U < sizeof(body)) {
+                body[at++] = TAIL[from++];
+            }
+            body[at] = '\0';
+        }
+        trait_shell_notify("Files", body);
+        return true;
+    }
+    default:
+        return false;
+    }
+}
+
+static bool shell_rename_go(void)
+{
+    if (!trait_files_rename(context_node, rename_text)) {
+        static const char REFUSED[] = "That name is taken or not a name";
+        uint32_t at = 0U;
+
+        while (REFUSED[at] != '\0' && at + 1U < sizeof(rename_error)) {
+            rename_error[at] = REFUSED[at];
+            ++at;
+        }
+        rename_error[at] = '\0';
+        /* Stays OPEN: closing on a name it would not take looks exactly
+         * like having renamed it. */
+        return true;
+    }
+    rename_open = false;
+    rename_error[0] = '\0';
+    return true;
+}
+
 static bool shell_run_go(void)
 {
     static const struct {
@@ -995,6 +1165,29 @@ bool trait_shell_handle(const struct trait_event *event)
          * reach the window behind it - the bug that makes a dialog feel
          * like a picture stuck to the screen.
          */
+        if (rename_open) {
+            if (event->special == TRAIT_KEY_ESCAPE) {
+                rename_open = false;
+                return true;
+            }
+            if (event->special == TRAIT_KEY_BACKSPACE) {
+                if (rename_length != 0U) {
+                    rename_text[--rename_length] = '\0';
+                }
+                return true;
+            }
+            if (event->special == TRAIT_KEY_ENTER) {
+                return shell_rename_go();
+            }
+            if (event->key >= 32 && event->key <= 126 &&
+                    rename_length + 1U < sizeof(rename_text)) {
+                rename_text[rename_length++] = event->key;
+                rename_text[rename_length] = '\0';
+                rename_error[0] = '\0';
+                return true;
+            }
+            return false;
+        }
         if (run_open) {
             if (event->special == TRAIT_KEY_ESCAPE) {
                 run_open = false;
@@ -1199,6 +1392,18 @@ bool trait_shell_handle(const struct trait_event *event)
      * normally - which is what makes clicking away from a menu feel like
      * clicking on the thing you clicked on.
      */
+    if (context_open) {
+        struct trait_rect box = trait_shell_context_bounds();
+
+        if (trait_rect_contains(box, event->x, event->y)) {
+            uint32_t row = (event->y - box.y - 4U) / CONTEXT_ROW_H;
+
+            context_open = false;
+            return shell_context_pick(row);
+        }
+        context_open = false;
+        /* fall through, so the press still lands where it landed */
+    }
     if (menu_open) {
         struct trait_rect button;
         struct trait_rect box;
@@ -1618,6 +1823,82 @@ void trait_shell_draw_overlays(void)
      * that ships one - it is not the widget background, and using the
      * widget background is how a tip stops looking like a tip.
      */
+    if (context_open) {
+        struct trait_rect box = trait_shell_context_bounds();
+        uint32_t at;
+
+        trait_surface_fill(canvas, box, box, TRAIT_BG);
+        for (at = 0U; at < box.width; ++at) {
+            trait_surface_plot(canvas, box, box.x + at, box.y,
+                               TRAIT_LINE);
+            trait_surface_plot(canvas, box, box.x + at,
+                               box.y + box.height - 1U, TRAIT_LINE);
+        }
+        for (at = 0U; at < box.height; ++at) {
+            trait_surface_plot(canvas, box, box.x, box.y + at,
+                               TRAIT_LINE);
+            trait_surface_plot(canvas, box, box.x + box.width - 1U,
+                               box.y + at, TRAIT_LINE);
+        }
+        for (at = 0U; at < CONTEXT_ROWS; ++at) {
+            /* Properties is DIMMED rather than left out: the menu keeps
+             * pcmanfm's shape and nothing in it pretends to work. */
+            trait_font_draw(canvas, box, box.x + 10U,
+                box.y + 4U + at * CONTEXT_ROW_H + 14U,
+                CONTEXT_LABELS[at],
+                at == 3U ? TRAIT_LINE : TRAIT_FG);
+        }
+    }
+    if (rename_open) {
+        struct trait_rect box;
+        struct trait_rect field;
+        uint32_t at;
+
+        box.width = 280U;
+        box.height = rename_error[0] != '\0' ? 96U : 78U;
+        box.x = shell_screen.x + (shell_screen.width - box.width) / 2U;
+        box.y = shell_screen.y + shell_screen.height / 3U;
+        trait_surface_fill(canvas, box, box, TRAIT_BG);
+        for (at = 0U; at < box.width; ++at) {
+            trait_surface_plot(canvas, box, box.x + at, box.y,
+                               TRAIT_LINE);
+            trait_surface_plot(canvas, box, box.x + at,
+                               box.y + box.height - 1U, TRAIT_LINE);
+        }
+        for (at = 0U; at < box.height; ++at) {
+            trait_surface_plot(canvas, box, box.x, box.y + at,
+                               TRAIT_LINE);
+            trait_surface_plot(canvas, box, box.x + box.width - 1U,
+                               box.y + at, TRAIT_LINE);
+        }
+        trait_font_draw(canvas, box, box.x + 12U, box.y + 22U,
+                        "Rename to:", TRAIT_FG);
+        field.x = box.x + 12U;
+        field.y = box.y + 30U;
+        field.width = box.width - 24U;
+        field.height = 22U;
+        trait_surface_fill(canvas, box, field, TRAIT_BASE);
+        for (at = 0U; at < field.width; ++at) {
+            trait_surface_plot(canvas, box, field.x + at, field.y,
+                               TRAIT_LINE);
+        }
+        for (at = 0U; at < field.height; ++at) {
+            trait_surface_plot(canvas, box, field.x, field.y + at,
+                               TRAIT_LINE);
+        }
+        trait_font_draw(canvas, field, field.x + 5U, field.y + 15U,
+                        rename_text, TRAIT_TEXT);
+        {
+            uint32_t pen = field.x + 5U + trait_font_width(rename_text);
+            struct trait_rect caret = { pen, field.y + 4U, 1U, 14U };
+
+            trait_surface_fill(canvas, field, caret, TRAIT_TEXT);
+        }
+        if (rename_error[0] != '\0') {
+            trait_font_draw(canvas, box, box.x + 12U, box.y + 74U,
+                            rename_error, TRAIT_TEXT);
+        }
+    }
     if (trait_shell_tip_visible()) {
         struct trait_rect box = trait_shell_tip_bounds();
         uint32_t edge;

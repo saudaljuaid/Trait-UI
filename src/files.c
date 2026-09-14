@@ -480,6 +480,114 @@ uint32_t trait_files_selected_count(void)
     return selected_count;
 }
 
+/* A name is a NAME, not a path: a slash in it would make the tree a lie
+ * about where things are.  Empty is refused too - a file with no name is
+ * a row you cannot click on. */
+static bool name_is_legal(const char *name)
+{
+    uint32_t at = 0U;
+
+    if (name == NULL || name[0] == '\0') {
+        return false;
+    }
+    while (name[at] != '\0') {
+        if (name[at] == '/') {
+            return false;
+        }
+        ++at;
+    }
+    return at + 1U < TRAIT_FILES_NAME_BYTES;
+}
+
+bool trait_files_name_free(uint32_t folder, const char *name)
+{
+    uint32_t at;
+
+    if (folder >= node_count || !name_is_legal(name)) {
+        return false;
+    }
+    for (at = 0U; at < child_counts[folder]; ++at) {
+        if (same(nodes[children[folder][at]].name, name)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool trait_files_rename(uint32_t node, const char *name)
+{
+    if (node == 0U || node >= node_count) {
+        return false;
+    }
+    /* Renaming to what it is already called is not a failure and not a
+     * change - saying yes to it would put a no-op in the undo history a
+     * file manager does not have. */
+    if (same(nodes[node].name, name)) {
+        return false;
+    }
+    if (!trait_files_name_free(nodes[node].parent, name)) {
+        return false;
+    }
+    copy(nodes[node].name, name, TRAIT_FILES_NAME_BYTES);
+    return true;
+}
+
+/*
+ * Removing takes the SUBTREE with it.  Leaving the children behind would
+ * leave nodes nobody can reach, and the count of what is in the parent
+ * would still be right while the filesystem underneath quietly filled up.
+ */
+static void detach(uint32_t folder, uint32_t node)
+{
+    uint32_t at;
+
+    for (at = 0U; at < child_counts[folder]; ++at) {
+        if (children[folder][at] != node) {
+            continue;
+        }
+        for (; at + 1U < child_counts[folder]; ++at) {
+            children[folder][at] = children[folder][at + 1U];
+        }
+        --child_counts[folder];
+        return;
+    }
+}
+
+static void wipe(uint32_t node)
+{
+    while (child_counts[node] != 0U) {
+        uint32_t child = children[node][child_counts[node] - 1U];
+
+        wipe(child);
+        --child_counts[node];
+    }
+    nodes[node].name[0] = '\0';
+    nodes[node].bytes = 0U;
+    nodes[node].parent = TRAIT_FILES_MAX_NODES;
+}
+
+bool trait_files_remove(uint32_t node)
+{
+    uint32_t parent;
+
+    if (node == 0U || node >= node_count) {
+        return false;
+    }
+    /* Not the folder you are looking at, and not one you are inside:
+     * either leaves the window showing something that is gone. */
+    if (trait_files_is_inside(here, node)) {
+        return false;
+    }
+    parent = nodes[node].parent;
+    if (parent >= node_count) {
+        return false;
+    }
+    detach(parent, node);
+    wipe(node);
+    selected_count = 0U;
+    return true;
+}
+
 bool trait_files_is_inside(uint32_t node, uint32_t maybe_ancestor)
 {
     uint32_t walk;
@@ -978,6 +1086,74 @@ bool trait_files_self_test(void)
         }
         /* A file is not a folder, so nothing can be moved into one. */
         if (trait_files_move(notes, report)) {
+            return false;
+        }
+
+        /* Rename, and what it refuses. */
+        if (!trait_files_rename(report, "summary.txt")) {
+            return false;
+        }
+        if (!same(trait_files_node_name(report), "summary.txt")) {
+            return false;
+        }
+        /* Its own name is not a rename. */
+        if (trait_files_rename(report, "summary.txt")) {
+            return false;
+        }
+        /* A name already in the folder is refused rather than making two
+         * things with one name. */
+        if (trait_files_rename(report, "todo.txt")) {
+            return false;
+        }
+        /* A path is not a name. */
+        if (trait_files_rename(report, "a/b")) {
+            return false;
+        }
+        if (trait_files_rename(report, "")) {
+            return false;
+        }
+
+        /*
+         * Removing a CHILD of the folder you are in is ordinary and must
+         * work - the first version of this assertion had it backwards,
+         * confusing "the folder you are looking at" with "anything under
+         * it", and the self-test failed on its own bad expectation.
+         */
+        (void)trait_files_open(docs);
+        if (!trait_files_remove(notes)) {
+            return false;
+        }
+        if (trait_files_here() != docs) {
+            return false;
+        }
+    }
+    {
+        /* Deleting the folder you are LOOKING AT is refused. */
+        uint32_t where = trait_files_here();
+
+        if (trait_files_remove(where)) {
+            return false;
+        }
+    }
+    {
+        /* And a real delete removes it and everything under it. */
+        uint32_t root = trait_files_root();
+        uint32_t spare = trait_files_add(root, "spare", true, 0U);
+        uint32_t inside = trait_files_add(spare, "deep.txt", false, 10U);
+        uint32_t was = trait_files_child_count(root);
+
+        if (spare >= TRAIT_FILES_MAX_NODES ||
+                inside >= TRAIT_FILES_MAX_NODES) {
+            return false;
+        }
+        if (!trait_files_remove(spare)) {
+            return false;
+        }
+        if (trait_files_child_count(root) != was - 1U) {
+            return false;
+        }
+        /* The child went with it rather than being left unreachable. */
+        if (trait_files_child_count(spare) != 0U) {
             return false;
         }
     }

@@ -79,6 +79,19 @@ uint32_t trait_files_selected_count(void);
  * being dragged - or is inside it, which is the case that silently
  * detaches a whole subtree from the filesystem.
  */
+/*
+ * CREATE, RENAME AND DELETE.
+ *
+ * pcmanfm's context menu offers these and they have a filesystem under
+ * them here, so they do the thing.  Each refuses rather than corrupting:
+ * a name already taken, an empty name, a name with a slash in it (which
+ * would be a path, not a name), and deleting the folder you are looking
+ * at - which would leave the window showing a folder that is gone.
+ */
+bool trait_files_rename(uint32_t node, const char *name);
+bool trait_files_remove(uint32_t node);
+bool trait_files_name_free(uint32_t folder, const char *name);
+
 bool trait_files_move(uint32_t node, uint32_t into);
 bool trait_files_is_inside(uint32_t node, uint32_t maybe_ancestor);
 

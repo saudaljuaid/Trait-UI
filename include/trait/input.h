@@ -36,6 +36,9 @@ struct trait_event {
     char key;               /* printable, or 0 */
     uint32_t special;       /* TRAIT_KEY_*, or 0 */
     bool double_click;
+    /* The secondary button.  A context menu opened by the same press
+     * that selects would fire every time you clicked anything. */
+    bool secondary;
 };
 
 #define TRAIT_KEY_ENTER 1U

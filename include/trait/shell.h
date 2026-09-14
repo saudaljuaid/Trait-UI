@@ -68,6 +68,24 @@ bool trait_shell_desktop_icon_bounds(uint32_t at, struct trait_rect *out);
 uint32_t trait_shell_desktop_icon_count(void);
 
 /* The Run box: type a name, press return, and it runs or says it cannot. */
+/*
+ * pcmanfm's CONTEXT MENU, on a file-manager entry.  It is shell state
+ * rather than file-manager state for the same reason the applications
+ * menu is: it is an overlay that sits above every window, and the shell
+ * is what knows there are windows to sit above.
+ */
+bool trait_shell_context_open(void);
+struct trait_rect trait_shell_context_bounds(void);
+uint32_t trait_shell_context_row_count(void);
+const char *trait_shell_context_row(uint32_t at);
+
+/* The rename box that Rename opens: a real field, and it refuses the
+ * names trait_files_rename() refuses, out loud. */
+bool trait_shell_rename_open(void);
+uint32_t trait_shell_context_node(void);
+const char *trait_shell_rename_text(void);
+const char *trait_shell_rename_error(void);
+
 bool trait_shell_run_open(void);
 const char *trait_shell_run_text(void);
 const char *trait_shell_run_error(void);

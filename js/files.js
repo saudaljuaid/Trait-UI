@@ -117,8 +117,13 @@ function displayName(path) {
 
 function makeFilesWindow() {
     const body = document.createElement("div");
+    /*
+     * view_mode=icon in pcmanfm's profile, so that is what it opens in.
+     * Detailed list is its other view and the View menu switches between
+     * them, which is where pcmanfm puts that choice.
+     */
     const state = { path: "/home/user", history: ["/home/user"], at: 0,
-                    selected: null, showHidden: false };
+                    selected: null, showHidden: false, view: "icon" };
 
     body.className = "files-body files";
 
@@ -135,7 +140,13 @@ function makeFilesWindow() {
                   ["Invert Selection", null],
                   null,
                   ["Preferences", null]]],
-        ["View", [["Reload", () => go(state.path, true)],
+        ["View", [["Icon View", () => { state.view = "icon"; draw(); }],
+                  ["Detailed List View", () => {
+                      state.view = "list";
+                      draw();
+                  }],
+                  null,
+                  ["Reload", () => go(state.path, true)],
                   ["Show Hidden", () => {
                       state.showHidden = !state.showHidden;
                       draw();
@@ -365,6 +376,13 @@ function makeFilesWindow() {
         });
 
         view.textContent = "";
+        view.className = state.view === "list" ?
+            "files-view files-view-list" : "files-view";
+        if (state.view === "list") {
+            drawList(here, names);
+            said();
+            return;
+        }
         if (names.length === 0) {
             const empty = document.createElement("div");
 
@@ -384,7 +402,114 @@ function makeFilesWindow() {
                 view.appendChild(entry(name, fileMark(name), false));
             });
 
+        said();
+    }
+
+    /*
+     * The detailed list: Name, Description, Size, Modified - which are
+     * pcmanfm's own columns, in its own order.  A folder's size is not a
+     * number a file manager reports, so that cell is empty rather than
+     * filled in with nought.
+     */
+    const LIST_COLUMNS = [["Name", "1 1 0"], ["Description", "0 0 128px"],
+                          ["Size", "0 0 82px"], ["Modified", "0 0 96px"]];
+
+    function drawList(here, names) {
+        const tree = document.createElement("div");
+        const head = document.createElement("div");
+
+        tree.className = "gtk-tree files-tree";
+        head.className = "head";
+        LIST_COLUMNS.forEach(([label, flex]) => {
+            const cell = document.createElement("div");
+
+            cell.style.flex = flex;
+            cell.textContent = label;
+            head.appendChild(cell);
+        });
+        tree.appendChild(head);
+        const rows = document.createElement("div");
+
+        here.dirs.slice().sort().forEach((name) => {
+            rows.appendChild(listRow(name, "folder", true, null));
+        });
+        Object.keys(here.files).sort()
+            .filter((n) => state.showHidden || n[0] !== ".")
+            .forEach((name) => {
+                rows.appendChild(listRow(name, fileMark(name), false,
+                                         here.files[name]));
+            });
+        tree.appendChild(rows);
+        view.appendChild(tree);
+        (void 0);
+        if (names.length === 0) {
+            const empty = document.createElement("div");
+
+            empty.className = "files-empty";
+            empty.textContent = state.path === "trash:///" ?
+                "The trash is empty" : "This folder is empty";
+            view.appendChild(empty);
+        }
+    }
+
+    function listRow(name, mark, isDir, size) {
+        const line = document.createElement("div");
+        const fields = [name, isDir ? "Folder" : describe(name),
+                        isDir ? "" : humanSize(size), "14 Sep 2026"];
+
+        line.className = (state.selected === name ||
+            state.selected === "*") ? "line selected" : "line";
+        fields.forEach((text, at) => {
+            const cell = document.createElement("div");
+
+            cell.style.flex = LIST_COLUMNS[at][1];
+            cell.className = at === 2 ? "num" : "";
+            cell.textContent = text;
+            if (at === 0) {
+                const img = document.createElement("img");
+
+                /* The same mark the icon view gives it, at 16 - a
+                 * drawer beside a text file would be the file manager's
+                 * own icon standing in for a document. */
+                img.src = FILES_ICONS16 + (isDir ? "folder" : mark) +
+                    ".png";
+                img.alt = "";
+                img.className = "row-mark";
+                cell.prepend(img);
+            }
+            line.appendChild(cell);
+        });
+        line.addEventListener("click", (event) => {
+            event.stopPropagation();
+            state.selected = name;
+            draw();
+        });
+        line.addEventListener("dblclick", () => {
+            if (isDir) {
+                go(state.path === "/" ? "/" + name :
+                   state.path + "/" + name);
+            }
+        });
+        return line;
+    }
+
+    function describe(name) {
+        const dot = name.lastIndexOf(".");
+        const ext = dot > 0 ? name.slice(dot + 1).toLowerCase() : "";
+        const known = { txt: "plain text document", png: "PNG image",
+                        gz: "gzip archive", ogg: "Ogg audio" };
+
+        return known[ext] || (ext === "" ? "executable" :
+            ext.toUpperCase() + " file");
+    }
+
+    function said() {
+        const here = FS[state.path];
+        const names = here.dirs.slice().concat(
+            Object.keys(here.files).filter(
+                (n) => state.showHidden || n[0] !== "."));
         let total = 0;
+
         Object.keys(here.files)
             .filter((n) => state.showHidden || n[0] !== ".")
             .forEach((n) => { total += here.files[n]; });

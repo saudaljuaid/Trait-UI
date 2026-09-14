@@ -484,3 +484,15 @@ input[type="range"].gtk { padding: 0; border: 0; background: none; }
 .browser-view pre { padding: 6px 8px; white-space: pre-wrap; }
 .browser-view a { color: #1A4F8C; cursor: default; }
 .browser-view a:hover { text-decoration: underline; }
+
+/* pcmanfm's detailed list view: the same tree the task manager uses,
+ * filling the view area, with a 16-pixel mark before each name. */
+.files-view-list { display: block; padding: 0; }
+.files-view-list .files-tree { border: 0; height: 100%; }
+.files-tree .row-mark {
+    width: 16px;
+    height: 16px;
+    vertical-align: -3px;
+    margin-right: 5px;
+}
+.files-tree .line > div:first-child { display: flex; align-items: center; }

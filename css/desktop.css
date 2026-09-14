@@ -559,7 +559,9 @@ html, body {
  * menu bar drops - one look for one kind of thing. */
 /* The panel's own menu is the desktop's menu: same kind of thing, same
  * look, one rule for both. */
-#desktop-menu, #panel-menu {
+/* Openbox's window menu is the same menu again - a desktop with one look
+ * for one kind of thing. */
+#desktop-menu, #panel-menu, #window-menu {
     position: absolute;
     display: none;
     z-index: 4500;
@@ -571,13 +573,13 @@ html, body {
     color: #000000;
     font-size: 13px;
 }
-#desktop-menu.open, #panel-menu.open { display: block; }
-#desktop-menu .row, #panel-menu .row { padding: 3px 10px; white-space: nowrap;
+#desktop-menu.open, #panel-menu.open, #window-menu.open { display: block; }
+#desktop-menu .row, #panel-menu .row, #window-menu .row { padding: 3px 10px; white-space: nowrap;
                      cursor: default; }
-#desktop-menu .row:hover, #panel-menu .row:hover { background: #86ABD9; color: #ffffff; }
-#desktop-menu .row.off, #panel-menu .row.off { color: #9a9a9a; }
-#desktop-menu .row.off:hover, #panel-menu .row.off:hover { background: none; color: #9a9a9a; }
-#desktop-menu .sep, #panel-menu .sep {
+#desktop-menu .row:hover, #panel-menu .row:hover, #window-menu .row:hover { background: #86ABD9; color: #ffffff; }
+#desktop-menu .row.off, #panel-menu .row.off, #window-menu .row.off { color: #9a9a9a; }
+#desktop-menu .row.off:hover, #panel-menu .row.off:hover, #window-menu .row.off:hover { background: none; color: #9a9a9a; }
+#desktop-menu .sep, #panel-menu .sep, #window-menu .sep {
     height: 1px;
     margin: 3px 2px;
     background: #B6B3AF;
@@ -683,3 +685,8 @@ html, body {
     height: auto;
     border-bottom: 1px solid #0d0d0d;
 }
+
+/* The window menu is created where it is needed rather than living in
+ * the page, so it needs the z-index the others get from being late in
+ * the document. */
+#window-menu { z-index: 8500; }

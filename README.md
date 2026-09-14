@@ -131,6 +131,12 @@ Openbox's shape, and Openbox's behaviour:
   desktop's windows, and raising one that is elsewhere goes there.
 - **Maximise** to the work area, from the button or a double click on the
   bar. A maximised window has no grips and does not drag.
+- **A window menu** on a right click of the title bar, carrying the rows
+  the window manager owns rather than the application: minimise,
+  maximise, **Send to Desktop**, close. Send to Desktop is the half of
+  the workspace feature the pager cannot reach — the pager moves you,
+  this moves the window. The desktop a window is already on is dimmed
+  rather than dropped, so the list keeps its length.
 
 ## Two desktops that are real
 
@@ -169,7 +175,10 @@ sort=name;ascending;
 so the window opens at 640×480 in icon view with dotfiles hidden and
 folders before files. Menu bar, a toolbar of Back / Forward / Up / Reload
 / Home with the location bar after them, a Places side pane, the icon
-view, and a two-field status bar — and all of it works. Back and Forward
+view, and a two-field status bar — and all of it works. `View` switches
+to **Detailed List**, pcmanfm's other view, with its own columns: Name,
+Description, Size, Modified. A folder's cell under Size is empty, because
+a folder's size is not a number a file manager reports. Back and Forward
 keep a real history, Up is dead at the root, a Places row navigates and
 marks itself, and typing a path that is not there puts the old one back.
 

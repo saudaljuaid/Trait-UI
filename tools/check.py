@@ -837,6 +837,76 @@ def check_logout_banner(page):
     page.wait_for_timeout(150)
 
 
+def check_window_menu(page):
+    """Openbox drops a menu on a right click of the title bar, and its
+    rows are the window manager's rather than the application's.  Send to
+    Desktop is the half of the workspace feature the pager cannot reach:
+    the pager moves you, this moves the window."""
+    page.evaluate("() => launch('terminal')")
+    page.wait_for_timeout(250)
+    page.click(".window .titlebar", button="right",
+               position={"x": 60, "y": 10})
+    page.wait_for_timeout(200)
+    if not page.is_visible("#window-menu"):
+        fails("a right click on the title bar dropped no window menu")
+        return
+    rows = page.eval_on_selector_all(
+        "#window-menu .row", "(e) => e.map((r) => r.textContent)")
+    if "Send to Desktop 2" not in rows:
+        fails("the window menu cannot send the window anywhere; it "
+              "carries %s" % ", ".join(rows))
+    if not page.is_visible("#window-menu .row.off:text-is("
+                           "'Send to Desktop 1')"):
+        fails("the desktop the window is already on is offered as "
+              "somewhere to send it")
+    page.click("#window-menu .row:text-is('Send to Desktop 2')")
+    page.wait_for_timeout(250)
+    if page.eval_on_selector_all("#taskbar .task", "(e) => e.length") != 0:
+        fails("the window was sent to the other desktop and stayed in "
+              "this desktop's task list")
+    page.click("#pager .desk:nth-child(2)")
+    page.wait_for_timeout(250)
+    if page.eval_on_selector_all("#taskbar .task", "(e) => e.length") != 1:
+        fails("the window was sent to desktop 2 and is not there")
+    page.evaluate("() => windows.slice().forEach(closeWindow)")
+    page.click("#pager .desk:nth-child(1)")
+    page.wait_for_timeout(200)
+
+
+def check_list_view(page):
+    """view_mode=icon is the profile's default; Detailed List is
+    pcmanfm's other view and the View menu switches to it."""
+    page.evaluate("() => launch('files')")
+    page.wait_for_timeout(300)
+    if page.eval_on_selector_all(".files-entry", "(e) => e.length") == 0:
+        fails("the file manager did not open in icon view")
+    page.click(".files-menubar .m:text-is('View')")
+    page.wait_for_timeout(120)
+    page.click(".files-menubar .drop .row:text-is('Detailed List View')")
+    page.wait_for_timeout(250)
+    heads = page.eval_on_selector_all(
+        ".files-tree .head > div", "(e) => e.map((c) => c.textContent)")
+    if heads != ["Name", "Description", "Size", "Modified"]:
+        fails("the list view runs %s rather than pcmanfm's columns"
+              % ", ".join(heads))
+    # A folder has no size, and an empty cell says so better than a nought.
+    sizes = page.eval_on_selector_all(
+        ".files-tree .line", """(e) => e.map((l) => [
+            l.children[1].textContent, l.children[2].textContent])""")
+    for kind, size in sizes:
+        if kind == "Folder" and size.strip() != "":
+            fails("a folder is given a size of %r" % size)
+            break
+    page.click(".files-menubar .m:text-is('View')")
+    page.wait_for_timeout(120)
+    page.click(".files-menubar .drop .row:text-is('Icon View')")
+    page.wait_for_timeout(200)
+    if page.eval_on_selector_all(".files-entry", "(e) => e.length") == 0:
+        fails("switching back to icon view showed nothing")
+    page.evaluate("() => windows.slice().forEach(closeWindow)")
+    page.wait_for_timeout(150)
+
+
 def main():
     with sync_playwright() as play:
         browser = play.chromium.launch(
@@ -856,6 +926,8 @@ def main():
         check_run_box(page)
         check_volume(page)
         check_lock(page)
+        check_window_menu(page)
+        check_list_view(page)
         check_browser(page)
         check_shortcuts(page)
         check_logout_banner(page)

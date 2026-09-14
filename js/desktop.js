@@ -402,6 +402,12 @@ function openWindow(spec) {
             toggleMaximised(win);
         }
     });
+    bar.addEventListener("contextmenu", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        focusWindow(win);
+        openWindowMenu(win, event.clientX, event.clientY);
+    });
     frame.appendChild(bar);
     frame.appendChild(spec.body);
     frame.addEventListener("mousedown", () => focusWindow(win));
@@ -1645,3 +1651,75 @@ document.addEventListener("keydown", (event) => {
         }
     }
 });
+
+/* ----------------------------------------------------- the window menu */
+
+/*
+ * Openbox drops a menu on a right click of the title bar, and its rows
+ * are the ones a window manager owns rather than the application:
+ * minimise, maximise, send the window somewhere else, and close.  "Send
+ * to desktop" is the half of the workspace feature you cannot reach from
+ * the pager - the pager moves YOU, this moves the WINDOW.
+ */
+function openWindowMenu(win, x, y) {
+    const menu = document.createElement("div");
+    const room = document.getElementById("desktop").getBoundingClientRect();
+    const rows = [
+        [win.minimised ? "Restore" : "Minimise",
+         () => setMinimised(win, !win.minimised)],
+        [win.maximised ? "Unmaximise" : "Maximise",
+         () => toggleMaximised(win)],
+        null
+    ];
+
+    for (let index = 0; index < DESKTOPS; index += 1) {
+        const to = index;
+
+        rows.push(["Send to Desktop " + (to + 1),
+            to === win.desktop ? null : () => {
+                win.desktop = to;
+                win.frame.hidden = win.minimised ||
+                    !onCurrentDesktop(win);
+                paintTaskbar();
+                paintPager();
+            }]);
+    }
+    rows.push(null);
+    rows.push(["Close", () => closeWindow(win)]);
+
+    menu.id = "window-menu";
+    menu.className = "open";
+    rows.forEach((entry) => {
+        if (entry === null) {
+            const sep = document.createElement("div");
+
+            sep.className = "sep";
+            menu.appendChild(sep);
+            return;
+        }
+        const row = document.createElement("div");
+
+        /* The desktop the window is already on is dimmed rather than
+         * dropped, so the list keeps its length and its order. */
+        row.className = entry[1] ? "row" : "row off";
+        row.textContent = entry[0];
+        if (entry[1]) {
+            row.addEventListener("click", () => {
+                menu.remove();
+                entry[1]();
+            });
+        }
+        menu.appendChild(row);
+    });
+    document.getElementById("desktop").appendChild(menu);
+    menu.style.left = Math.min(x, Math.max(0,
+        room.width - menu.offsetWidth)) + "px";
+    menu.style.top = Math.min(y, Math.max(0,
+        room.height - menu.offsetHeight)) + "px";
+    const away = () => {
+        menu.remove();
+        document.removeEventListener("click", away);
+    };
+
+    setTimeout(() => document.addEventListener("click", away), 0);
+}

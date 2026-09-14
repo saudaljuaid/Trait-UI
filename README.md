@@ -210,6 +210,12 @@ folder wearing the old name. Properties reports a **folder** by what is
 in it rather than by a size, because a folder's size is not a number a
 file manager can give you.
 
+**The editor and the file manager share one filesystem.** A `.txt` file
+opened from pcmanfm opens *at* that file rather than starting an empty
+editor; `Save As` writes it back, and the file appears in pcmanfm at the
+size it actually is. Saving into a folder that does not exist says so
+rather than losing the file somewhere nobody can see.
+
 Its mark, `assets/logo/files.svg`, is this project's own: a drawer with
 fanned papers, drawn in the same geometry as the Phipia mark — the same
 shear, the same rounding — and grey rather than a bright folder, because

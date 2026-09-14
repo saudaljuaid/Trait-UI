@@ -15,11 +15,11 @@
  * a menu bar over a white page and nothing else - no toolbar, no status
  * bar, no tabs.  That plainness is the design, so it is kept.
  */
-function makeLeafpadWindow() {
+function makeLeafpadWindow(openPath) {
     const body = document.createElement("div");
     const menubar = document.createElement("div");
     const page = document.createElement("textarea");
-    const state = { name: "Untitled", dirty: false };
+    const state = { path: null, name: "Untitled", dirty: false };
 
     body.className = "files-body files";
     menubar.className = "files-menubar";
@@ -39,10 +39,106 @@ function makeLeafpadWindow() {
         }
     }
 
-    [["File", [["New", () => { page.value = ""; state.name = "Untitled";
+    /*
+     * OPEN AND SAVE REACH THE SAME FILESYSTEM THE FILE MANAGER SHOWS.
+     * They were dimmed while there was nothing behind them; there is now,
+     * so a file saved here appears in pcmanfm, at the size it actually
+     * is, and one opened here is the one pcmanfm lists.
+     */
+    function loadPath(path) {
+        const text = readFile(path);
+
+        if (text === null) {
+            return false;
+        }
+        page.value = text;
+        state.path = path;
+        state.name = path.slice(path.lastIndexOf("/") + 1);
+        state.dirty = false;
+        retitle();
+        return true;
+    }
+
+    function askPath(title, action, start, then) {
+        const dialog = makeDialog(title, 340);
+        const wrap = document.createElement("div");
+        const field = document.createElement("input");
+        const note = document.createElement("div");
+        const row = document.createElement("div");
+        const cancel = document.createElement("button");
+        const ok = document.createElement("button");
+
+        wrap.className = "body";
+        field.type = "text";
+        field.value = start;
+        note.style.cssText = "min-height:16px;margin-top:6px;color:#a22;" +
+            "font-size:12px";
+        wrap.appendChild(field);
+        wrap.appendChild(note);
+        row.className = "row";
+        cancel.textContent = "Cancel";
+        ok.textContent = action;
+        row.appendChild(cancel);
+        row.appendChild(ok);
+        dialog.appendChild(wrap);
+        dialog.appendChild(row);
+        const go = () => {
+            const said = then(field.value.trim());
+
+            if (said === true) {
+                dialog.remove();
+            } else {
+                note.textContent = said;
+            }
+        };
+
+        cancel.addEventListener("click", () => dialog.remove());
+        ok.addEventListener("click", go);
+        field.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                go();
+            }
+            if (event.key === "Escape") {
+                dialog.remove();
+            }
+        });
+        field.focus();
+        field.select();
+    }
+
+    function save(as) {
+        if (state.path && !as) {
+            writeFile(state.path, page.value);
+            state.dirty = false;
+            retitle();
+            return;
+        }
+        askPath("Save As", "Save",
+            state.path || "/home/user/Untitled.txt",
+            (path) => {
+                if (path === "" || path[0] !== "/") {
+                    return "Give a full path, starting with /";
+                }
+                if (!writeFile(path, page.value)) {
+                    return path.slice(0, path.lastIndexOf("/")) +
+                        ": no such folder";
+                }
+                state.path = path;
+                state.name = path.slice(path.lastIndexOf("/") + 1);
+                state.dirty = false;
+                retitle();
+                return true;
+            });
+    }
+
+    [["File", [["New", () => { page.value = ""; state.path = null;
+                               state.name = "Untitled";
                                state.dirty = false; retitle(); }],
-               ["Open", null],
-               ["Save", () => { state.dirty = false; retitle(); }],
+               ["Open", () => askPath("Open", "Open", "/home/user/",
+                   (path) => loadPath(path) ? true :
+                       path + ": no such file")],
+               ["Save", () => save(false)],
+               ["Save As", () => save(true)],
                null,
                ["Quit", () => closeFilesWindow(body)]]],
      ["Edit", [["Select All", () => page.select()],
@@ -103,9 +199,9 @@ function makeLeafpadWindow() {
             }
             const cell = document.createElement("div");
 
-            /* Open and Paste are dimmed: there is no filesystem to open
-             * from and no clipboard a page may read.  Dimmed rather than
-             * hidden, so the menu keeps its shape. */
+            /* Paste is dimmed: there is no clipboard a page may read
+             * without asking.  Dimmed rather than hidden, so the menu
+             * keeps its shape. */
             cell.className = row[1] ? "row" : "row off";
             cell.textContent = row[0];
             if (row[1]) {
@@ -144,6 +240,9 @@ function makeLeafpadWindow() {
 
     body.appendChild(menubar);
     body.appendChild(page);
+    if (openPath) {
+        loadPath(openPath);
+    }
     return body;
 }
 

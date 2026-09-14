@@ -999,6 +999,99 @@ def check_item_menu(page):
     page.wait_for_timeout(150)
 
 
+EDITOR = ".window:has(.leafpad-page)"
+
+
+def check_editor_files(page):
+    """The editor and the file manager have to be looking at the same
+    filesystem: a file saved in one appears in the other, at the size it
+    actually is."""
+    page.evaluate("""() => {
+        PACKAGES.filter((p) => p.name === 'leafpad')[0].installed = true;
+        rebuildMenu();
+        launch('files');
+    }""")
+    page.wait_for_timeout(300)
+    page.dblclick(".files-entry:has-text('README.txt')")
+    page.wait_for_timeout(150)
+    page.click(".files-entry:has-text('README.txt')", button="right")
+    page.wait_for_timeout(250)
+    page.click("#window-menu .row:text-is('Open')")
+    page.wait_for_timeout(350)
+    if not page.is_visible(".leafpad-page"):
+        fails("Open on a text file started no editor")
+        return
+    #
+    # OPENED AT THE FILE, not merely opened: an editor that came up empty
+    # would have started the program and not opened the document.
+    #
+    if "Phipia" not in page.input_value(".leafpad-page"):
+        fails("the editor opened empty, so it started the program without "
+              "opening the file")
+
+    # Saving somewhere new puts it in the file manager, at its real size.
+    page.fill(".leafpad-page", "one two three\n")
+    page.wait_for_timeout(120)
+    #
+    # SCOPED TO THE EDITOR'S OWN WINDOW.  The file manager underneath has
+    # a File menu too, and ".files-menubar .m" matched its one first - the
+    # click landed on a window that was not on top and Playwright sat
+    # retrying it.
+    #
+    page.click(EDITOR + " .files-menubar .m:text-is('File')")
+    page.wait_for_timeout(120)
+    page.click(EDITOR + " .files-menubar .drop .row:text-is('Save As')")
+    page.wait_for_timeout(200)
+    page.fill(".dialog input", "/home/user/Documents/fresh.txt")
+    page.press(".dialog input", "Enter")
+    page.wait_for_timeout(250)
+    if page.is_visible(".dialog"):
+        fails("Save As would not take a path inside a folder that exists")
+        return
+    size = page.evaluate(
+        "() => FS['/home/user/Documents'].files['fresh.txt']")
+    if size != 14:
+        fails("the file manager records fresh.txt as %r where the text "
+              "written is 14 bytes" % size)
+
+    # Saving somewhere that is not there says so rather than losing it.
+    #
+    # SCOPED TO THE EDITOR'S OWN WINDOW.  The file manager underneath has
+    # a File menu too, and ".files-menubar .m" matched its one first - the
+    # click landed on a window that was not on top and Playwright sat
+    # retrying it.
+    #
+    page.click(EDITOR + " .files-menubar .m:text-is('File')")
+    page.wait_for_timeout(120)
+    page.click(EDITOR + " .files-menubar .drop .row:text-is('Save As')")
+    page.wait_for_timeout(200)
+    page.fill(".dialog input", "/no/such/folder/x.txt")
+    page.press(".dialog input", "Enter")
+    page.wait_for_timeout(250)
+    #
+    # THE DIALOG HAS TO STILL BE THERE.  Asking whether it SAYS "no such
+    # folder" passes when the save succeeded and the dialog closed, which
+    # is the failure this is meant to catch: the text is only reachable
+    # while the box is open.
+    #
+    if not page.is_visible(".dialog"):
+        fails("Save As took a path in a folder that does not exist and "
+              "closed, so the file went somewhere nobody can see")
+    elif "no such folder" not in page.inner_text(".dialog .body"):
+        fails("Save As refused a bad folder without saying why")
+    else:
+        page.click(".dialog button:text-is('Cancel')")
+    page.wait_for_timeout(150)
+
+    page.evaluate("""() => {
+        windows.slice().forEach(closeWindow);
+        delete FS['/home/user/Documents'].files['fresh.txt'];
+        PACKAGES.filter((p) => p.name === 'leafpad')[0].installed = false;
+        rebuildMenu();
+    }""")
+    page.wait_for_timeout(150)
+
+
 def main():
     with sync_playwright() as play:
         browser = play.chromium.launch(
@@ -1019,6 +1112,7 @@ def main():
         check_volume(page)
         check_lock(page)
         check_item_menu(page)
+        check_editor_files(page)
         check_window_menu(page)
         check_list_view(page)
         check_browser(page)

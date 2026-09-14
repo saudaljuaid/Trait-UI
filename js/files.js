@@ -58,6 +58,57 @@ const FS = {
     "trash:///": { dirs: [], files: {} }
 };
 
+/*
+ * WHAT IS IN THE TEXT FILES, so that opening one opens something.
+ *
+ * FS records a size per file; this records the CONTENT of the ones that
+ * have any, and the two are kept in step - writing from the editor sets
+ * both, so a file that grows in the editor grows in the file manager's
+ * Size column too.  A size that did not follow the content would be a
+ * number the window no longer stands behind.
+ */
+const FILE_TEXT = {
+    "/home/user/README.txt":
+        "Phipia\n======\n\nA copy of the Debian LXDE desktop.\n\n" +
+        "The panel is laid out from LXDE's own default profile; the\n" +
+        "icons are the real nuoveXT2 files; the wallpaper and the mark\n" +
+        "on the menu button are this project's own.\n",
+    "/home/user/Documents/report.txt":
+        "Report\n------\n\nNothing to report.\n",
+    "/home/user/Documents/letter.txt":
+        "Dear whoever,\n\nThe desktop is finished enough to write on.\n",
+    "/home/user/Documents/Notes/todo.txt":
+        "- look at the panel\n- open a terminal\n- read the README\n"
+};
+
+/* The bytes a string takes, which is what the file manager reports. */
+function textSize(text) {
+    return new TextEncoder().encode(text).length;
+}
+
+function readFile(path) {
+    return FILE_TEXT[path] === undefined ? null : FILE_TEXT[path];
+}
+
+/*
+ * Writing puts the file in BOTH places: the text here and the size in FS,
+ * plus the name in its folder's listing when it is new.  A file manager
+ * that did not show a file the editor had just saved would be looking at
+ * a different filesystem.
+ */
+function writeFile(path, text) {
+    const cut = path.lastIndexOf("/");
+    const dir = cut <= 0 ? "/" : path.slice(0, cut);
+    const name = path.slice(cut + 1);
+
+    if (!FS[dir]) {
+        return false;
+    }
+    FILE_TEXT[path] = text;
+    FS[dir].files[name] = textSize(text);
+    return true;
+}
+
 const PLACES = [
     ["user", "user-home", "/home/user"],
     ["Desktop", "user-desktop", "/home/user/Desktop"],
@@ -566,7 +617,8 @@ function makeFilesWindow() {
                     go(fullPath(name));
                 } else if (name.slice(-4) === ".txt" &&
                         appIsInstalled("leafpad")) {
-                    launch("leafpad");
+                    /* Opened AT the file, not merely opened. */
+                    launch("leafpad", fullPath(name));
                 } else if (name.slice(-4) === ".txt") {
                     note("Nothing installed opens a text file. leafpad " +
                         "is in the package manager.");

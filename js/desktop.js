@@ -528,7 +528,7 @@ function makeTerminalBody() {
 
 let cascade = 0;
 
-function launch(what) {
+function launch(what, openWith) {
     const step = (cascade % 6) * 22;
 
     cascade += 1;
@@ -555,12 +555,13 @@ function launch(what) {
         return;
     }
     if (what === "leafpad") {
-        openWindow({ title: "Untitled - Leafpad", command: "leafpad",
+        openWindow({ title: (openWith || "Untitled") + " - Leafpad",
+                     command: "leafpad",
                      icon: "assets/icons/nuoveXT2/16/" +
                          "applications-accessories.png",
                      x: 170 + step, y: 100 + step,
                      width: 520, height: 380,
-                     body: makeLeafpadWindow() });
+                     body: makeLeafpadWindow(openWith) });
         return;
     }
     if (what === "galculator") {

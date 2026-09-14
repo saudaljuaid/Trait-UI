@@ -24,7 +24,8 @@ HOST_FLAGS := -std=c11 -D_POSIX_C_SOURCE=200809L -O2 -g \
 
 SHELL_SOURCES := $(ROOT)/src/surface.c $(ROOT)/src/font.c \
 	$(ROOT)/src/panel.c \
-	$(ROOT)/src/window.c $(ROOT)/src/taskmgr.c $(ROOT)/src/settings.c $(ROOT)/src/files.c
+	$(ROOT)/src/window.c $(ROOT)/src/taskmgr.c $(ROOT)/src/settings.c $(ROOT)/src/files.c $(ROOT)/src/terminal.c \
+	$(ROOT)/src/menu.c $(ROOT)/src/packages.c
 HOST_SOURCES := png.c main.c
 
 SHELL_OBJECTS := $(patsubst %.c,$(BUILD)/%.o,$(notdir $(SHELL_SOURCES)))

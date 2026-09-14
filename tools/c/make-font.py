@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
-"""Turn a TTF into the alpha bitmaps the C panel draws text with.
+"""Turn a TTF into the alpha bitmaps the C shell draws text with.
 
-    python3 tools/c/make-font.py [font.ttf] [size] [out.h]
+    python3 tools/c/make-font.py [font.ttf] [size] [out.h] [prefix]
 
 THERE IS NO FONT SERVER IN A FRAMEBUFFER.  The C side draws text by
 compositing a coverage bitmap per glyph, so the rasterising happens once,
@@ -27,6 +27,7 @@ def main():
     size = int(sys.argv[2]) if len(sys.argv) > 2 else 11
     out = Path(sys.argv[3] if len(sys.argv) > 3
                else "src/trait_font.h")
+    prefix = sys.argv[4] if len(sys.argv) > 4 else "trait_font"
 
     font = ImageFont.truetype(str(ttf), size)
     ascent, descent = font.getmetrics()
@@ -52,20 +53,20 @@ def main():
         " * no colour of its own.  Metrics are the font's own:",
         f" * ascent {ascent}, descent {descent}, line {height}.",
         " */",
-        "#ifndef TRAIT_FONT_H",
-        "#define TRAIT_FONT_H",
+        f"#ifndef {prefix.upper()}_H",
+        f"#define {prefix.upper()}_H",
         "",
         "#include <stdint.h>",
         "",
-        f"#define TRAIT_FONT_FIRST {FIRST}U",
-        f"#define TRAIT_FONT_LAST {LAST}U",
-        f"#define TRAIT_FONT_ASCENT {ascent}U",
-        f"#define TRAIT_FONT_DESCENT {descent}U",
-        f"#define TRAIT_FONT_HEIGHT {height}U",
+        f"#define {prefix.upper()}_FIRST {FIRST}U",
+        f"#define {prefix.upper()}_LAST {LAST}U",
+        f"#define {prefix.upper()}_ASCENT {ascent}U",
+        f"#define {prefix.upper()}_DESCENT {descent}U",
+        f"#define {prefix.upper()}_HEIGHT {height}U",
         "",
     ]
     for code, ch, advance, width, data in glyphs:
-        name = f"trait_font_{code}"
+        name = f"{prefix}_{code}"
         lines.append(f"/* {code} {ch!r} advance {advance} */")
         lines.append(f"static const uint8_t {name}[] = {{")
         row = []
@@ -78,18 +79,18 @@ def main():
             lines.append("    " + "".join(row))
         lines.append("};")
     lines.append("")
-    lines.append("struct trait_font_glyph {")
+    lines.append(f"struct {prefix}_glyph {{")
     lines.append("    const uint8_t *coverage;")
     lines.append("    uint32_t width;")
     lines.append("    uint32_t advance;")
     lines.append("};")
     lines.append("")
-    lines.append("static const struct trait_font_glyph trait_font[] = {")
+    lines.append(f"static const struct {prefix}_glyph {prefix}[] = {{")
     for code, ch, advance, width, _ in glyphs:
-        lines.append(f"    {{ trait_font_{code}, {width}U, {advance}U }},")
+        lines.append(f"    {{ {prefix}_{code}, {width}U, {advance}U }},")
     lines.append("};")
     lines.append("")
-    lines.append("#endif /* TRAIT_FONT_H */")
+    lines.append(f"#endif /* {prefix.upper()}_H */")
     out.write_text("\n".join(lines) + "\n")
     print(f"wrote {out}: {len(glyphs)} glyphs, {ttf.name} at {size}px, "
           f"line height {height}")

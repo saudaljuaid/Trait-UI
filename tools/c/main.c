@@ -15,6 +15,9 @@
 
 #include <trait/font.h>
 #include <trait/files.h>
+#include <trait/menu.h>
+#include <trait/packages.h>
+#include <trait/terminal.h>
 #include <trait/panel.h>
 #include <trait/settings.h>
 #include <trait/taskmgr.h>
@@ -274,6 +277,49 @@ static uint32_t populate_files(void)
     return user;
 }
 
+
+/*
+ * The menu is BUILT FROM WHAT IS INSTALLED, which is the whole point of
+ * having a package manager beside it: rebuild it after an Apply and the
+ * newly installed thing is there, the removed thing is not.  A menu with
+ * a hardcoded list would make Apply a button that changes a number.
+ */
+static void rebuild_menu(void)
+{
+    trait_menu_reset();
+    (void)trait_menu_add("Accessories", true, false);
+    if (trait_packages_installed("pcmanfm")) {
+        (void)trait_menu_add("System Tools", true, false);
+    }
+    if (trait_packages_installed("galculator")) {
+        (void)trait_menu_add("Galculator", false, false);
+    }
+    if (trait_packages_installed("leafpad")) {
+        (void)trait_menu_add("Leafpad", false, false);
+    }
+    if (trait_packages_installed("xarchiver")) {
+        (void)trait_menu_add("Archiver", false, false);
+    }
+    (void)trait_menu_add(NULL, false, true);
+    (void)trait_menu_add("Run...", false, false);
+}
+
+static void populate_packages(void)
+{
+    trait_packages_reset();
+    (void)trait_packages_add("pcmanfm", "The file manager", "Files", true);
+    (void)trait_packages_add("lxterminal", "A terminal emulator",
+                             "Terminal", true);
+    (void)trait_packages_add("lxtask", "A task manager", "Task Manager",
+                             true);
+    (void)trait_packages_add("leafpad", "A simple text editor", "Leafpad",
+                             true);
+    (void)trait_packages_add("galculator", "A desktop calculator",
+                             "Galculator", false);
+    (void)trait_packages_add("xarchiver", "An archive manager",
+                             "Archiver", false);
+}
+
 int main(int argc, char **argv)
 {
     const char *out = argc > 1 ? argv[1] : "build/c";
@@ -404,6 +450,93 @@ int main(int argc, char **argv)
         if (!emit(out, "files-desktop.png", whole())) {
             return 1;
         }
+    }
+
+    /* The terminal, the package manager and the menu. */
+    if (!trait_terminal_self_test()) {
+        fprintf(stderr, "trait: terminal self-test failed\n");
+        return 1;
+    }
+    if (!trait_packages_self_test()) {
+        fprintf(stderr, "trait: package manager self-test failed\n");
+        return 1;
+    }
+    if (!trait_menu_self_test()) {
+        fprintf(stderr, "trait: menu self-test failed\n");
+        return 1;
+    }
+    {
+        struct trait_window term;
+        struct trait_window synaptic;
+        struct trait_rect button;
+        uint32_t before;
+        uint32_t after;
+
+        trait_terminal_reset();
+        trait_terminal_run("uname -a");
+        trait_terminal_run("whoami");
+        trait_terminal_run("ls");
+        trait_terminal_run("frobnicate");
+
+        memset(&term, 0, sizeof(term));
+        term.frame = (struct trait_rect){ 160U, 150U, 560U, 340U };
+        term.active = true;
+        trait_window_set_title(&term, "user@trait: ~");
+
+        if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
+            flat(0x212121U);
+        }
+        trait_window_draw(&screen, &term);
+        trait_terminal_draw(&screen, &term);
+        if (!emit(out, "terminal.png", term.frame)) {
+            return 1;
+        }
+
+        populate_packages();
+        trait_packages_select(4U);
+        trait_packages_mark(4U, TRAIT_PACKAGE_INSTALL);
+        trait_packages_mark(5U, TRAIT_PACKAGE_INSTALL);
+
+        memset(&synaptic, 0, sizeof(synaptic));
+        synaptic.frame = (struct trait_rect){ 420U, 300U, 560U, 340U };
+        synaptic.active = true;
+        trait_window_set_title(&synaptic, "Package Manager");
+        trait_window_draw(&screen, &synaptic);
+        trait_packages_draw(&screen, &synaptic);
+        if (!emit(out, "packages.png", synaptic.frame)) {
+            return 1;
+        }
+
+        /*
+         * Apply, and then the menu rebuilt from what is installed: the
+         * frame below is PROOF that the two are connected, because
+         * Galculator is in the menu only because Apply put it there.
+         */
+        rebuild_menu();
+        before = trait_menu_row_count();
+        (void)trait_packages_apply();
+        rebuild_menu();
+        after = trait_menu_row_count();
+        if (after <= before) {
+            fprintf(stderr, "trait: Apply installed nothing the menu "
+                            "shows (%u rows before, %u after)\n",
+                    before, after);
+            return 1;
+        }
+
+        if (trait_panel_draw(whole()) != TRAIT_PANEL_STATUS_OK) {
+            return 1;
+        }
+        if (trait_panel_plugin_bounds(whole(), TRAIT_PANEL_PLUGIN_MENU,
+                &button) != TRAIT_PANEL_STATUS_OK) {
+            return 1;
+        }
+        trait_menu_draw(&screen, whole(), button);
+        if (!emit(out, "menu.png", whole())) {
+            return 1;
+        }
+        printf("proof: Apply put %u row(s) in the menu that were not "
+               "there before it ran\n", after - before);
     }
     printf("proof: a %u-pixel panel over a %ux%u screen, %u tasks, a "
            "%u-column cpu graph and a clock that does not move when a "

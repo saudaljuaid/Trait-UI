@@ -246,6 +246,103 @@ def check_lock(page):
         fails("the lock screen would not unlock")
 
 
+# pcmanfm's own LXDE profile: win_width=640, win_height=480, view_mode=icon,
+# show_hidden=0, sort=name;ascending;
+FILES_WIDTH = 640
+FILES_HEIGHT = 480
+FILES_MENUS = ["File", "Edit", "View", "Bookmarks", "Tools", "Help"]
+
+
+def check_files(page):
+    page.click('[data-launch="files"]')
+    page.wait_for_timeout(250)
+    if not page.is_visible(".files-body"):
+        fails("the Files launcher opened no file manager")
+        return
+
+    size = page.eval_on_selector(".files-body", """(el) => {
+        const r = el.closest('.window').getBoundingClientRect();
+        return { w: Math.round(r.width), h: Math.round(r.height) };
+    }""")
+    if size["w"] != FILES_WIDTH or size["h"] != FILES_HEIGHT:
+        fails("Files opened %dx%d where pcmanfm's profile says %dx%d"
+              % (size["w"], size["h"], FILES_WIDTH, FILES_HEIGHT))
+
+    menus = page.eval_on_selector_all(
+        ".files-menubar > .m",
+        "(e) => e.map((m) => m.firstChild.textContent.trim())")
+    if menus != FILES_MENUS:
+        fails("the menu bar runs %s rather than %s"
+              % (" ".join(menus), " ".join(FILES_MENUS)))
+
+    # Back is dead at the start of history, and Up is dead at the root.
+    if not page.is_disabled('.files-toolbar button[title="Back"]'):
+        fails("Back is live on a window that has been nowhere yet")
+
+    # Entering a folder, and the location bar following it.
+    page.dblclick('.files-entry:has-text("Documents")')
+    page.wait_for_timeout(200)
+    if page.input_value(".files-toolbar .location") != \
+            "/home/user/Documents":
+        fails("double-clicking Documents did not enter it")
+    if page.eval_on_selector_all(".files-entry", "(e) => e.length") == 0:
+        fails("Documents came up empty, so nothing was read")
+
+    page.click('.files-toolbar button[title="Back"]')
+    page.wait_for_timeout(200)
+    if page.input_value(".files-toolbar .location") != "/home/user":
+        fails("Back did not return to where the window came from")
+    if page.is_disabled('.files-toolbar button[title="Forward"]'):
+        fails("Forward is dead after a Back, so the history only runs one "
+              "way")
+
+    # A place navigates AND marks itself.
+    page.click('.files-places .place:has-text("Filesystem")')
+    page.wait_for_timeout(200)
+    if page.input_value(".files-toolbar .location") != "/":
+        fails("the Filesystem place went nowhere")
+    if not page.is_visible('.files-places .place.current:has-text('
+                           '"Filesystem")'):
+        fails("the place that is open is not marked as the current one")
+    if not page.is_disabled('.files-toolbar button[title="Up"]'):
+        fails("Up is live at the root, where there is nothing above")
+
+    # A file's size, reported when it is picked.
+    page.click('.files-places .place:has-text("user")')
+    page.wait_for_timeout(200)
+    page.click('.files-entry:has-text("README.txt")')
+    page.wait_for_timeout(150)
+    said = page.inner_text(".files-status")
+    if "README.txt" not in said or "KiB" not in said:
+        fails("picking a file reported %r rather than its name and size"
+              % said.strip())
+
+    # show_hidden=0, until the View menu says otherwise.
+    names = page.eval_on_selector_all(
+        ".files-entry span", "(e) => e.map((s) => s.textContent)")
+    if ".bashrc" in names:
+        fails("a dotfile is listed with show_hidden=0")
+    page.click('.files-menubar .m:has-text("View")')
+    page.wait_for_timeout(120)
+    page.click('.files-menubar .drop .row:has-text("Show Hidden")')
+    page.wait_for_timeout(200)
+    names = page.eval_on_selector_all(
+        ".files-entry span", "(e) => e.map((s) => s.textContent)")
+    if ".bashrc" not in names:
+        fails("Show Hidden showed nothing hidden")
+
+    # A path that is not there puts the old one back rather than blanking.
+    page.fill(".files-toolbar .location", "/no/such/place")
+    page.press(".files-toolbar .location", "Enter")
+    page.wait_for_timeout(200)
+    if page.input_value(".files-toolbar .location") != "/home/user":
+        fails("typing a path that does not exist took the window "
+              "somewhere")
+
+    page.click(".titlebar button.close")
+    page.wait_for_timeout(150)
+
+
 def main():
     with sync_playwright() as play:
         browser = play.chromium.launch(
@@ -265,6 +362,7 @@ def main():
         check_run_box(page)
         check_volume(page)
         check_lock(page)
+        check_files(page)
         check_terminal(page)
         check_wincmd(page)
         check_close(page)
@@ -277,7 +375,8 @@ def main():
           "pixels in the cpu graph, a menu that opens upwards off the "
           "panel, a Run box that runs, a speaker that says when it is "
           "muted, a lock that covers the panel, and a terminal that "
-          "answers what is typed at it" % (" ".join(PLUGIN_ORDER), green))
+          "answers what is typed at it, and a 640x480 file manager "
+          "that navigates" % (" ".join(PLUGIN_ORDER), green))
     return 0
 
 

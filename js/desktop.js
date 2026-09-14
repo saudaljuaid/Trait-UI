@@ -377,9 +377,19 @@ function launch(what) {
         }
         return;
     }
-    const plain = { files: ["File Manager",
-                            "assets/icons/nuoveXT2/file-manager.png"],
-                    browser: ["Web Browser",
+    if (what === "files") {
+        /*
+         * 640 by 480, which is pcmanfm's own win_width and win_height in
+         * the LXDE profile rather than a size picked here.
+         */
+        const files = makeFilesWindow();
+
+        openWindow({ title: "user", icon: "assets/logo/files.svg",
+                     x: 120 + step, y: 70 + step,
+                     width: 640, height: 480, body: files.body });
+        return;
+    }
+    const plain = { browser: ["Web Browser",
                               "assets/icons/nuoveXT2/browser.png"] }[what];
     if (!plain) {
         return;

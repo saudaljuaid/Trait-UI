@@ -3,3 +3,11 @@ logo the project was given.  No part of it is taken from another icon
 set, and it is the panel's menu button - which is where LXDE puts its own
 lxde-icon.png.  That file is vendored in ../icons/lxpanel/ as well,
 because the panel's geometry was measured off it.
+
+files.svg is this project's own too: the Files application's mark, drawn
+in the same geometry as phipia.svg - the same shear, the same rounding -
+as a drawer with two sheets standing in it.  Grey rather than a bright
+folder, because the desktop it sits on is the grey Debian one and a
+saturated mark would be the only loud thing on the bar.  It is NOT
+nuoveXT2's file-manager.png, which is still vendored beside it and is
+what the panel drew before this.

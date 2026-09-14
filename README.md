@@ -69,6 +69,48 @@ Four of `lxsession-logout`'s six buttons — shut down, reboot, suspend,
 hibernate — are **not** offered, because a page cannot do them and the
 dialog says so rather than drawing a button that lies.
 
+## The Files app
+
+`pcmanfm`'s shape, from `pcmanfm`'s own LXDE profile
+(`/etc/xdg/pcmanfm/LXDE/pcmanfm.conf`):
+
+```
+win_width=640  win_height=480  view_mode=icon  show_hidden=0
+sort=name;ascending;
+```
+
+so the window opens at 640×480 in icon view with dotfiles hidden and
+folders before files. Menu bar, a toolbar of Back / Forward / Up / Reload
+/ Home with the location bar after them, a Places side pane, the icon
+view, and a two-field status bar — and all of it works. Back and Forward
+keep a real history, Up is dead at the root, a Places row navigates and
+marks itself, and typing a path that is not there puts the old one back.
+
+The chrome is **Clearlooks**, which is what Debian's LXDE draws GTK2
+with, and its palette is the one line of its own `gtkrc`
+(`gtk2-engines`, `usr/share/themes/Clearlooks/gtk-2.0/gtkrc`):
+
+```
+base_color:#ffffff  fg_color:#000000  text_color:#1A1A1A  bg_color:#EDECEB
+selected_bg_color:#86ABD9  selected_fg_color:#ffffff
+```
+
+The three shades it derives — `bg[PRELIGHT] = shade(1.02, bg)`,
+`bg[ACTIVE] = shade(0.9, bg)`, `base[PRELIGHT] = shade(0.95, bg)` — are
+computed rather than guessed.
+
+The status bar's right-hand field is **not** free space. `pcmanfm` puts
+the filesystem's free space there; there is no filesystem under this one,
+so it reports what is actually in the folder. The first cut printed
+`Free space: 3.2 GiB (Total: 7.4 GiB)` under a comment claiming it was a
+figure the desktop could stand behind — it was invented, and a status bar
+that makes up a number is worse than one that leaves the field out.
+
+Its mark, `assets/logo/files.svg`, is this project's own: a drawer with
+fanned papers, drawn in the same geometry as the Phipia mark — the same
+shear, the same rounding — and grey rather than a bright folder, because
+the desktop it sits on is the grey Debian one.
+
 ## The terminal
 
 `assets/icons/nuoveXT2/terminal.png` is nuoveXT2's own mark — a black

@@ -26,7 +26,16 @@ which on a desktop called Trait OS would be another project's name on this
 one's dialog.  So the MECHANISM is copied, at the same size and in the
 same place, and the identity on it is this project's.  Rendered by
 
-    tools/banner.html
+    python3 tools/make-banner.py
 
-in the same browser the screenshots come from, with the same seeded
-scatter the wallpaper uses.
+in the same browser the screenshots come from, at 2x - 704x250 - because
+the dialog sizes it with width:100%.
+
+It carried the wallpaper's towers along its right edge and no longer
+does.  Those are drawn dark on a light ground at a scale where one tower
+is two hundred pixels wide; squeezed into a 25-pixel column on a dark
+ground they inverted to near-white and lost the lines that made them read
+as towers, leaving a patch of bright scratches in the loudest part of the
+contrast range, competing with the name.  LXDE's own banner is a mark and
+a wordmark on a plain ground and nothing else, and copying the mechanism
+means copying that restraint.

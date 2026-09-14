@@ -1773,44 +1773,61 @@ document.addEventListener("keyup", (event) => {
  * for something it cannot would be a shortcut that does nothing, which is
  * the keyboard's version of a button that lies.
  *
- *   W-e            the file manager
- *   W-r            the Run box
- *   W-d            show the desktop (the same as wincmd)
- *   C-A-t          a terminal
- *   C-A-l          lock the screen
- *   C-A-Delete     log out
- *   A-F4           close the window that has focus
+ * ONE TABLE, READ TWICE.  The handler below runs these and the Settings
+ * window's Keyboard page LISTS them, both off this array.  A page that
+ * kept its own copy would be a list of shortcuts that drifts away from
+ * the shortcuts - documentation is the easiest thing on a desktop to
+ * leave behind, and the fix is to not have a second copy.
+ *
+ * `keys` is Openbox's own notation, which is what rc.xml writes.
  */
+const SHORTCUTS = [
+    { keys: "W-e", label: "Open the file manager",
+      match: (e, k) => e.metaKey && k === "e",
+      run: () => launch("files") },
+    { keys: "W-r", label: "Open the Run box",
+      match: (e, k) => e.metaKey && k === "r",
+      run: () => openRunBox() },
+    { keys: "W-d", label: "Show the desktop",
+      match: (e, k) => e.metaKey && k === "d",
+      run: () => document.getElementById("wincmd").click() },
+    { keys: "C-A-t", label: "Open a terminal",
+      match: (e, k) => e.ctrlKey && e.altKey && k === "t",
+      run: () => launch("terminal") },
+    { keys: "C-A-l", label: "Lock the screen",
+      match: (e, k) => e.ctrlKey && e.altKey && k === "l",
+      run: () => document.querySelector('[data-launch="lock"]').click() },
+    { keys: "C-A-Delete", label: "Log out",
+      match: (e, k) => e.ctrlKey && e.altKey && k === "delete",
+      run: () => openLogoutBox() },
+    { keys: "A-F4", label: "Close the focused window",
+      match: (e, k) => e.altKey && k === "f4",
+      run: () => {
+          const focused = windows.filter((win) => win.active)[0];
+
+          if (focused) {
+              closeWindow(focused);
+          }
+      } },
+    { keys: "A-Tab", label: "Switch between windows",
+      /* Handled by the switcher above, which has to see the key down AND
+       * the Alt up.  It is listed because it works, and a list that left
+       * out the one shortcut everybody knows would be a worse list. */
+      match: () => false,
+      run: () => {} }
+];
+
 document.addEventListener("keydown", (event) => {
     const key = event.key.toLowerCase();
-    const ctrlAlt = event.ctrlKey && event.altKey;
 
-    if (event.metaKey && key === "e") {
-        event.preventDefault();
-        launch("files");
-    } else if (event.metaKey && key === "r") {
-        event.preventDefault();
-        openRunBox();
-    } else if (event.metaKey && key === "d") {
-        event.preventDefault();
-        document.getElementById("wincmd").click();
-    } else if (ctrlAlt && key === "t") {
-        event.preventDefault();
-        launch("terminal");
-    } else if (ctrlAlt && key === "l") {
-        event.preventDefault();
-        document.querySelector('[data-launch="lock"]').click();
-    } else if (ctrlAlt && key === "delete") {
-        event.preventDefault();
-        openLogoutBox();
-    } else if (event.altKey && key === "f4") {
-        event.preventDefault();
-        const focused = windows.filter((win) => win.active)[0];
-
-        if (focused) {
-            closeWindow(focused);
+    SHORTCUTS.some((shortcut) => {
+        if (!shortcut.match(event, key)) {
+            return false;
         }
-    }
+        event.preventDefault();
+        shortcut.run();
+        return true;
+    });
 });
 
 /* ----------------------------------------------------- the window menu */

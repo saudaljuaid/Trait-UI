@@ -164,6 +164,29 @@ RSS comes from `performance.memory` where the browser offers it and reads
 window opens — which is what a process id is — and it is not a number
 from any operating system.
 
+## The package manager
+
+Debian's is Synaptic, and this is its shape: a toolbar of Reload / Mark
+All Upgrades / Apply, a section pane, a package list with a status
+column, a description pane, and a status bar counting what is listed and
+what is marked.
+
+**It actually installs.** Double-clicking a package marks it, `Apply`
+carries the marks out, and an installed package appears in the menu and
+can be run — so installing `leafpad` puts Text Editor in Accessories and
+removing it takes it out. `Run...` refuses a package that is in the
+catalogue but not installed, the way a shell would.
+
+The catalogue is therefore exactly as long as the list of applications
+this desktop can really provide. There is no point listing Firefox when
+installing it would install nothing. The two that can be installed are
+`leafpad` — a menu bar and a white page, which is all Leafpad is — and
+`galculator`, a calculator that adds up and says *cannot divide by zero*
+rather than printing `Infinity`.
+
+An essential package refuses removal and says why: taking the panel away
+would leave a desktop with no way to put it back.
+
 ## The terminal
 
 `assets/icons/nuoveXT2/terminal.png` is nuoveXT2's own mark — a black

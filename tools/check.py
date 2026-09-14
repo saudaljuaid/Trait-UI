@@ -542,6 +542,115 @@ def check_taskmgr(page):
     page.wait_for_timeout(150)
 
 
+def check_synaptic(page):
+    """A store whose Apply did nothing would be a shop window, so this
+    installs a package and then looks at the MENU."""
+    page.evaluate("() => launch('synaptic')")
+    page.wait_for_timeout(300)
+    if not page.is_visible(".synaptic"):
+        fails("the package manager did not open")
+        return
+    if not page.is_disabled(".files-toolbar button:text-is('Apply')"):
+        fails("Apply is live with nothing marked")
+
+    # leafpad is not installed, so it is not in the menu.
+    page.click("#menu-button")
+    page.wait_for_timeout(150)
+    before = page.eval_on_selector_all(
+        "#menu-popup .submenu .menu-item span",
+        "(e) => e.map((s) => s.textContent)")
+    page.keyboard.press("Escape")
+    page.mouse.click(900, 400)
+    page.wait_for_timeout(120)
+    if "Text Editor" in before:
+        fails("a package that is not installed is already in the menu")
+
+    #
+    # ONE WINDOW, NOT THREE.  The first version of this called
+    # launch('synaptic') again between steps, so a second package manager
+    # opened on top of the first and every click after it landed on a
+    # window underneath - which Playwright reported as another element
+    # intercepting the press.
+    #
+    page.dblclick(".gtk-tree .line:has-text('leafpad')")
+    page.wait_for_timeout(150)
+    if page.is_disabled(".files-toolbar button:text-is('Apply')"):
+        fails("marking a package left Apply dead")
+    page.click(".files-toolbar button:text-is('Apply')")
+    page.wait_for_timeout(300)
+
+    page.click("#menu-button")
+    page.wait_for_timeout(200)
+    page.hover("#menu-popup .menu-item")
+    page.wait_for_timeout(150)
+    after = page.eval_on_selector_all(
+        "#menu-popup .submenu .menu-item span",
+        "(e) => e.map((s) => s.textContent)")
+    page.mouse.click(900, 400)
+    page.wait_for_timeout(120)
+    if "Text Editor" not in after:
+        fails("installing leafpad did not put it in the menu, so Apply "
+              "is a button that marks and does not install")
+
+    # And the application it installed actually runs.
+    page.evaluate("() => launch('leafpad')")
+    page.wait_for_timeout(250)
+    if not page.is_visible(".leafpad-page"):
+        fails("the installed text editor opened nothing")
+    else:
+        page.fill(".leafpad-page", "hello")
+        page.wait_for_timeout(150)
+        if "*" not in page.inner_text(".window:has(.leafpad-page) .title"):
+            fails("typing into the editor left its title unmarked, so it "
+                  "cannot say whether there is anything to save")
+        page.evaluate("""() => {
+            const win = windows.filter((w) => w.command === 'leafpad')[0];
+            if (win) { closeWindow(win); }
+        }""")
+        page.wait_for_timeout(150)
+
+    # An essential package refuses removal out loud.
+    page.dblclick(".gtk-tree .line:has-text('lxpanel')")
+    page.wait_for_timeout(200)
+    if not page.is_visible(".dialog:has-text('lxpanel')"):
+        fails("marking the panel for removal was allowed, or refused in "
+              "silence")
+    page.evaluate("""() => {
+        document.querySelectorAll('.dialog').forEach((d) => d.remove());
+        windows.slice().forEach(closeWindow);
+    }""")
+    page.wait_for_timeout(150)
+
+
+def check_calculator(page):
+    """It has to add up.  A keypad that printed digits and never answered
+    would be a picture of a calculator."""
+    page.evaluate("""() => {
+        PACKAGES.filter((p) => p.name === 'galculator')[0].installed = true;
+        rebuildMenu();
+        launch('galculator');
+    }""")
+    page.wait_for_timeout(300)
+    if not page.is_visible(".calc-pad"):
+        fails("the calculator did not open")
+        return
+    for key in ["7", "+", "8", "="]:
+        page.click(".calc-key:text-is('%s')" % key)
+        page.wait_for_timeout(60)
+    if page.inner_text(".calc-screen").strip() != "15":
+        fails("7 + 8 came out as %r"
+              % page.inner_text(".calc-screen").strip())
+    page.click(".calc-key:text-is('C')")
+    for key in ["5", "\u00F7", "0", "="]:
+        page.click(".calc-key:text-is('%s')" % key)
+        page.wait_for_timeout(60)
+    if "divide" not in page.inner_text(".calc-screen"):
+        fails("dividing by nothing printed %r rather than saying it "
+              "cannot" % page.inner_text(".calc-screen").strip())
+    page.evaluate("() => windows.slice().forEach(closeWindow)")
+    page.wait_for_timeout(150)
+
+
 def main():
     with sync_playwright() as play:
         browser = play.chromium.launch(
@@ -566,6 +675,8 @@ def main():
         check_files(page)
         check_settings(page)
         check_taskmgr(page)
+        check_synaptic(page)
+        check_calculator(page)
         check_terminal(page)
         check_wincmd(page)
         check_close(page)
@@ -581,7 +692,8 @@ def main():
           "answers what is typed at it, and a 640x480 file manager "
           "that navigates, over a desktop whose icons open what they "
           "name, a Settings that reaches every window, and a task "
-          "manager that ends what it lists"
+          "manager that ends what it lists, and a package manager "
+          "whose Apply puts things in the menu"
           % (" ".join(PLUGIN_ORDER), green))
     return 0
 

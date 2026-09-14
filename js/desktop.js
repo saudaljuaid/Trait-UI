@@ -468,6 +468,33 @@ function launch(what) {
         }
         return;
     }
+    if (what === "synaptic") {
+        openWindow({ title: "Synaptic Package Manager",
+                     command: "synaptic",
+                     icon: "assets/icons/nuoveXT2/16/applications-system.png",
+                     x: 100 + step, y: 60 + step,
+                     width: 700, height: 500,
+                     body: makeSynapticWindow().body });
+        return;
+    }
+    if (what === "leafpad") {
+        openWindow({ title: "Untitled - Leafpad", command: "leafpad",
+                     icon: "assets/icons/nuoveXT2/16/" +
+                         "applications-accessories.png",
+                     x: 170 + step, y: 100 + step,
+                     width: 520, height: 380,
+                     body: makeLeafpadWindow() });
+        return;
+    }
+    if (what === "galculator") {
+        openWindow({ title: "galculator", command: "galculator",
+                     icon: "assets/icons/nuoveXT2/16/" +
+                         "applications-accessories.png",
+                     x: 240 + step, y: 130 + step,
+                     width: 240, height: 300,
+                     body: makeGalculatorWindow() });
+        return;
+    }
     if (what === "settings") {
         openWindow({ title: "Desktop Preferences",
                      command: "lxappearance",
@@ -588,24 +615,49 @@ setInterval(sampleCpu, 250);
  * this desktop actually has.  A category with nothing in it is not drawn:
  * LXDE does not draw one either.
  */
+/*
+ * EVERY ENTRY IS A PACKAGE, AND A PACKAGE THAT IS NOT INSTALLED IS NOT IN
+ * THE MENU.  That is what makes the package manager a package manager
+ * rather than a shop window: applying a mark rebuilds this list, so
+ * installing leafpad puts Leafpad in Accessories and removing it takes it
+ * out.  `pkg` names which package provides the entry; an entry with no
+ * package is always there.
+ */
 const MENU_CATEGORIES = [
     ["Accessories", "applications-accessories", [
-        ["Terminal", "terminal", "terminal"]
+        ["Terminal", "terminal", "terminal", "lxterminal"],
+        ["Text Editor", "applications-accessories", "leafpad", "leafpad"],
+        ["Calculator", "applications-accessories", "galculator",
+         "galculator"]
     ]],
     ["Graphics", "applications-graphics", []],
     ["Internet", "applications-internet", [
-        ["Web Browser", "browser", "browser"]
+        ["Web Browser", "browser", "browser", null]
     ]],
     ["Office", "applications-office", []],
     ["Sound & Video", "applications-multimedia", []],
     ["System Tools", "applications-system", [
-        ["File Manager", "file-manager", "files"],
-        ["Task Manager", "applications-system", "taskmgr"]
+        ["File Manager", "file-manager", "files", "pcmanfm"],
+        ["Task Manager", "applications-system", "taskmgr", "lxtask"],
+        ["Synaptic Package Manager", "applications-system", "synaptic",
+         "synaptic"]
     ]],
     ["Preferences", "gtk-preferences", [
-        ["Desktop Preferences", "gtk-preferences", "settings"]
+        ["Desktop Preferences", "gtk-preferences", "settings",
+         "lxappearance"]
     ]]
 ];
+
+/* Which applications the installed packages provide, asked of the
+ * package manager rather than assumed here. */
+function appIsInstalled(pkgName) {
+    if (!pkgName || typeof PACKAGES === "undefined") {
+        return true;
+    }
+    const pkg = PACKAGES.filter((p) => p.name === pkgName)[0];
+
+    return pkg ? pkg.installed : false;
+}
 
 const MENU16 = "assets/icons/nuoveXT2/16/";
 
@@ -638,11 +690,19 @@ function menuRule() {
     return rule;
 }
 
+/* Called by the package manager when a mark is applied, so the menu is a
+ * view of what is installed rather than a copy of it. */
+function rebuildMenu() {
+    buildMenu();
+}
+
 function buildMenu() {
     const popup = document.getElementById("menu-popup");
 
     popup.textContent = "";
-    MENU_CATEGORIES.forEach(([label, icon, entries]) => {
+    MENU_CATEGORIES.forEach(([label, icon, all]) => {
+        const entries = all.filter(([, , , pkg]) => appIsInstalled(pkg));
+
         if (entries.length === 0) {
             return;   /* LXDE leaves an empty category out */
         }
@@ -728,7 +788,9 @@ const RUNNABLE = { terminal: "terminal", "lxterminal": "terminal",
                    pcmanfm: "files", "file-manager": "files",
                    browser: "browser", "x-www-browser": "browser",
                    lxappearance: "settings", settings: "settings",
-                   lxtask: "taskmgr", "task-manager": "taskmgr" };
+                   lxtask: "taskmgr", "task-manager": "taskmgr",
+                   synaptic: "synaptic", leafpad: "leafpad",
+                   galculator: "galculator" };
 
 function makeDialog(title, width) {
     const frame = document.createElement("div");
@@ -779,9 +841,16 @@ function openRunBox() {
     frame.appendChild(row);
 
     const run = () => {
-        const what = RUNNABLE[field.value.trim().toLowerCase()];
+        const typed = field.value.trim().toLowerCase();
+        const what = RUNNABLE[typed];
+        /* A program that is in the catalogue but not installed is not on
+         * the machine, so Run cannot start it - the same answer the shell
+         * would give. */
+        const here = what && (typeof PACKAGES === "undefined" ||
+            PACKAGES.filter((p) => p.name === typed).length === 0 ||
+            PACKAGES.filter((p) => p.name === typed)[0].installed);
 
-        if (what) {
+        if (here) {
             frame.remove();
             launch(what);
         } else {
@@ -1061,6 +1130,7 @@ const DESKTOP_MENU = [
     ["Open in Terminal", () => launch("terminal")],
     ["Open Files", () => launch("files")],
     ["Task Manager", () => launch("taskmgr")],
+    ["Package Manager", () => launch("synaptic")],
     null,
     ["Desktop Preferences", () => launch("settings")]
 ];

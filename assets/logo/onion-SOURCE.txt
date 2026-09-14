@@ -1,0 +1,15 @@
+onion.png (originally onion_vegetables_16828.png) and
+assets/wallpaper/wallpaper.png (originally debian_onion_color_v2.png) were
+supplied by the project owner and committed by them directly.
+
+THEIR ORIGIN IS NOT RECORDED HERE BECAUSE IT WAS NOT GIVEN.  Everything
+else in this tree names where it came from and under what licence - the
+Debian packages by version, this project's own art as its own - and these
+two do not, because nobody has said.  The onion is finished cartoon
+artwork rather than something generated, and the filename it arrived with
+("onion_vegetables_16828.png") has the shape of a stock-library id.
+
+That is a note, not an accusation: the owner may well have drawn or
+licensed both.  It is written down so the gap is visible rather than
+quietly filled in, and so it can be closed with one line when the answer
+is known.

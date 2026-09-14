@@ -38,7 +38,7 @@ const TASKMGR_COLUMNS = [
 const TASKMGR_USER = "user";
 
 /* The shell's own row, which is there whether or not a window is. */
-const SHELL_ROW = { command: "phipia-session", pid: 1 };
+const SHELL_ROW = { command: "trait-session", pid: 1 };
 
 function rssBytes() {
     /* Chromium offers this; other browsers do not, and a number nobody
@@ -189,7 +189,7 @@ function makeTaskManagerWindow() {
             const text = document.createElement("div");
 
             text.className = "body";
-            text.textContent = "phipia-session is the desktop itself. " +
+            text.textContent = "trait-session is the desktop itself. " +
                 "Ending it would take the panel and every window with it.";
             dialog.appendChild(text);
             return;
@@ -296,7 +296,7 @@ function makeTaskManagerWindow() {
     const timer = setInterval(draw, 1000);
     const unwatch = watchWindows(draw);
 
-    body.addEventListener("phipia-closed", () => {
+    body.addEventListener("trait-closed", () => {
         clearInterval(timer);
         unwatch();
     });

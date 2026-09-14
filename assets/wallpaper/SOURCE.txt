@@ -1,10 +1,11 @@
 wallpaper.png is this project's own art.
 
-It is not a photograph and not taken from anybody's wallpaper set: white
-ground, the project's mark and wordmark at the upper left, and along the
-foot a run of thin-line towers that climb towards the right.  Each tower
-is a scatter of straight chords drawn inside a narrowing silhouette, so
-the scribble stays in the shape rather than forming a cloud.
+It is not a photograph and not taken from anybody's wallpaper set: a
+cool grey-blue ground (#C4CBD3), the project's mark and wordmark at the
+upper left, and along the foot a run of thin-line towers that climb
+towards the right.  Each tower is a scatter of straight chords
+drawn inside a narrowing silhouette, so the scribble stays in the
+shape rather than forming a cloud.
 
 The scatter is SEEDED - mulberry32 at 20260914 - so the file is the same
 every time it is rendered rather than a lucky throw:

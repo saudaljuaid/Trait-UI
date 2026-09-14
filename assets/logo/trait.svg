@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1123 1434" width="1123" height="1434" role="img" aria-label="Trait OS"
+     fill="#6E7073" stroke="#6E7073" stroke-width="26"
+     stroke-linejoin="round" stroke-linecap="round">
+  <!--
+    Trait OS's mark.
+    Two interlocking brackets seen in a sheared projection, with a third
+    panel standing between them - a stack of windows read edge-on.  The
+    coordinates are traced from the mark this project was given, on its
+    own 1123x1434 frame, so the silhouette is the same shape at any size.
+    Corners are rounded because the original's are; at the 22 pixels the
+    panel draws it at, the rounding is what keeps the three panels from
+    fusing into one blob.
+
+    THE PAINT IS ON THE ROOT ELEMENT, NOT ON A GROUP, and that is not a
+    style choice.  Phipia OS's tools/svgpath.py reads fill, stroke and
+    stroke-width off the <svg> element or off each shape and inherits
+    nothing from a <g> in between, so this file with its paint on a group
+    rasterized to a rectangle of NOTHING - 0 lit pixels at every size -
+    while rendering correctly in every browser.  A mark that is invisible
+    to the generator that has to turn it into a kernel header is a mark
+    that cannot be ported.  Browsers inherit from <svg> exactly as they do
+    from <g>, so moving it up costs nothing here and makes it portable
+    there.  See the integration section of the README.
+  -->
+  <!-- the back bracket, top right -->
+  <path d="M472 112 L946 348 L946 1030 L714 924 L714 566 L472 458 Z"/>
+  <!-- the front bracket, bottom left -->
+  <path d="M160 412 L368 300 L368 664 L252 616 L252 968 L610 1140 L610 1252 L160 1034 Z"/>
+  <!-- the panel standing between them -->
+  <path d="M408 492 L612 592 L612 1074 L408 974 Z"/>
+</svg>

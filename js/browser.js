@@ -16,8 +16,8 @@
 
 const PAGES = {
     "about:home": {
-        title: "Phipia",
-        html: "<h1>Phipia</h1>" +
+        title: "Trait OS",
+        html: "<h1>Trait OS</h1>" +
             "<p>A copy of the Debian LXDE desktop: the panel, its plugins " +
             "and its icons, with this project's own mark on the menu " +
             "button and a minimal wallpaper in place of the " +

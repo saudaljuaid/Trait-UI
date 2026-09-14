@@ -42,7 +42,7 @@ const FS = {
         dirs: [], files: { "todo.txt": 312 }
     },
     "/home/user/Downloads": {
-        dirs: [], files: { "phipia-ui.tar.gz": 1048576 }
+        dirs: [], files: { "trait-os.tar.gz": 1048576 }
     },
     "/home/user/Music": { dirs: [], files: { "track.ogg": 4194304 } },
     "/home/user/Pictures": {
@@ -69,7 +69,7 @@ const FS = {
  */
 const FILE_TEXT = {
     "/home/user/README.txt":
-        "Phipia\n======\n\nA copy of the Debian LXDE desktop.\n\n" +
+        "Trait OS\n========\n\nA copy of the Debian LXDE desktop.\n\n" +
         "The panel is laid out from LXDE's own default profile; the\n" +
         "icons are the real nuoveXT2 files; the wallpaper and the mark\n" +
         "on the menu button are this project's own.\n",

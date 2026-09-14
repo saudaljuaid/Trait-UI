@@ -96,9 +96,9 @@ def check_terminal(page):
 
     #
     # A WORD THE PROMPT CANNOT ALSO BE SAYING, and a whole row rather than
-    # a substring.  The first version echoed "phipia" and searched the
+    # a substring.  The first version echoed "trait" and searched the
     # screen for it - which the prompt contains, because the host is
-    # called phipia - so an echo that printed nothing went on passing.
+    # called trait - so an echo that printed nothing went on passing.
     #
     page.click(".terminal-body")
     page.keyboard.type("echo zzmarker")
@@ -500,12 +500,12 @@ def check_taskmgr(page):
         ".gtk-tree .line > div:first-child",
         "(e) => e.map((c) => c.textContent)")
     #
-    # The COMMAND, not the title.  The first cut listed "user@phipia: ~"
+    # The COMMAND, not the title.  The first cut listed "user@trait: ~"
     # and "user", which are what the title bars say - a task manager whose
     # command column carries window titles is a window list wearing a
     # task manager's headers.
     #
-    for wanted in ("phipia-session", "lxterminal", "pcmanfm", "lxtask"):
+    for wanted in ("trait-session", "lxterminal", "pcmanfm", "lxtask"):
         if wanted not in rows:
             fails("the task list has no %r row; it carries %s"
                   % (wanted, ", ".join(rows)))
@@ -528,11 +528,11 @@ def check_taskmgr(page):
         fails("End Task took the row away and left the window standing")
 
     # Ending the session is refused OUT LOUD rather than ignored.
-    page.click(".gtk-tree .line:has-text('phipia-session')")
+    page.click(".gtk-tree .line:has-text('trait-session')")
     page.wait_for_timeout(120)
     page.click(".gtk-actions button:text-is('End Task')")
     page.wait_for_timeout(250)
-    if not page.is_visible(".dialog:has-text('phipia-session')"):
+    if not page.is_visible(".dialog:has-text('trait-session')"):
         fails("ending the session was ignored rather than refused, so the "
               "button looks broken rather than guarded")
     page.evaluate("""() => {
@@ -1290,7 +1290,7 @@ def check_editor_files(page):
     # OPENED AT THE FILE, not merely opened: an editor that came up empty
     # would have started the program and not opened the document.
     #
-    if "Phipia" not in page.input_value(".leafpad-page"):
+    if "Trait OS" not in page.input_value(".leafpad-page"):
         fails("the editor opened empty, so it started the program without "
               "opening the file")
 

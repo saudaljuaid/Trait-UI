@@ -284,9 +284,9 @@ function closeWindow(win) {
     }
     /* So a window can take its timers down with it rather than leave
      * them running against a frame nobody can see. */
-    win.frame.dispatchEvent(new CustomEvent("phipia-closed"));
+    win.frame.dispatchEvent(new CustomEvent("trait-closed"));
     win.frame.querySelectorAll("*").forEach((el) => {
-        el.dispatchEvent(new CustomEvent("phipia-closed"));
+        el.dispatchEvent(new CustomEvent("trait-closed"));
     });
     win.frame.remove();
     const last = windows[windows.length - 1];
@@ -427,7 +427,7 @@ function openWindow(spec) {
  * when it does not know one - a prompt that swallowed everything would be
  * a picture of a terminal rather than a terminal.
  */
-const TERMINAL_HOST = "phipia";
+const TERMINAL_HOST = "trait";
 const TERMINAL_USER = "user";
 
 function terminalPrompt() {
@@ -453,7 +453,7 @@ function runCommand(line) {
     }
     if (name === "uname") {
         return argv.includes("-a") ?
-            "Phipia " + TERMINAL_HOST + " 1.0 x86_64 GNU/Linux" : "Phipia";
+            "Trait " + TERMINAL_HOST + " 1.0 x86_64 GNU/Linux" : "Trait";
     }
     if (name === "whoami") {
         return TERMINAL_USER;
@@ -607,7 +607,7 @@ function launch(what, openWith) {
         return;
     }
     if (what === "browser") {
-        openWindow({ title: "Phipia - Web Browser",
+        openWindow({ title: "Trait OS - Web Browser",
                      command: "x-www-browser",
                      icon: "assets/icons/nuoveXT2/browser.png",
                      x: 120 + step, y: 80 + step,
@@ -968,7 +968,7 @@ function openLogoutBox() {
      * lxsession-logout puts a banner across the top of its dialog.
      * lxde-common ships one and it is vendored beside the panel's images
      * - but it carries LXDE's own logo and wordmark, which on a desktop
-     * called Phipia would be another project's name on this one's
+     * called Trait OS would be another project's name on this one's
      * dialog.  So the MECHANISM is copied, at lxsession-logout's own
      * 352 by 125 and in the same place, and the identity on it is this
      * project's: tools/banner.html renders it.
@@ -1909,7 +1909,7 @@ function notify(summary, bodyText, icon) {
     const line = document.createElement("div");
 
     box.className = "notification";
-    img.src = icon || "assets/logo/phipia.svg";
+    img.src = icon || "assets/logo/trait.svg";
     img.alt = "";
     title.textContent = summary;
     line.textContent = bodyText;

@@ -52,6 +52,23 @@ near-black bar, where LXDE's own mark is light grey. That is the mark's
 own colour and it has not been repainted here; lightening it is one fill
 value in `assets/logo/phipia.svg`.
 
+## The terminal
+
+`assets/icons/nuoveXT2/terminal.png` is nuoveXT2's own mark — a black
+screen with a `>_` prompt on it, which is the era's terminal icon rather
+than a modern flat one, and it came out of the package unaltered.
+
+The window it opens matches: `#000000`, a light grey foreground, a
+monospace face and a block cursor, in an Openbox frame — a one-pixel
+border, the label at the left of the title bar and the buttons at the
+right. It answers `help`, `echo`, `date`, `uname`, `whoami`, `pwd`, `ls`
+and `clear`, and says `command not found` for anything else. A prompt
+that swallowed what you typed would be a picture of a terminal.
+
+There is no maximise button on the frame, because there is nothing behind
+one. Nothing here is drawn as a control that does not do what it is drawn
+as.
+
 ## Looking at it
 
 ```
@@ -60,4 +77,27 @@ python3 tools/crop.py build/desktop.png out.png X Y W H SCALE
 ```
 
 `shot.py` drives a real browser, so the PNG is what the page actually
-does rather than what the markup meant.
+does rather than what the markup meant. Anything after the size is a
+launcher to press first, so `... 1024 768 terminal` photographs the
+desktop with a terminal open.
+
+```
+python3 tools/check.py                             # and check it
+```
+
+`check.py` drives the same browser and asserts what the panel claims:
+that it is 26 pixels, that its plugins are in the profile's order, that
+the clock is `%R`, that the CPU graph holds green **before the first
+interval tick** (which is what the priming at load is for), and that the
+terminal answers what is typed at it.
+
+Every check in it has been broken on purpose and watched to fail. Two of
+them did not fail the first time and were rewritten:
+
+- *the CPU graph* — asking merely whether it holds green passes with the
+  priming turned off, because the sampler fills it on its own within a
+  few seconds. It is read inside one tick of load now.
+- *the terminal* — the first version echoed the word `phipia` and
+  searched the screen for it, which the prompt already contains, because
+  the host is called `phipia`. It echoes a word the prompt cannot be
+  saying, and matches a whole row rather than a substring.

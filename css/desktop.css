@@ -204,3 +204,98 @@ html, body {
     color: #ffffff;
     white-space: nowrap;
 }
+
+/* ------------------------------------------------------------- windows */
+
+/*
+ * THE FRAME IS OPENBOX'S SHAPE.
+ *
+ * LXDE's window manager is Openbox, and an Openbox frame is a one-pixel
+ * border, a title bar with the label at the left and the three buttons at
+ * the right, and no padding anywhere else - the client starts immediately
+ * under the title bar.  The colours here are the dark theme LXDE ships
+ * with: a near-black border and a title bar that is lighter when the
+ * window has focus than when it does not.
+ */
+#windows { position: absolute; inset: 0; }
+
+.window {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #0d0d0d;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+    overflow: hidden;
+}
+
+.titlebar {
+    height: 20px;
+    flex: 0 0 20px;
+    display: flex;
+    align-items: center;
+    padding: 0 2px 0 5px;
+    background: linear-gradient(#5b6472, #38404c);
+    color: #d9dde3;
+    font-size: 12px;
+    white-space: nowrap;
+    cursor: default;
+}
+.window.inactive .titlebar {
+    background: linear-gradient(#3b3f46, #2b2f35);
+    color: #9aa0a8;
+}
+.titlebar .title {
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/*
+ * Openbox draws its buttons as small marks on the bar rather than as
+ * raised widgets, so these are marks too.  Each one does what it is drawn
+ * as: nothing here is a button with no handler behind it.
+ */
+.titlebar button {
+    width: 17px;
+    height: 16px;
+    flex: 0 0 auto;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: 11px/16px "DejaVu Sans", sans-serif;
+    cursor: default;
+}
+.titlebar button:hover { background: rgba(255, 255, 255, 0.16); }
+.titlebar button.close:hover { background: #a33; color: #fff; }
+
+/* ------------------------------------------------------------ terminal */
+
+/*
+ * BLACK, AND THE OLD KIND OF BLACK.  Not a dark-grey pane with a soft
+ * font: an xterm is #000000 with a light grey foreground and a monospace
+ * face with no antialiasing to speak of at this size.  The cursor is a
+ * filled block, because that is what a terminal with no application
+ * driving it shows.
+ */
+.terminal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    background: #000000;
+    color: #d0d0d0;
+    font-family: "DejaVu Sans Mono", "Liberation Mono", "Courier New",
+        monospace;
+    font-size: 12px;
+    line-height: 14px;
+    padding: 2px 4px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+.terminal-body .prompt { color: #d0d0d0; }
+.terminal-body .cursor {
+    display: inline-block;
+    width: 7px;
+    height: 12px;
+    background: #d0d0d0;
+    vertical-align: -2px;
+}

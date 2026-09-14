@@ -121,34 +121,276 @@ function paintTaskbar() {
         button.appendChild(icon);
         button.appendChild(label);
         button.addEventListener("click", () => {
-            windows.forEach((other) => { other.active = false; });
-            win.active = true;
-            paintTaskbar();
+            if (win.minimised) {
+                setMinimised(win, false);
+            } else if (win.active) {
+                setMinimised(win, true);
+            } else {
+                focusWindow(win);
+            }
         });
         bar.appendChild(button);
     });
 }
 
+/* ---------------------------------------------------------------- windows */
+
+/*
+ * A TASK BUTTON WITH NO WINDOW BEHIND IT IS A LIE, so the taskbar is a
+ * view of this list and the list holds real frames.  Clicking a button
+ * raises its window; clicking the button of the window already on top
+ * puts it away, which is what a taskbar does.
+ */
+const stage = document.getElementById("windows");
+let topZ = 10;
+
+function focusWindow(win) {
+    windows.forEach((other) => {
+        other.active = false;
+        other.frame.classList.add("inactive");
+    });
+    win.active = true;
+    win.frame.classList.remove("inactive");
+    topZ += 1;
+    win.frame.style.zIndex = String(topZ);
+    paintTaskbar();
+}
+
+function closeWindow(win) {
+    const at = windows.indexOf(win);
+
+    if (at >= 0) {
+        windows.splice(at, 1);
+    }
+    win.frame.remove();
+    const last = windows[windows.length - 1];
+    if (last) {
+        focusWindow(last);
+    } else {
+        paintTaskbar();
+    }
+}
+
+function setMinimised(win, minimised) {
+    win.minimised = minimised;
+    win.frame.hidden = minimised;
+    if (minimised) {
+        win.active = false;
+        win.frame.classList.add("inactive");
+        paintTaskbar();
+    } else {
+        focusWindow(win);
+    }
+}
+
+/* Dragging by the title bar, which is the only place Openbox lets you. */
+function makeDraggable(win, handle) {
+    handle.addEventListener("mousedown", (event) => {
+        if (event.button !== 0 || event.target.tagName === "BUTTON") {
+            return;
+        }
+        const startX = event.clientX;
+        const startY = event.clientY;
+        const fromX = win.frame.offsetLeft;
+        const fromY = win.frame.offsetTop;
+
+        focusWindow(win);
+        const move = (moved) => {
+            win.frame.style.left = (fromX + moved.clientX - startX) + "px";
+            win.frame.style.top = (fromY + moved.clientY - startY) + "px";
+        };
+        const drop = () => {
+            document.removeEventListener("mousemove", move);
+            document.removeEventListener("mouseup", drop);
+        };
+        document.addEventListener("mousemove", move);
+        document.addEventListener("mouseup", drop);
+        event.preventDefault();
+    });
+}
+
+function openWindow(spec) {
+    const frame = document.createElement("div");
+    const bar = document.createElement("div");
+    const label = document.createElement("span");
+    const win = { title: spec.title, icon: spec.icon, frame: frame,
+                  active: true, minimised: false };
+
+    frame.className = "window";
+    frame.style.left = spec.x + "px";
+    frame.style.top = spec.y + "px";
+    frame.style.width = spec.width + "px";
+    frame.style.height = spec.height + "px";
+
+    bar.className = "titlebar";
+    label.className = "title";
+    label.textContent = spec.title;
+    bar.appendChild(label);
+    [["iconify", "_", () => setMinimised(win, true)],
+     ["maximize", "\u25A1", () => { /* one size, so this is a no-op */ }],
+     ["close", "\u2715", () => closeWindow(win)]].forEach(
+        ([kind, mark, act]) => {
+            if (kind === "maximize") {
+                return;   /* not drawn: there is nothing behind it */
+            }
+            const button = document.createElement("button");
+
+            button.className = kind;
+            button.textContent = mark;
+            button.title = kind === "close" ? "Close" : "Minimise";
+            button.addEventListener("click", act);
+            bar.appendChild(button);
+        });
+
+    frame.appendChild(bar);
+    frame.appendChild(spec.body);
+    frame.addEventListener("mousedown", () => focusWindow(win));
+    stage.appendChild(frame);
+    makeDraggable(win, bar);
+    windows.push(win);
+    focusWindow(win);
+    return win;
+}
+
+/* --------------------------------------------------------- the terminal */
+
+/*
+ * An old black terminal: #000000, a light grey foreground, a monospace
+ * face and a block cursor.  It answers a handful of commands and says so
+ * when it does not know one - a prompt that swallowed everything would be
+ * a picture of a terminal rather than a terminal.
+ */
+const TERMINAL_HOST = "phipia";
+const TERMINAL_USER = "user";
+
+function terminalPrompt() {
+    return TERMINAL_USER + "@" + TERMINAL_HOST + ":~$ ";
+}
+
+function runCommand(line) {
+    const argv = line.trim().split(/\s+/);
+    const name = argv[0] || "";
+
+    if (name === "") {
+        return "";
+    }
+    if (name === "help") {
+        return "built-ins: help, echo, date, uname, whoami, pwd, ls, " +
+            "clear";
+    }
+    if (name === "echo") {
+        return argv.slice(1).join(" ");
+    }
+    if (name === "date") {
+        return new Date().toString();
+    }
+    if (name === "uname") {
+        return argv.includes("-a") ?
+            "Phipia " + TERMINAL_HOST + " 1.0 x86_64 GNU/Linux" : "Phipia";
+    }
+    if (name === "whoami") {
+        return TERMINAL_USER;
+    }
+    if (name === "pwd") {
+        return "/home/" + TERMINAL_USER;
+    }
+    if (name === "ls") {
+        return "Desktop  Documents  Downloads  Music  Pictures  Videos";
+    }
+    if (name === "clear") {
+        return null;   /* the one command that empties the screen */
+    }
+    return name + ": command not found";
+}
+
+function makeTerminalBody() {
+    const body = document.createElement("div");
+    const output = document.createElement("div");
+    const line = document.createElement("div");
+    const typed = document.createElement("span");
+    const cursor = document.createElement("span");
+    const prompt = document.createElement("span");
+
+    body.className = "terminal-body";
+    body.tabIndex = 0;
+    prompt.className = "prompt";
+    prompt.textContent = terminalPrompt();
+    cursor.className = "cursor";
+    line.appendChild(prompt);
+    line.appendChild(typed);
+    line.appendChild(cursor);
+    body.appendChild(output);
+    body.appendChild(line);
+
+    let buffer = "";
+    const write = (text) => {
+        const row = document.createElement("div");
+
+        row.textContent = text;
+        output.appendChild(row);
+    };
+
+    body.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+            const answer = runCommand(buffer);
+
+            write(terminalPrompt() + buffer);
+            if (answer === null) {
+                output.textContent = "";
+            } else if (answer !== "") {
+                write(answer);
+            }
+            buffer = "";
+        } else if (event.key === "Backspace") {
+            buffer = buffer.slice(0, -1);
+        } else if (event.key.length === 1 && !event.ctrlKey &&
+                !event.metaKey) {
+            buffer += event.key;
+        } else {
+            return;
+        }
+        typed.textContent = buffer;
+        body.scrollTop = body.scrollHeight;
+        event.preventDefault();
+    });
+    body.addEventListener("mousedown", () => { body.focus(); });
+    return body;
+}
+
 /* ----------------------------------------------------------------- launch */
 
-const LAUNCHERS = {
-    files: { title: "File Manager",
-             icon: "assets/icons/nuoveXT2/file-manager.png" },
-    browser: { title: "Web Browser",
-               icon: "assets/icons/nuoveXT2/browser.png" },
-    terminal: { title: "Terminal",
-                icon: "assets/icons/nuoveXT2/terminal.png" }
-};
+let cascade = 0;
 
 function launch(what) {
-    const spec = LAUNCHERS[what];
+    const step = (cascade % 6) * 22;
 
-    if (!spec) {
+    cascade += 1;
+    if (what === "terminal") {
+        openWindow({ title: TERMINAL_USER + "@" + TERMINAL_HOST + ": ~",
+                     icon: "assets/icons/nuoveXT2/terminal.png",
+                     x: 90 + step, y: 70 + step,
+                     width: 620, height: 400,
+                     body: makeTerminalBody() });
+        const body = stage.lastChild.querySelector(".terminal-body");
+        if (body) {
+            body.focus();
+        }
         return;
     }
-    windows.forEach((other) => { other.active = false; });
-    windows.push({ title: spec.title, icon: spec.icon, active: true });
-    paintTaskbar();
+    const plain = { files: ["File Manager",
+                            "assets/icons/nuoveXT2/file-manager.png"],
+                    browser: ["Web Browser",
+                              "assets/icons/nuoveXT2/browser.png"] }[what];
+    if (!plain) {
+        return;
+    }
+    const body = document.createElement("div");
+
+    body.style.cssText = "flex:1 1 auto;background:#ededed;color:#333;" +
+        "padding:10px;font-size:13px";
+    body.textContent = plain[0];
+    openWindow({ title: plain[0], icon: plain[1], x: 120 + step,
+                 y: 90 + step, width: 560, height: 360, body: body });
 }
 
 /* ------------------------------------------------------------------ start */
@@ -159,9 +401,27 @@ document.querySelectorAll("[data-launch]").forEach((button) => {
     });
 });
 
+/*
+ * wincmd's Button1 is `iconify` in the profile, so this minimises
+ * everything rather than merely dropping focus.  The second press puts
+ * back exactly what the first press took down.
+ */
+let iconifiedByWincmd = [];
+
 document.getElementById("wincmd").addEventListener("click", () => {
-    windows.forEach((win) => { win.active = false; });
-    paintTaskbar();
+    const showing = windows.filter((win) => !win.minimised);
+
+    if (showing.length !== 0) {
+        iconifiedByWincmd = showing;
+        showing.forEach((win) => setMinimised(win, true));
+    } else {
+        iconifiedByWincmd.forEach((win) => {
+            if (windows.indexOf(win) >= 0) {
+                setMinimised(win, false);
+            }
+        });
+        iconifiedByWincmd = [];
+    }
 });
 
 /*

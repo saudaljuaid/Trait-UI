@@ -33,6 +33,13 @@ def main():
                                 device_scale_factor=1)
         page.goto((ROOT / "index.html").as_uri())
         page.wait_for_timeout(1200)
+        # Anything after the size on the command line is a launcher to
+        # press before the shot, so a frame can show a window open rather
+        # than only ever an empty desktop.
+        for what in sys.argv[4:]:
+            page.click('[data-launch="%s"]' % what)
+            page.wait_for_timeout(250)
+        page.wait_for_timeout(300)
         page.screenshot(path=str(out))
         browser.close()
     print("wrote %s (%dx%d)" % (out, width, height))

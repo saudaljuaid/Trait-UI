@@ -651,6 +651,126 @@ def check_calculator(page):
     page.wait_for_timeout(150)
 
 
+def check_tooltip(page):
+    """GTK2's tip, in Clearlooks' own tooltip_bg_color - not the browser's
+    dark rounded box, which would be the one thing on this desktop that is
+    not this desktop."""
+    page.hover("#wincmd")
+    page.wait_for_timeout(750)
+    if not page.is_visible("#tooltip.open"):
+        fails("resting on a panel button raised no tip")
+        return
+    paint = page.eval_on_selector(
+        "#tooltip", "(el) => getComputedStyle(el).backgroundColor")
+    if paint.replace(" ", "") != "rgb(245,245,181)":
+        fails("the tip is painted %s where Clearlooks says #F5F5B5"
+              % paint)
+    if page.get_attribute("#wincmd", "title") is not None:
+        fails("the button still carries a title=, so the browser draws "
+              "its own tip over ours")
+    page.mouse.move(500, 300)
+    page.wait_for_timeout(200)
+    if page.is_visible("#tooltip.open"):
+        fails("the tip stayed up after the pointer left")
+
+
+def check_panel_menu(page):
+    page.click("#panel", button="right", position={"x": 400, "y": 13})
+    page.wait_for_timeout(200)
+    if not page.is_visible("#panel-menu.open"):
+        fails("a right click on the panel dropped no menu")
+        return
+    box = page.eval_on_selector(
+        "#panel-menu", "(el) => el.getBoundingClientRect().bottom")
+    top = page.eval_on_selector(
+        "#panel", "(el) => el.getBoundingClientRect().top")
+    if box > top + 1:
+        fails("the panel's menu runs down over the panel")
+    page.mouse.click(500, 300)
+    page.wait_for_timeout(120)
+
+
+def check_desktops(page):
+    """The pager is a pager only if the desktops are real: a window
+    belongs to one, switching hides the others, and the task list follows
+    because the profile says ShowAllDesks=0."""
+    page.evaluate("() => launch('terminal')")
+    page.wait_for_timeout(250)
+    if page.eval_on_selector_all("#pager .desk .desk-win",
+                                 "(e) => e.length") != 1:
+        fails("the pager draws no rectangle for an open window, so a cell "
+              "cannot say which desktop the work is on")
+    page.click("#pager .desk:nth-child(2)")
+    page.wait_for_timeout(250)
+    if page.eval_on_selector_all(".window:not([hidden])",
+                                 "(e) => e.length") != 0:
+        fails("switching desktop left the other desktop's window on "
+              "screen")
+    if page.eval_on_selector_all("#taskbar .task", "(e) => e.length") != 0:
+        fails("the task list still carries the other desktop's window, "
+              "with ShowAllDesks=0 in the profile saying otherwise")
+    # A window opened here belongs here.
+    page.evaluate("() => launch('files')")
+    page.wait_for_timeout(250)
+    if page.eval_on_selector_all("#taskbar .task", "(e) => e.length") != 1:
+        fails("a window opened on the second desktop did not appear in "
+              "its task list")
+    page.click("#pager .desk:nth-child(1)")
+    page.wait_for_timeout(250)
+    if page.eval_on_selector_all(".window:not([hidden]) .terminal-body",
+                                 "(e) => e.length") != 1:
+        fails("switching back did not bring the first desktop's window "
+              "with it")
+    page.evaluate("() => windows.slice().forEach(closeWindow)")
+    page.wait_for_timeout(150)
+
+
+def check_resize_and_switch(page):
+    page.evaluate("() => launch('terminal')")
+    page.wait_for_timeout(250)
+    if page.eval_on_selector_all(".window .grip", "(e) => e.length") != 8:
+        fails("a window has no resize grips, so it can only ever be the "
+              "size it opened at")
+    before = page.eval_on_selector(".window", """(el) => {
+        const r = el.getBoundingClientRect();
+        return Math.round(r.width);
+    }""")
+    box = page.eval_on_selector(".window .grip.e", """(el) => {
+        const r = el.getBoundingClientRect();
+        return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+    }""")
+    page.mouse.move(box["x"], box["y"])
+    page.mouse.down()
+    page.mouse.move(box["x"] + 60, box["y"], steps=6)
+    page.mouse.up()
+    page.wait_for_timeout(200)
+    after = page.eval_on_selector(
+        ".window", "(el) => Math.round(el.getBoundingClientRect().width)")
+    if after <= before:
+        fails("dragging the right grip 60 pixels left the window %d wide, "
+              "the same as before" % after)
+
+    # Alt+Tab raises the one underneath, which is what cycling means.
+    page.evaluate("() => launch('files')")
+    page.wait_for_timeout(250)
+    page.keyboard.down("Alt")
+    page.keyboard.press("Tab")
+    page.wait_for_timeout(200)
+    if not page.is_visible("#switcher.open"):
+        fails("Alt+Tab raised no switcher")
+        page.keyboard.up("Alt")
+        return
+    page.keyboard.up("Alt")
+    page.wait_for_timeout(250)
+    raised = page.evaluate(
+        "() => windows.filter((w) => w.active)[0].command")
+    if raised != "lxterminal":
+        fails("Alt+Tab raised %r rather than the window under the top one"
+              % raised)
+    page.evaluate("() => windows.slice().forEach(closeWindow)")
+    page.wait_for_timeout(150)
+
+
 def main():
     with sync_playwright() as play:
         browser = play.chromium.launch(
@@ -670,6 +790,10 @@ def main():
         check_run_box(page)
         check_volume(page)
         check_lock(page)
+        check_tooltip(page)
+        check_panel_menu(page)
+        check_desktops(page)
+        check_resize_and_switch(page)
         check_desktop(page)
         check_desktop_menu(page)
         check_files(page)
@@ -693,7 +817,8 @@ def main():
           "that navigates, over a desktop whose icons open what they "
           "name, a Settings that reaches every window, and a task "
           "manager that ends what it lists, and a package manager "
-          "whose Apply puts things in the menu"
+          "whose Apply puts things in the menu, on two desktops a "
+          "pager really switches between"
           % (" ".join(PLUGIN_ORDER), green))
     return 0
 

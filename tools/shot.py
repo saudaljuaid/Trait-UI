@@ -41,6 +41,9 @@ def main():
                 page.click("#menu-button")
             elif what.startswith("hover:"):
                 page.hover(what.split(":", 1)[1])
+                page.wait_for_timeout(700)   # past GTK's 500ms tip delay
+            elif what.startswith("rclick:"):
+                page.click(what.split(":", 1)[1], button="right")
             elif what.startswith("click:"):
                 page.click(what.split(":", 1)[1])
             elif what.startswith("pick:"):

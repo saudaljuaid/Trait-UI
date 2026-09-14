@@ -127,13 +127,23 @@ html, body {
 #pager { display: flex; align-items: center; gap: 1px; padding: 2px 0; }
 
 .desk {
+    position: relative;
     width: 28px;
     height: 20px;
     border: 1px solid #1b1b1b;
     background: #6d6d6d;
     cursor: default;
+    overflow: hidden;
 }
 .desk.current { background: #4a6c9b; }
+/* One rectangle per window, where the window actually is - which is what
+ * lxpanel's pager draws and the only thing that makes a cell tell you
+ * which desktop your work is on. */
+.desk .desk-win {
+    position: absolute;
+    background: rgba(255, 255, 255, 0.72);
+    border: 1px solid rgba(0, 0, 0, 0.55);
+}
 
 /* ------------------------------------------------------------ the taskbar */
 
@@ -547,7 +557,9 @@ html, body {
 
 /* The desktop's own menu, which is the same GTK menu the file manager's
  * menu bar drops - one look for one kind of thing. */
-#desktop-menu {
+/* The panel's own menu is the desktop's menu: same kind of thing, same
+ * look, one rule for both. */
+#desktop-menu, #panel-menu {
     position: absolute;
     display: none;
     z-index: 4500;
@@ -559,13 +571,13 @@ html, body {
     color: #000000;
     font-size: 13px;
 }
-#desktop-menu.open { display: block; }
-#desktop-menu .row { padding: 3px 10px; white-space: nowrap;
+#desktop-menu.open, #panel-menu.open { display: block; }
+#desktop-menu .row, #panel-menu .row { padding: 3px 10px; white-space: nowrap;
                      cursor: default; }
-#desktop-menu .row:hover { background: #86ABD9; color: #ffffff; }
-#desktop-menu .row.off { color: #9a9a9a; }
-#desktop-menu .row.off:hover { background: none; color: #9a9a9a; }
-#desktop-menu .sep {
+#desktop-menu .row:hover, #panel-menu .row:hover { background: #86ABD9; color: #ffffff; }
+#desktop-menu .row.off, #panel-menu .row.off { color: #9a9a9a; }
+#desktop-menu .row.off:hover, #panel-menu .row.off:hover { background: none; color: #9a9a9a; }
+#desktop-menu .sep, #panel-menu .sep {
     height: 1px;
     margin: 3px 2px;
     background: #B6B3AF;
@@ -581,3 +593,85 @@ html, body {
     height: calc(100% - var(--panel-height)) !important;
     border-width: 0 0 1px 0;
 }
+
+/* ---------------------------------------------------------- tooltips */
+
+/*
+ * GTK2's tooltip, in Clearlooks' own colours.  Its gtkrc names them:
+ *
+ *   tooltip_bg_color:#F5F5B5   tooltip_fg_color:#000000
+ *
+ * and styles the widget "gtk-tooltip*" with them - the pale yellow note
+ * every GTK2 desktop of that era has.  The browser's own title= tip is a
+ * dark rounded box in the platform's font and would be the one thing on
+ * this desktop that is not this desktop.
+ */
+#tooltip {
+    position: absolute;
+    z-index: 9500;
+    display: none;
+    max-width: 320px;
+    padding: 2px 5px 3px;
+    background: #F5F5B5;
+    color: #000000;
+    border: 1px solid #000000;
+    font-size: 12px;
+    line-height: 15px;
+    pointer-events: none;
+    white-space: nowrap;
+}
+#tooltip.open { display: block; }
+
+/* ------------------------------------------------------- resize grips */
+
+/*
+ * Openbox lets a window be resized from any edge and any corner, so
+ * there are eight grips round the frame.  They are four pixels wide and
+ * invisible, which is what a window border of that era gives you - the
+ * cursor is the whole of the affordance.
+ */
+.grip { position: absolute; z-index: 3; }
+.grip.n { left: 4px; right: 4px; top: -2px; height: 5px; cursor: ns-resize; }
+.grip.s { left: 4px; right: 4px; bottom: -2px; height: 5px; cursor: ns-resize; }
+.grip.w { top: 4px; bottom: 4px; left: -2px; width: 5px; cursor: ew-resize; }
+.grip.e { top: 4px; bottom: 4px; right: -2px; width: 5px; cursor: ew-resize; }
+.grip.nw { top: -2px; left: -2px; width: 8px; height: 8px; cursor: nwse-resize; }
+.grip.ne { top: -2px; right: -2px; width: 8px; height: 8px; cursor: nesw-resize; }
+.grip.sw { bottom: -2px; left: -2px; width: 8px; height: 8px; cursor: nesw-resize; }
+.grip.se { bottom: -2px; right: -2px; width: 8px; height: 8px; cursor: nwse-resize; }
+/* A maximised window has no grips: there is nothing to resize it into. */
+.window.maximised .grip { display: none; }
+
+/* ------------------------------------------------------- the switcher */
+
+/*
+ * Openbox's Alt+Tab list: a plain box in the middle of the screen with
+ * one row per window and the icon beside the title, which is what its
+ * default focus cycling draws.
+ */
+#switcher {
+    position: absolute;
+    z-index: 8000;
+    display: none;
+    left: 50%;
+    top: 45%;
+    transform: translate(-50%, -50%);
+    min-width: 260px;
+    padding: 3px;
+    background: #EDECEB;
+    border: 1px solid #2a2a2a;
+    box-shadow: 0 3px 14px rgba(0, 0, 0, 0.5);
+    color: #000000;
+    font-size: 13px;
+}
+#switcher.open { display: block; }
+#switcher .row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 4px 8px;
+    white-space: nowrap;
+}
+#switcher .row img { width: 20px; height: 20px; }
+#switcher .row.current { background: #86ABD9; color: #FFFFFF; }
+#switcher .empty { padding: 6px 10px; color: #6a6a6a; }

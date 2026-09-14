@@ -107,19 +107,78 @@ function sampleCpu() {
 const DESKTOPS = 2;
 let currentDesktop = 0;
 
+/*
+ * THE DESKTOPS ARE REAL, and that is what makes the pager a pager.
+ *
+ * A window belongs to the desktop it was opened on, switching desktop
+ * shows that desktop's windows and hides the rest, and the TASK LIST
+ * follows - because the panel's own profile says ShowAllDesks=0, which
+ * means the task bar lists the current desktop only.  Two cells that
+ * merely changed colour would be a pager with nothing behind it.
+ */
+function onCurrentDesktop(win) {
+    return win.desktop === currentDesktop;
+}
+
+function switchDesktop(index) {
+    if (index === currentDesktop) {
+        return;
+    }
+    currentDesktop = index;
+    windows.forEach((win) => {
+        win.frame.hidden = win.minimised || !onCurrentDesktop(win);
+    });
+    /* Focus follows the switch: the topmost window of the desktop being
+     * shown, or nothing when it is empty. */
+    const here = windows.filter(
+        (win) => onCurrentDesktop(win) && !win.minimised);
+
+    if (here.length !== 0) {
+        focusWindow(here[here.length - 1]);
+    } else {
+        windows.forEach((win) => {
+            win.active = false;
+            win.frame.classList.add("inactive");
+        });
+        paintTaskbar();
+    }
+    paintPager();
+}
+
 function paintPager() {
     const pager = document.getElementById("pager");
 
     pager.textContent = "";
     for (let index = 0; index < DESKTOPS; index += 1) {
         const cell = document.createElement("div");
+        const here = windows.filter(
+            (win) => win.desktop === index && !win.minimised);
 
         cell.className = index === currentDesktop ? "desk current" : "desk";
-        cell.title = "Desktop " + (index + 1);
-        cell.addEventListener("click", () => {
-            currentDesktop = index;
-            paintPager();
+        cell.title = "Desktop " + (index + 1) + " - " + here.length +
+            (here.length === 1 ? " window" : " windows");
+        /*
+         * lxpanel's pager draws each window as a little rectangle in its
+         * cell, scaled from where it actually is.  So does this: a cell
+         * that showed only a colour could not tell you which desktop your
+         * work is on, which is what a pager is for.
+         */
+        here.forEach((win) => {
+            const box = win.frame.getBoundingClientRect();
+            const room = document.getElementById("desktop")
+                .getBoundingClientRect();
+            const mark = document.createElement("i");
+
+            mark.className = "desk-win";
+            mark.style.left = (box.left / room.width * 100) + "%";
+            mark.style.top = (box.top / room.height * 100) + "%";
+            mark.style.width = Math.max(2, box.width / room.width * 100) +
+                "%";
+            mark.style.height = Math.max(2,
+                box.height / room.height * 100) + "%";
+            cell.appendChild(mark);
         });
+        cell.addEventListener("click", () => switchDesktop(index));
         pager.appendChild(cell);
     }
 }
@@ -151,9 +210,14 @@ function paintTaskbar() {
     const bar = document.getElementById("taskbar");
 
     windowWatchers.forEach((fn) => fn());
+    if (typeof paintPager === "function") {
+        paintPager();
+    }
 
     bar.textContent = "";
-    windows.forEach((win) => {
+    /* ShowAllDesks=0 in the panel's profile: the task bar lists the
+     * desktop you are on and not the others. */
+    windows.filter(onCurrentDesktop).forEach((win) => {
         const button = document.createElement("div");
         const icon = document.createElement("img");
         const label = document.createElement("span");
@@ -196,6 +260,11 @@ let topZ = 10;
 let nextPid = 1;
 
 function focusWindow(win) {
+    /* Raising a window on another desktop goes to that desktop, which is
+     * what a task list entry or an Alt+Tab has to do. */
+    if (win.desktop !== currentDesktop) {
+        switchDesktop(win.desktop);
+    }
     windows.forEach((other) => {
         other.active = false;
         other.frame.classList.add("inactive");
@@ -230,7 +299,7 @@ function closeWindow(win) {
 
 function setMinimised(win, minimised) {
     win.minimised = minimised;
-    win.frame.hidden = minimised;
+    win.frame.hidden = minimised || !onCurrentDesktop(win);
     if (minimised) {
         win.active = false;
         win.frame.classList.add("inactive");
@@ -288,7 +357,8 @@ function openWindow(spec) {
     const win = { title: spec.title, icon: spec.icon, frame: frame,
                   active: true, minimised: false, maximised: false,
                   files: spec.files || null,
-                  command: spec.command || spec.title, pid: nextPid };
+                  command: spec.command || spec.title, pid: nextPid,
+                  desktop: currentDesktop };
 
     frame.className = "window";
     frame.style.left = spec.x + "px";
@@ -337,6 +407,7 @@ function openWindow(spec) {
     frame.addEventListener("mousedown", () => focusWindow(win));
     stage.appendChild(frame);
     makeDraggable(win, bar);
+    addGrips(win);
     windows.push(win);
     focusWindow(win);
     return win;
@@ -1199,3 +1270,321 @@ document.addEventListener("click", () => {
 });
 
 paintDesktopIcons();
+
+/* ---------------------------------------------------------- tooltips */
+
+/*
+ * ONE TIP FOR THE WHOLE DESKTOP, in GTK2's colours rather than the
+ * browser's.
+ *
+ * Anything carrying a title= gets it, and the attribute is moved to
+ * data-tip so the browser does not draw its own on top of ours.  The
+ * delay is GTK2's own 500ms, and the tip follows the pointer's column the
+ * way GTK's does rather than sitting at a fixed corner.
+ */
+const TIP_DELAY_MS = 500;
+let tipTimer = null;
+
+function hideTip() {
+    document.getElementById("tooltip").classList.remove("open");
+    if (tipTimer !== null) {
+        clearTimeout(tipTimer);
+        tipTimer = null;
+    }
+}
+
+function showTip(text, x, y) {
+    const tip = document.getElementById("tooltip");
+    const room = document.getElementById("desktop").getBoundingClientRect();
+
+    tip.textContent = text;
+    tip.classList.add("open");
+    /* Below the pointer, unless that would put it off the foot - a tip on
+     * a panel at the bottom of the screen has nowhere to go but up. */
+    let left = x + 10;
+    let top = y + 18;
+
+    if (left + tip.offsetWidth > room.width) {
+        left = Math.max(0, room.width - tip.offsetWidth - 2);
+    }
+    if (top + tip.offsetHeight > room.height) {
+        top = Math.max(0, y - tip.offsetHeight - 8);
+    }
+    tip.style.left = left + "px";
+    tip.style.top = top + "px";
+}
+
+/* The browser draws its own tip from title=, so the text is moved out of
+ * the attribute the first time an element is pointed at. */
+function tipTextOf(el) {
+    const owner = el.closest("[title], [data-tip]");
+
+    if (!owner) {
+        return null;
+    }
+    if (owner.hasAttribute("title")) {
+        owner.dataset.tip = owner.getAttribute("title");
+        owner.removeAttribute("title");
+    }
+    return owner.dataset.tip || null;
+}
+
+document.addEventListener("mouseover", (event) => {
+    const text = tipTextOf(event.target);
+
+    hideTip();
+    if (!text) {
+        return;
+    }
+    const x = event.clientX;
+    const y = event.clientY;
+
+    tipTimer = setTimeout(() => showTip(text, x, y), TIP_DELAY_MS);
+});
+
+document.addEventListener("mouseout", hideTip);
+document.addEventListener("mousedown", hideTip);
+
+/* ------------------------------------------------- the panel's menu */
+
+/*
+ * lxpanel drops its own menu on a right click: what the panel carries,
+ * where it sits, and a way into its settings.  The rows that lead
+ * somewhere lead there; the ones this desktop has no page for are dimmed
+ * rather than left out.
+ */
+const PANEL_MENU = [
+    ["Add / Remove Panel Items", null],
+    ["Panel Settings", () => launch("settings")],
+    null,
+    ["Create New Panel", null],
+    ["Delete This Panel", null],
+    null,
+    ["About lxpanel", () => {
+        const dialog = makeDialog("About lxpanel", 320);
+        const text = document.createElement("div");
+
+        text.className = "body";
+        text.innerHTML = "<b>lxpanel</b><br>The panel, laid out from " +
+            "LXDE's own default profile: edge=bottom, height=26, and " +
+            "its plugins in the order that profile names them.";
+        dialog.appendChild(text);
+    }]
+];
+
+function buildPanelMenu() {
+    const menu = document.createElement("div");
+
+    menu.id = "panel-menu";
+    /* The desktop's menu look, because it is the same kind of thing. */
+    menu.className = "";
+    menu.style.cssText = document.getElementById("desktop-menu")
+        .getAttribute("style") || "";
+    PANEL_MENU.forEach((entry) => {
+        if (entry === null) {
+            const sep = document.createElement("div");
+
+            sep.className = "sep";
+            menu.appendChild(sep);
+            return;
+        }
+        const row = document.createElement("div");
+
+        row.className = entry[1] ? "row" : "row off";
+        row.textContent = entry[0];
+        if (entry[1]) {
+            row.addEventListener("click", () => {
+                menu.classList.remove("open");
+                entry[1]();
+            });
+        }
+        menu.appendChild(row);
+    });
+    document.getElementById("desktop").appendChild(menu);
+    return menu;
+}
+
+const panelMenu = buildPanelMenu();
+
+panelMenu.id = "panel-menu";
+
+document.getElementById("panel").addEventListener("contextmenu",
+    (event) => {
+        const bar = document.getElementById("panel")
+            .getBoundingClientRect();
+        const room = document.getElementById("desktop")
+            .getBoundingClientRect();
+
+        event.preventDefault();
+        event.stopPropagation();
+        panelMenu.classList.add("open");
+        let x = event.clientX;
+
+        if (x + panelMenu.offsetWidth > room.width) {
+            x = Math.max(0, room.width - panelMenu.offsetWidth);
+        }
+        panelMenu.style.left = x + "px";
+        panelMenu.style.top = (document.getElementById("panel")
+            .classList.contains("top") ? bar.bottom :
+            bar.top - panelMenu.offsetHeight) + "px";
+    });
+
+document.addEventListener("click", () => {
+    panelMenu.classList.remove("open");
+});
+
+/* --------------------------------------------------------- resizing */
+
+/*
+ * EIGHT GRIPS, because Openbox resizes from any edge and any corner.
+ * Which edges a grip moves is in its name: a grip holding "n" moves the
+ * top, one holding "e" moves the right, and a corner does both.  The
+ * minimum is what a title bar and a scrap of client need rather than a
+ * number picked for the look of it.
+ */
+const GRIPS = ["n", "s", "w", "e", "nw", "ne", "sw", "se"];
+const WINDOW_MIN_WIDTH = 180;
+const WINDOW_MIN_HEIGHT = 60;
+
+function addGrips(win) {
+    GRIPS.forEach((side) => {
+        const grip = document.createElement("div");
+
+        grip.className = "grip " + side;
+        grip.addEventListener("mousedown", (event) => {
+            if (event.button !== 0 || win.maximised) {
+                return;
+            }
+            const box = win.frame.getBoundingClientRect();
+            const room = document.getElementById("desktop")
+                .getBoundingClientRect();
+            const from = { x: event.clientX, y: event.clientY,
+                           left: box.left - room.left,
+                           top: box.top - room.top,
+                           width: box.width, height: box.height };
+
+            focusWindow(win);
+            const move = (moved) => {
+                const dx = moved.clientX - from.x;
+                const dy = moved.clientY - from.y;
+                let left = from.left;
+                let top = from.top;
+                let width = from.width;
+                let height = from.height;
+
+                if (side.indexOf("e") >= 0) {
+                    width = Math.max(WINDOW_MIN_WIDTH, from.width + dx);
+                }
+                if (side.indexOf("s") >= 0) {
+                    height = Math.max(WINDOW_MIN_HEIGHT, from.height + dy);
+                }
+                if (side.indexOf("w") >= 0) {
+                    width = Math.max(WINDOW_MIN_WIDTH, from.width - dx);
+                    left = from.left + (from.width - width);
+                }
+                if (side.indexOf("n") >= 0) {
+                    height = Math.max(WINDOW_MIN_HEIGHT, from.height - dy);
+                    top = from.top + (from.height - height);
+                }
+                win.frame.style.left = left + "px";
+                win.frame.style.top = top + "px";
+                win.frame.style.width = width + "px";
+                win.frame.style.height = height + "px";
+            };
+            const drop = () => {
+                document.removeEventListener("mousemove", move);
+                document.removeEventListener("mouseup", drop);
+                paintPager();
+            };
+
+            document.addEventListener("mousemove", move);
+            document.addEventListener("mouseup", drop);
+            event.preventDefault();
+            event.stopPropagation();
+        });
+        win.frame.appendChild(grip);
+    });
+}
+
+/* ------------------------------------------------------- the switcher */
+
+/*
+ * Alt+Tab, the way Openbox cycles: holding Alt keeps the list up and each
+ * Tab moves down it; letting Alt go raises whatever is picked.  It lists
+ * EVERY desktop's windows, because raising one that is elsewhere goes
+ * there - which is what focusWindow() does.
+ */
+let switcherAt = 0;
+let switcherOpen = false;
+
+function switcherList() {
+    return windows.slice().reverse();
+}
+
+function paintSwitcher() {
+    const box = document.getElementById("switcher");
+    const list = switcherList();
+
+    box.textContent = "";
+    if (list.length === 0) {
+        const empty = document.createElement("div");
+
+        empty.className = "empty";
+        empty.textContent = "No windows";
+        box.appendChild(empty);
+        return;
+    }
+    list.forEach((win, index) => {
+        const row = document.createElement("div");
+        const img = document.createElement("img");
+        const name = document.createElement("span");
+
+        row.className = index === switcherAt ? "row current" : "row";
+        img.src = win.icon;
+        img.alt = "";
+        name.textContent = win.title +
+            (win.desktop === currentDesktop ? "" :
+                " — Desktop " + (win.desktop + 1));
+        row.appendChild(img);
+        row.appendChild(name);
+        box.appendChild(row);
+    });
+}
+
+document.addEventListener("keydown", (event) => {
+    if (event.key === "Tab" && event.altKey) {
+        const list = switcherList();
+
+        event.preventDefault();
+        if (!switcherOpen) {
+            switcherOpen = true;
+            switcherAt = list.length > 1 ? 1 : 0;
+            document.getElementById("switcher").classList.add("open");
+        } else if (list.length !== 0) {
+            switcherAt = (switcherAt + 1) % list.length;
+        }
+        paintSwitcher();
+        return;
+    }
+    if (event.key === "Escape" && switcherOpen) {
+        switcherOpen = false;
+        document.getElementById("switcher").classList.remove("open");
+    }
+});
+
+document.addEventListener("keyup", (event) => {
+    if (event.key !== "Alt" || !switcherOpen) {
+        return;
+    }
+    const list = switcherList();
+
+    switcherOpen = false;
+    document.getElementById("switcher").classList.remove("open");
+    if (list[switcherAt]) {
+        if (list[switcherAt].minimised) {
+            setMinimised(list[switcherAt], false);
+        } else {
+            focusWindow(list[switcherAt]);
+        }
+    }
+});

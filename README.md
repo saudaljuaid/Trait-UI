@@ -89,6 +89,43 @@ to the **work area** — the screen less the panel, which is the space
 `setpartialstrut=1` in the panel's profile reserves — and restore to
 exactly where they were.
 
+## The window manager
+
+Openbox's shape, and Openbox's behaviour:
+
+- **Eight resize grips** round every frame, because Openbox resizes from
+  any edge and any corner. They are invisible; the cursor is the whole
+  affordance, which is what a border of that era gives you.
+- **Alt+Tab** cycles the way Openbox does — holding Alt keeps the list up,
+  each Tab moves down it, letting go raises what is picked. It lists every
+  desktop's windows, and raising one that is elsewhere goes there.
+- **Maximise** to the work area, from the button or a double click on the
+  bar. A maximised window has no grips and does not drag.
+
+## Two desktops that are real
+
+The pager is a pager only because the desktops behind it are. A window
+belongs to the one it was opened on; switching shows that desktop's
+windows and hides the rest; and the **task list follows**, because the
+panel's own profile says `ShowAllDesks=0` — the taskbar lists the desktop
+you are on and not the others.
+
+Each cell draws one rectangle per window, scaled from where the window
+actually is, which is what `lxpanel`'s pager draws. Two cells that merely
+changed colour could not tell you which desktop your work is on, which is
+the entire point of a pager.
+
+## Tooltips
+
+GTK2's, in Clearlooks' own colours — `tooltip_bg_color:#F5F5B5` with
+`tooltip_fg_color:#000000`, the pale yellow note every GTK2 desktop of
+that era has, after GTK's own 500ms delay. The text is moved out of
+`title=` the first time an element is pointed at, so the browser does not
+draw its dark rounded box on top of ours — that box would be the one
+thing on this desktop that is not this desktop.
+
+A right click on the panel drops `lxpanel`'s own menu, above the bar.
+
 ## The Files app
 
 `pcmanfm`'s shape, from `pcmanfm`'s own LXDE profile

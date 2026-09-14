@@ -1604,6 +1604,60 @@ int main(int argc, char **argv)
                    "window it named, and the session row refuses to be "
                    "ended at all\n");
         }
+
+        /* THE CLIPBOARD, through the shell's own keys. */
+        {
+            uint32_t user = populate_files();
+            uint32_t files_slot;
+            uint32_t docs;
+            uint32_t before;
+
+            trait_shell_reset(&screen);
+            trait_shell_set_screen(whole());
+            (void)trait_files_open(user);
+            files_slot = trait_shell_open(TRAIT_APP_FILES,
+                (struct trait_rect){ 200U, 150U, 640U, 460U });
+            if (files_slot >= TRAIT_SHELL_MAX_WINDOWS) {
+                return 1;
+            }
+            docs = trait_files_child(user, 1U);
+            trait_files_select(trait_files_child(user, 6U), false);
+
+            event.kind = TRAIT_EVENT_KEY;
+            event.modifiers = TRAIT_MOD_CTRL;
+            event.special = 0U;
+            event.key = 'c';
+            if (!trait_shell_handle(&event)) {
+                fprintf(stderr, "trait: Ctrl+C copied nothing\n");
+                return 1;
+            }
+            before = trait_files_child_count(docs);
+            (void)trait_files_open(docs);
+            event.key = 'v';
+            if (!trait_shell_handle(&event)) {
+                fprintf(stderr, "trait: Ctrl+V pasted nothing\n");
+                return 1;
+            }
+            if (trait_files_child_count(docs) != before + 1U) {
+                fprintf(stderr, "trait: the paste did not arrive\n");
+                return 1;
+            }
+            /* A copy is not spent, so a second paste lands too - and it
+             * cannot overwrite the first. */
+            event.key = 'v';
+            (void)trait_shell_handle(&event);
+            if (trait_files_child_count(docs) != before + 2U) {
+                fprintf(stderr, "trait: the second paste overwrote the "
+                                "first\n");
+                return 1;
+            }
+            event.modifiers = 0U;
+            printf("proof: Ctrl+C then Ctrl+V put README.txt in "
+                   "Documents and a second Ctrl+V put \"%s\" beside "
+                   "it rather than over it\n",
+                   trait_files_node_name(
+                       trait_files_child(docs, before + 1U)));
+        }
         printf("proof: two notices queued and aged out, a tip appeared "
                "only after %u ticks of rest and went when the pointer "
                "left, and a corner drag resized both dimensions and came "

@@ -41,6 +41,10 @@ static uint32_t selected[TRAIT_FILES_MAX_SELECTED];
 static uint32_t selected_count;
 static enum trait_files_view view_mode = TRAIT_FILES_ICONS;
 
+static uint32_t clipboard[TRAIT_FILES_MAX_SELECTED];
+static uint32_t clip_count;
+static bool clip_cut;
+
 /* ================================================================ HELPERS */
 
 static void copy(char *out, const char *text, uint32_t capacity)
@@ -273,6 +277,8 @@ void trait_files_reset(void)
 {
     uint32_t at;
 
+    clip_count = 0U;
+    clip_cut = false;
     node_count = 0U;
     for (at = 0U; at < TRAIT_FILES_MAX_NODES; ++at) {
         child_counts[at] = 0U;
@@ -512,6 +518,158 @@ bool trait_files_name_free(uint32_t folder, const char *name)
         }
     }
     return true;
+}
+
+bool trait_files_copy_selection(bool cut)
+{
+    uint32_t at;
+
+    if (selected_count == 0U) {
+        return false;
+    }
+    for (at = 0U; at < selected_count; ++at) {
+        clipboard[at] = selected[at];
+    }
+    clip_count = selected_count;
+    clip_cut = cut;
+    return true;
+}
+
+bool trait_files_clipboard_has(void)
+{
+    return clip_count != 0U;
+}
+
+bool trait_files_clipboard_is_cut(void)
+{
+    return clip_cut;
+}
+
+/*
+ * "x.txt" already there becomes "x (copy).txt", then "x (copy 2).txt".
+ * The suffix goes before the EXTENSION, because "x.txt (copy)" is a file
+ * the desktop no longer knows how to open.
+ */
+static void unique_name(uint32_t folder, const char *name, char *out)
+{
+    uint32_t dot = 0U;
+    uint32_t at = 0U;
+    uint32_t nth = 1U;
+
+    copy(out, name, TRAIT_FILES_NAME_BYTES);
+    if (trait_files_name_free(folder, out)) {
+        return;
+    }
+    while (name[at] != '\0') {
+        if (name[at] == '.' && at != 0U) {
+            dot = at;
+        }
+        ++at;
+    }
+    if (dot == 0U) {
+        dot = at;
+    }
+    while (nth < 100U) {
+        uint32_t put = 0U;
+        uint32_t from;
+
+        for (from = 0U; from < dot && put + 1U < TRAIT_FILES_NAME_BYTES;
+                ++from) {
+            out[put++] = name[from];
+        }
+        {
+            static const char TAG[] = " (copy";
+            uint32_t tag = 0U;
+
+            while (TAG[tag] != '\0' &&
+                    put + 1U < TRAIT_FILES_NAME_BYTES) {
+                out[put++] = TAG[tag++];
+            }
+        }
+        if (nth > 1U && put + 3U < TRAIT_FILES_NAME_BYTES) {
+            out[put++] = ' ';
+            out[put++] = (char)('0' + nth);
+        }
+        if (put + 1U < TRAIT_FILES_NAME_BYTES) {
+            out[put++] = ')';
+        }
+        for (from = dot; name[from] != '\0' &&
+                put + 1U < TRAIT_FILES_NAME_BYTES; ++from) {
+            out[put++] = name[from];
+        }
+        out[put] = '\0';
+        if (trait_files_name_free(folder, out)) {
+            return;
+        }
+        ++nth;
+    }
+}
+
+/* A DEEP copy: the children come too, as new nodes.  Sharing them would
+ * make two names for one thing, and deleting either would empty both. */
+static uint32_t clone_into(uint32_t node, uint32_t folder,
+    const char *as_name)
+{
+    uint32_t made = trait_files_add(folder, as_name, nodes[node].folder,
+                                    nodes[node].bytes);
+    uint32_t at;
+
+    if (made >= TRAIT_FILES_MAX_NODES) {
+        return TRAIT_FILES_MAX_NODES;
+    }
+    for (at = 0U; at < child_counts[node]; ++at) {
+        uint32_t child = children[node][at];
+
+        if (clone_into(child, made, nodes[child].name) >=
+                TRAIT_FILES_MAX_NODES) {
+            return TRAIT_FILES_MAX_NODES;
+        }
+    }
+    return made;
+}
+
+uint32_t trait_files_paste_into(uint32_t folder)
+{
+    char name[TRAIT_FILES_NAME_BYTES];
+    uint32_t done = 0U;
+    uint32_t at;
+
+    if (clip_count == 0U || folder >= node_count ||
+            !nodes[folder].folder) {
+        return 0U;
+    }
+    for (at = 0U; at < clip_count; ++at) {
+        uint32_t node = clipboard[at];
+
+        if (node >= node_count) {
+            continue;
+        }
+        /* The same refusals a drag has, for the same reasons. */
+        if (node == folder || trait_files_is_inside(folder, node)) {
+            continue;
+        }
+        if (clip_cut) {
+            if (nodes[node].parent == folder) {
+                continue;
+            }
+            if (trait_files_move(node, folder)) {
+                ++done;
+            }
+            continue;
+        }
+        unique_name(folder, nodes[node].name, name);
+        if (clone_into(node, folder, name) < TRAIT_FILES_MAX_NODES) {
+            ++done;
+        }
+    }
+    if (clip_cut) {
+        /* A cut is SPENT once pasted; a copy is not, so the same thing
+         * can be pasted twice. */
+        clip_count = 0U;
+        clip_cut = false;
+    }
+    selected_count = 0U;
+    return done;
 }
 
 bool trait_files_rename(uint32_t node, const char *name)
@@ -1154,6 +1312,81 @@ bool trait_files_self_test(void)
         }
         /* The child went with it rather than being left unreachable. */
         if (trait_files_child_count(spare) != 0U) {
+            return false;
+        }
+    }
+
+    /* The clipboard. */
+    {
+        uint32_t root = trait_files_root();
+        uint32_t box = trait_files_add(root, "box", true, 0U);
+        uint32_t leaf = trait_files_add(box, "leaf.txt", false, 40U);
+        uint32_t away = trait_files_add(root, "away", true, 0U);
+        uint32_t copied;
+
+        if (box >= TRAIT_FILES_MAX_NODES ||
+                leaf >= TRAIT_FILES_MAX_NODES ||
+                away >= TRAIT_FILES_MAX_NODES) {
+            return false;
+        }
+        (void)trait_files_open(root);
+        /* Nothing selected: nothing to copy. */
+        trait_files_clear_selection();
+        if (trait_files_copy_selection(false)) {
+            return false;
+        }
+        trait_files_select(box, false);
+        if (!trait_files_copy_selection(false)) {
+            return false;
+        }
+        if (!trait_files_clipboard_has()) {
+            return false;
+        }
+        if (trait_files_paste_into(away) != 1U) {
+            return false;
+        }
+        /* The CHILD came with it, as a new node rather than a shared
+         * one - so emptying the copy must not empty the original. */
+        copied = trait_files_child(away, 0U);
+        if (copied >= TRAIT_FILES_MAX_NODES) {
+            return false;
+        }
+        if (trait_files_child_count(copied) != 1U) {
+            return false;
+        }
+        if (trait_files_child(copied, 0U) == leaf) {
+            return false;       /* shared, not cloned */
+        }
+        if (!trait_files_remove(trait_files_child(copied, 0U))) {
+            return false;
+        }
+        if (trait_files_child_count(box) != 1U) {
+            return false;       /* the original lost its child */
+        }
+        /* A COPY is not spent: pasting again gives a "(copy)". */
+        if (trait_files_paste_into(away) != 1U) {
+            return false;
+        }
+        if (trait_files_child_count(away) != 2U) {
+            return false;
+        }
+        /* A CUT is spent, and moves rather than duplicates. */
+        trait_files_select(box, false);
+        if (!trait_files_copy_selection(true)) {
+            return false;
+        }
+        if (trait_files_paste_into(away) != 1U) {
+            return false;
+        }
+        if (trait_files_clipboard_has()) {
+            return false;
+        }
+        /* Pasting a folder INTO ITSELF is refused. */
+        trait_files_select(away, false);
+        if (!trait_files_copy_selection(false)) {
+            return false;
+        }
+        if (trait_files_paste_into(away) != 0U) {
             return false;
         }
     }

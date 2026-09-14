@@ -88,6 +88,23 @@ uint32_t trait_files_selected_count(void);
  * would be a path, not a name), and deleting the folder you are looking
  * at - which would leave the window showing a folder that is gone.
  */
+/*
+ * THE CLIPBOARD.
+ *
+ * Copy and Cut take the selection; Paste puts it in the folder being
+ * shown.  A COPY duplicates the subtree - a copied folder that shared its
+ * children with the original would be two names for one thing, and
+ * deleting either would empty both.  A cut is spent once pasted; a copy
+ * is not, which is what lets you paste the same thing twice.
+ *
+ * A name already in the target becomes "x (copy)", then "x (copy 2)",
+ * rather than overwriting: pcmanfm's shape, and never a silent loss.
+ */
+bool trait_files_copy_selection(bool cut);
+bool trait_files_clipboard_has(void);
+bool trait_files_clipboard_is_cut(void);
+uint32_t trait_files_paste_into(uint32_t folder);
+
 bool trait_files_rename(uint32_t node, const char *name);
 bool trait_files_remove(uint32_t node);
 bool trait_files_name_free(uint32_t folder, const char *name);

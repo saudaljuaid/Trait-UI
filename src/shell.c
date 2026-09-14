@@ -1303,6 +1303,32 @@ bool trait_shell_handle(const struct trait_event *event)
                 (event->modifiers & TRAIT_MOD_ALT) != 0U) {
             return trait_shell_close(slot);
         }
+        /*
+         * Ctrl+X/C/V reach the FOCUSED file manager.  They are handled
+         * here rather than in files.c because the clipboard is a
+         * desktop-wide thing: copy in one window, paste in another.
+         */
+        if (apps[slot] == TRAIT_APP_FILES &&
+                (event->modifiers & TRAIT_MOD_CTRL) != 0U) {
+            if (event->key == 'c' || event->key == 'x') {
+                return trait_files_copy_selection(event->key == 'x');
+            }
+            if (event->key == 'v') {
+                uint32_t moved =
+                    trait_files_paste_into(trait_files_here());
+
+                if (moved == 0U) {
+                    return false;
+                }
+                trait_shell_notify("Files",
+                    moved == 1U ? "1 item pasted" : "items pasted");
+                return true;
+            }
+            if (event->key == 'a') {
+                trait_files_select_all();
+                return true;
+            }
+        }
         if (apps[slot] == TRAIT_APP_TERMINAL) {
             if (event->special == TRAIT_KEY_ENTER) {
                 trait_terminal_enter();

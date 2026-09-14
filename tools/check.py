@@ -931,6 +931,115 @@ def check_list_view(page):
     page.wait_for_timeout(150)
 
 
+def check_multi_select(page):
+    """A file manager picks runs of files, not one file.  Select All and
+    Invert Selection are only commands if the selection can hold more
+    than one name, so this reads the selection off the view - which cells
+    carry .selected - rather than asking the code what it thinks it did,
+    and reads the status bar, which is where pcmanfm says how many."""
+    page.evaluate("() => launch('files')")
+    page.wait_for_timeout(300)
+    names = page.eval_on_selector_all(
+        ".files-entry span", "(e) => e.map((s) => s.textContent)")
+    if len(names) < 4:
+        fails("the folder holds %d items, too few to select a run in"
+              % len(names))
+        page.evaluate("() => windows.slice().forEach(closeWindow)")
+        return
+
+    def picked():
+        return page.eval_on_selector_all(
+            ".files-entry.selected span", "(e) => e.map((s) => s.textContent)")
+
+    def status():
+        return page.eval_on_selector(".files-status span",
+                                     "(e) => e.textContent")
+
+    def cell(name):
+        return ".files-entry:has(span:text-is('%s'))" % name
+
+    # Plain click: one, and only one.
+    page.click(cell(names[0]))
+    page.wait_for_timeout(120)
+    if picked() != [names[0]]:
+        fails("a plain click picked %s rather than just %r"
+              % (picked(), names[0]))
+
+    # Ctrl adds.  Two cells lit, and the status bar counting them.
+    page.click(cell(names[2]), modifiers=["Control"])
+    page.wait_for_timeout(120)
+    if sorted(picked()) != sorted([names[0], names[2]]):
+        fails("ctrl-click left %s rather than adding to the selection"
+              % picked())
+    if not status().startswith("2 items selected"):
+        fails("the status bar reads %r with two items picked" % status())
+
+    # Ctrl on something already picked takes it away again.
+    page.click(cell(names[2]), modifiers=["Control"])
+    page.wait_for_timeout(120)
+    if picked() != [names[0]]:
+        fails("ctrl-clicking a picked item left %s rather than removing it"
+              % picked())
+
+    # Shift takes the run from the anchor to here, in the order the view
+    # is in - which is the order read off the view above, not a guess.
+    # The plain click first is not decoration: ctrl-click moves the anchor
+    # to whatever it touched, deselecting included, the way GTK's cursor
+    # does, so the run has to start from a click that says where it starts.
+    page.click(cell(names[0]))
+    page.wait_for_timeout(120)
+    page.click(cell(names[3]), modifiers=["Shift"])
+    page.wait_for_timeout(120)
+    if picked() != names[0:4]:
+        fails("shift-click picked %s rather than the run %s"
+              % (picked(), names[0:4]))
+
+    # And the run really follows the anchor, rather than always starting
+    # at the top: from the second item back down to the first is two.
+    page.click(cell(names[1]))
+    page.wait_for_timeout(120)
+    page.click(cell(names[3]), modifiers=["Shift"])
+    page.wait_for_timeout(120)
+    if picked() != names[1:4]:
+        fails("a run anchored at %r picked %s rather than %s"
+              % (names[1], picked(), names[1:4]))
+
+    # Select All, from the menu it is offered in.
+    page.click(".files-menubar .m:text-is('Edit')")
+    page.wait_for_timeout(120)
+    page.click(".files-menubar .drop .row:text-is('Select All')")
+    page.wait_for_timeout(200)
+    if picked() != names:
+        fails("Select All picked %d of %d items" % (len(picked()), len(names)))
+    if not status().startswith("%d items selected" % len(names)):
+        fails("the status bar reads %r after Select All" % status())
+
+    # Invert on everything is nothing - and the status bar goes back to
+    # saying what is in the folder.
+    page.click(".files-menubar .m:text-is('Edit')")
+    page.wait_for_timeout(120)
+    page.click(".files-menubar .drop .row:text-is('Invert Selection')")
+    page.wait_for_timeout(200)
+    if picked() != []:
+        fails("inverting the whole selection left %s picked" % picked())
+    if status() != "%d items" % len(names):
+        fails("the status bar reads %r with nothing picked" % status())
+
+    # And inverting one is all the others.
+    page.click(cell(names[1]))
+    page.wait_for_timeout(120)
+    page.click(".files-menubar .m:text-is('Edit')")
+    page.wait_for_timeout(120)
+    page.click(".files-menubar .drop .row:text-is('Invert Selection')")
+    page.wait_for_timeout(200)
+    if picked() != [n for n in names if n != names[1]]:
+        fails("inverting one item picked %s rather than the other %d"
+              % (picked(), len(names) - 1))
+
+    page.evaluate("() => windows.slice().forEach(closeWindow)")
+    page.wait_for_timeout(150)
+
+
 def check_item_menu(page):
     """pcmanfm's context menu on a file, and the two rows that change it.
     Rename and Delete have a filesystem of their own to change, so they
@@ -1260,6 +1369,7 @@ def main():
         check_editor_files(page)
         check_window_menu(page)
         check_list_view(page)
+        check_multi_select(page)
         check_browser(page)
         check_shortcuts(page)
         check_logout_banner(page)

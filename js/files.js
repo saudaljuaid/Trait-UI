@@ -174,7 +174,14 @@ function makeFilesWindow() {
      * them, which is where pcmanfm puts that choice.
      */
     const state = { path: "/home/user", history: ["/home/user"], at: 0,
-                    selected: null, showHidden: false, view: "icon" };
+                    /*
+                     * A LIST, NOT ONE NAME.  Select All set a "*" that
+                     * every drawing had to know about, Invert Selection
+                     * had nothing to invert, and the status bar counted
+                     * a wildcard rather than a selection.  It is the
+                     * names that are picked.
+                     */
+                    selected: [], showHidden: false, view: "icon" };
 
     body.className = "files-body files";
 
@@ -191,9 +198,9 @@ function makeFilesWindow() {
                   null,
                   ["Close", () => { closeFilesWindow(body); }]]],
         ["Edit", [["Select All", () => selectAll()],
-                  ["Invert Selection", null],
+                  ["Invert Selection", () => invertSelection()],
                   null,
-                  ["Preferences", null]]],
+                  ["Preferences", () => launch("settings")]]],
         ["View", [["Icon View", () => { state.view = "icon"; draw(); }],
                   ["Detailed List View", () => {
                       state.view = "list";
@@ -312,7 +319,7 @@ function makeFilesWindow() {
     places.className = "files-places";
     view.className = "files-view";
     view.addEventListener("click", () => {
-        state.selected = null;
+        state.selected = [];
         draw();
     });
     panes.appendChild(places);
@@ -355,7 +362,7 @@ function makeFilesWindow() {
             state.at = state.history.length - 1;
         }
         state.path = path;
-        state.selected = null;
+        state.selected = [];
         draw();
     }
 
@@ -363,7 +370,7 @@ function makeFilesWindow() {
         if (state.at > 0) {
             state.at -= 1;
             state.path = state.history[state.at];
-            state.selected = null;
+            state.selected = [];
             draw();
         }
     }
@@ -372,7 +379,7 @@ function makeFilesWindow() {
         if (state.at < state.history.length - 1) {
             state.at += 1;
             state.path = state.history[state.at];
-            state.selected = null;
+            state.selected = [];
             draw();
         }
     }
@@ -385,8 +392,58 @@ function makeFilesWindow() {
         }
     }
 
+    function visibleNames() {
+        const here = FS[state.path];
+
+        return here.dirs.slice().sort().concat(
+            Object.keys(here.files).sort()
+                .filter((n) => state.showHidden || n[0] !== "."));
+    }
+
     function selectAll() {
-        state.selected = "*";
+        state.selected = visibleNames();
+        draw();
+    }
+
+    function invertSelection() {
+        const all = visibleNames();
+
+        state.selected = all.filter(
+            (n) => state.selected.indexOf(n) < 0);
+        draw();
+    }
+
+    function isPicked(name) {
+        return state.selected.indexOf(name) >= 0;
+    }
+
+    /*
+     * Plain click picks one; Ctrl adds or removes; Shift takes the run
+     * from the last one picked to this one.  That is what every file
+     * manager does, and what makes Select All and Invert Selection
+     * commands rather than decorations.
+     */
+    function pickItem(name, event) {
+        const all = visibleNames();
+
+        if (event.shiftKey && state.anchor !== undefined &&
+                all.indexOf(state.anchor) >= 0) {
+            const from = all.indexOf(state.anchor);
+            const to = all.indexOf(name);
+
+            state.selected = all.slice(Math.min(from, to),
+                Math.max(from, to) + 1);
+        } else if (event.ctrlKey || event.metaKey) {
+            if (isPicked(name)) {
+                state.selected = state.selected.filter((n) => n !== name);
+            } else {
+                state.selected = state.selected.concat([name]);
+            }
+            state.anchor = name;
+        } else {
+            state.selected = [name];
+            state.anchor = name;
+        }
         draw();
     }
 
@@ -511,8 +568,7 @@ function makeFilesWindow() {
         const fields = [name, isDir ? "Folder" : describe(name),
                         isDir ? "" : humanSize(size), "14 Sep 2026"];
 
-        line.className = (state.selected === name ||
-            state.selected === "*") ? "line selected" : "line";
+        line.className = isPicked(name) ? "line selected" : "line";
         fields.forEach((text, at) => {
             const cell = document.createElement("div");
 
@@ -535,8 +591,7 @@ function makeFilesWindow() {
         });
         line.addEventListener("click", (event) => {
             event.stopPropagation();
-            state.selected = name;
-            draw();
+            pickItem(name, event);
         });
         line.addEventListener("dblclick", () => {
             if (isDir) {
@@ -547,7 +602,10 @@ function makeFilesWindow() {
         line.addEventListener("contextmenu", (event) => {
             event.preventDefault();
             event.stopPropagation();
-            state.selected = name;
+            if (!isPicked(name)) {
+                state.selected = [name];
+                state.anchor = name;
+            }
             draw();
             openItemMenu(name, isDir, event.clientX, event.clientY);
         });
@@ -577,13 +635,24 @@ function makeFilesWindow() {
         free.textContent = total === 0 ? "" :
             humanSize(total) + " in this folder";
 
-        if (state.selected === "*") {
-            count.textContent = names.length + " items selected";
-        } else if (state.selected && here.files[state.selected] !== undefined) {
-            count.textContent = "\"" + state.selected + "\" (" +
-                humanSize(here.files[state.selected]) + ") selected";
-        } else if (state.selected) {
-            count.textContent = "\"" + state.selected + "\" selected";
+        if (state.selected.length > 1) {
+            /* What was picked, and how much of it - which is what a
+             * file manager says about a run of files. */
+            let bytes = 0;
+
+            state.selected.forEach((n) => {
+                if (here.files[n] !== undefined) {
+                    bytes += here.files[n];
+                }
+            });
+            count.textContent = state.selected.length + " items selected" +
+                (bytes === 0 ? "" : " (" + humanSize(bytes) + ")");
+        } else if (state.selected.length === 1 &&
+                here.files[state.selected[0]] !== undefined) {
+            count.textContent = "\"" + state.selected[0] + "\" (" +
+                humanSize(here.files[state.selected[0]]) + ") selected";
+        } else if (state.selected.length === 1) {
+            count.textContent = "\"" + state.selected[0] + "\" selected";
         } else {
             count.textContent = names.length +
                 (names.length === 1 ? " item" : " items");
@@ -698,7 +767,7 @@ function makeFilesWindow() {
                 } else {
                     writeFile(fullPath(wanted), "");
                 }
-                state.selected = wanted;
+                state.selected = [wanted];
                 draw();
                 return true;
             });
@@ -795,7 +864,7 @@ function makeFilesWindow() {
                 here.files[wanted] = here.files[name];
                 delete here.files[name];
             }
-            state.selected = wanted;
+            state.selected = [wanted];
             dialog.remove();
             draw();
         };
@@ -839,7 +908,7 @@ function makeFilesWindow() {
             } else {
                 delete here.files[name];
             }
-            state.selected = null;
+            state.selected = [];
             dialog.remove();
             draw();
         });
@@ -888,7 +957,7 @@ function makeFilesWindow() {
         const img = document.createElement("img");
         const span = document.createElement("span");
 
-        cell.className = (state.selected === name || state.selected === "*") ?
+        cell.className = isPicked(name) ?
             "files-entry selected" : "files-entry";
         img.src = FILES_ICONS48 + mark + ".png";
         img.alt = "";
@@ -897,8 +966,7 @@ function makeFilesWindow() {
         cell.appendChild(span);
         cell.addEventListener("click", (event) => {
             event.stopPropagation();
-            state.selected = name;
-            draw();
+            pickItem(name, event);
         });
         cell.addEventListener("dblclick", () => {
             if (isDir) {
@@ -909,7 +977,10 @@ function makeFilesWindow() {
         cell.addEventListener("contextmenu", (event) => {
             event.preventDefault();
             event.stopPropagation();
-            state.selected = name;
+            if (!isPicked(name)) {
+                state.selected = [name];
+                state.anchor = name;
+            }
             draw();
             openItemMenu(name, isDir, event.clientX, event.clientY);
         });

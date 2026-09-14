@@ -151,6 +151,19 @@ actually is, which is what `lxpanel`'s pager draws. Two cells that merely
 changed colour could not tell you which desktop your work is on, which is
 the entire point of a pager.
 
+## Notifications
+
+`notification-daemon`'s bubble, which is what Debian's LXDE shows for a
+libnotify message: an icon, a bold summary, a body, and a timeout. It
+sits at the **top right**, not over the panel — a notification that
+covered the clock and the tray would be doing the one thing a
+notification must not.
+
+Only something that actually happened raises one: a package installed or
+removed, a task ended. A desktop that announced its own existence would
+be interrupting you to say nothing, and a check asserts none is up at
+startup.
+
 ## Tooltips
 
 GTK2's, in Clearlooks' own colours — `tooltip_bg_color:#F5F5B5` with

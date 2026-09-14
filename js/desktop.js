@@ -1724,3 +1724,53 @@ function openWindowMenu(win, x, y) {
 
     setTimeout(() => document.addEventListener("click", away), 0);
 }
+
+/* ----------------------------------------------------- notifications */
+
+/*
+ * libnotify's shape: an icon, a summary, a body, and a timeout.  The
+ * default expiry a notification server uses when the caller does not
+ * name one is a few seconds, so that is what this uses; clicking a
+ * bubble dismisses it early, which is what every notification does.
+ *
+ * WHAT RAISES ONE IS THE RULE.  Only something that actually happened -
+ * a package installed, a task ended - and never a decoration.  A desktop
+ * that announced its own existence would be a desktop that interrupts
+ * you to say nothing.
+ */
+const NOTIFY_MS = 4500;
+
+function notify(summary, bodyText, icon) {
+    const host = document.getElementById("notifications");
+    const box = document.createElement("div");
+    const img = document.createElement("img");
+    const text = document.createElement("div");
+    const title = document.createElement("b");
+    const line = document.createElement("div");
+
+    box.className = "notification";
+    img.src = icon || "assets/logo/phipia.svg";
+    img.alt = "";
+    title.textContent = summary;
+    line.textContent = bodyText;
+    text.className = "text";
+    text.appendChild(title);
+    text.appendChild(line);
+    box.appendChild(img);
+    box.appendChild(text);
+    host.appendChild(box);
+
+    let gone = false;
+    const dismiss = () => {
+        if (gone) {
+            return;
+        }
+        gone = true;
+        box.classList.add("going");
+        setTimeout(() => box.remove(), 220);
+    };
+
+    box.addEventListener("click", dismiss);
+    setTimeout(dismiss, NOTIFY_MS);
+    return box;
+}

@@ -194,9 +194,13 @@ function makeTaskManagerWindow() {
             dialog.appendChild(text);
             return;
         }
+        const name = picked.command;
+
         closeWindow(picked.win);
         state.selected = null;
         draw();
+        notify("Task ended", name + " (pid " + picked.pid + ") was ended.",
+            "assets/icons/nuoveXT2/16/applications-system.png");
     }
 
     function draw() {

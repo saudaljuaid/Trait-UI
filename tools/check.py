@@ -647,7 +647,18 @@ def check_calculator(page):
     if "divide" not in page.inner_text(".calc-screen"):
         fails("dividing by nothing printed %r rather than saying it "
               "cannot" % page.inner_text(".calc-screen").strip())
-    page.evaluate("() => windows.slice().forEach(closeWindow)")
+    #
+    # PUT IT BACK.  This check installs galculator to open it, and the
+    # catalogue is one object for the whole run - leaving it installed
+    # turned a later check's "install it" into "remove it", and the
+    # notification it looked for never came.
+    #
+    page.evaluate("""() => {
+        windows.slice().forEach(closeWindow);
+        PACKAGES.filter((p) => p.name === 'galculator')[0]
+            .installed = false;
+        rebuildMenu();
+    }""")
     page.wait_for_timeout(150)
 
 
@@ -1092,6 +1103,52 @@ def check_editor_files(page):
     page.wait_for_timeout(150)
 
 
+def check_notifications(page):
+    """A bubble for something that actually happened, and nothing else.
+    It must not cover the panel, which is the one thing a notification
+    must never do."""
+    #
+    # Cleared first, not asserted empty: an earlier check installs a
+    # package and its bubble is still up - a notification lasts several
+    # seconds by design.  Whether the desktop announces itself unprompted
+    # is asked once at the start of the run instead, where it means
+    # something.
+    #
+    page.evaluate("""() => document.getElementById('notifications')
+        .textContent = ''""")
+    page.evaluate("() => launch('synaptic')")
+    page.wait_for_timeout(300)
+    page.dblclick(".gtk-tree .line:has-text('galculator')")
+    page.wait_for_timeout(150)
+    page.click(".files-toolbar button:text-is('Apply')")
+    page.wait_for_timeout(350)
+    if page.eval_on_selector_all(".notification", "(e) => e.length") != 1:
+        fails("installing a package raised no notification")
+        return
+    said = page.inner_text(".notification")
+    if "galculator" not in said:
+        fails("the notification does not say what was installed: %r"
+              % said.strip())
+    box = page.eval_on_selector(
+        ".notification", "(el) => el.getBoundingClientRect().bottom")
+    panel_top = page.eval_on_selector(
+        "#panel", "(el) => el.getBoundingClientRect().top")
+    if box > panel_top:
+        fails("the notification runs down over the panel, covering the "
+              "clock and the tray")
+    page.click(".notification")
+    page.wait_for_timeout(350)
+    if page.eval_on_selector_all(".notification", "(e) => e.length") != 0:
+        fails("clicking a notification did not dismiss it")
+    page.evaluate("""() => {
+        windows.slice().forEach(closeWindow);
+        PACKAGES.filter((p) => p.name === 'galculator')[0]
+            .installed = false;
+        rebuildMenu();
+    }""")
+    page.wait_for_timeout(150)
+
+
 def main():
     with sync_playwright() as play:
         browser = play.chromium.launch(
@@ -1102,6 +1159,11 @@ def main():
         # by the priming at load and by nothing else.
         page.wait_for_timeout(120)
         green = check_cpu(page)
+        # Nothing has happened yet, so nothing may have been announced.
+        if page.eval_on_selector_all(".notification",
+                                     "(e) => e.length") != 0:
+            fails("the desktop raised a notification at startup, before "
+                  "anything had happened")
 
         page.wait_for_timeout(800)
         check_panel(page)
@@ -1128,6 +1190,7 @@ def main():
         check_settings(page)
         check_taskmgr(page)
         check_synaptic(page)
+        check_notifications(page)
         check_calculator(page)
         check_terminal(page)
         check_wincmd(page)
@@ -1147,7 +1210,7 @@ def main():
           "manager that ends what it lists, and a package manager "
           "whose Apply puts things in the menu, on two desktops a "
           "pager really switches between, reached by Openbox's own "
-          "keys"
+          "keys, saying so when something happens"
           % (" ".join(PLUGIN_ORDER), green))
     return 0
 

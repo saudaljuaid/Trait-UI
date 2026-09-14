@@ -186,6 +186,9 @@ function makeSynapticWindow() {
             note("Nothing is marked.");
             return;
         }
+        const put = [];
+        const took = [];
+
         names.forEach((name) => {
             const pkg = PACKAGES.filter((p) => p.name === name)[0];
 
@@ -193,10 +196,23 @@ function makeSynapticWindow() {
                 return;
             }
             pkg.installed = MARKS[name] === "install";
+            (pkg.installed ? put : took).push(name);
             delete MARKS[name];
         });
         rebuildMenu();
         draw();
+        /* What actually happened, and only what happened. */
+        if (put.length !== 0) {
+            notify("Packages installed", put.join(", ") +
+                (put.length === 1 ? " is now in the menu." :
+                    " are now in the menu."),
+                "assets/icons/nuoveXT2/16/applications-system.png");
+        }
+        if (took.length !== 0) {
+            notify("Packages removed", took.join(", ") +
+                " taken off this machine.",
+                "assets/icons/nuoveXT2/16/applications-system.png");
+        }
     }
 
     function draw() {

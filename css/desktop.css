@@ -690,3 +690,44 @@ html, body {
  * the page, so it needs the z-index the others get from being late in
  * the document. */
 #window-menu { z-index: 8500; }
+
+/* ------------------------------------------------------ notifications */
+
+/*
+ * notification-daemon's bubble, which is what Debian's LXDE shows for a
+ * libnotify message: a GTK box at the top right with the icon, a bold
+ * summary and a body under it, which fades after a few seconds.
+ *
+ * Top right rather than over the panel, because the panel is at the foot
+ * and a bubble there would cover the clock and the tray - which is
+ * exactly what a notification must not do.
+ */
+#notifications {
+    position: absolute;
+    z-index: 9200;
+    top: calc(var(--work-top) + 10px);
+    right: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    pointer-events: none;
+}
+.notification {
+    display: flex;
+    gap: 8px;
+    width: 300px;
+    padding: 8px 10px;
+    background: #EDECEB;
+    border: 1px solid #7a7a7a;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+    color: #1A1A1A;
+    font-size: 12px;
+    pointer-events: auto;
+    cursor: default;
+    opacity: 1;
+    transition: opacity 200ms linear;
+}
+.notification.going { opacity: 0; }
+.notification img { width: 24px; height: 24px; flex: 0 0 auto; }
+.notification b { display: block; margin-bottom: 2px; font-size: 13px; }
+.notification .text { min-width: 0; }

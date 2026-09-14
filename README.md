@@ -326,14 +326,21 @@ desktop with a terminal open.
 python3 tools/check.py                             # and check it
 ```
 
-`check.py` drives the same browser and asserts what the panel claims:
+`check.py` drives the same browser and asserts what the desktop claims —
+**19 checks, 126 assertions**, over the panel, the file manager, the
+editor, Settings, the task manager, the package manager, the browser, the
+window manager and the desktop itself. It asserts, among other things:
 that it is 26 pixels, that its plugins are in the profile's order, that
 the clock is `%R`, that the CPU graph holds green **before the first
 interval tick** (which is what the priming at load is for), and that the
 terminal answers what is typed at it.
 
-Every check in it has been broken on purpose and watched to fail. Two of
-them did not fail the first time and were rewritten:
+Every check in it has been broken on purpose and watched to fail, and the
+failure message is quoted in the commit that added it.
+
+**Several did not fail the first time, and those are the interesting
+ones.** A check that survives the removal of the thing it checks is worse
+than no check:
 
 - *the CPU graph* — asking merely whether it holds green passes with the
   priming turned off, because the sampler fills it on its own within a
@@ -342,6 +349,20 @@ them did not fail the first time and were rewritten:
   searched the screen for it, which the prompt already contains, because
   the host is called `phipia`. It echoes a word the prompt cannot be
   saying, and matches a whole row rather than a substring.
+- *the task manager's rows* — asking whether a disabled command is still
+  in the row answers itself, because dropping it would leave its
+  neighbour standing in the same slot. It measures that the neighbour has
+  not moved, to the pixel.
+- *Save As* — asking whether the dialog **says** "no such folder" passes
+  when the save succeeded and the dialog closed, which is the exact
+  failure it was meant to catch. It asks whether the box is still there
+  first.
+
+And several were faults in the checks themselves, not the code: one
+opened a second package manager and clicked a window underneath, one
+renamed a folder a later check needed, one left a package installed that
+turned a later "install it" into "remove it", and two used selectors that
+matched the same widget in the wrong window.
 
 Two bugs the checks found that nothing looked wrong about:
 

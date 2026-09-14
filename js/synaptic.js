@@ -304,6 +304,26 @@ function makeSynapticWindow() {
         status.appendChild(left);
         status.appendChild(rightSpan);
         apply.disabled = marked === 0;
+        /*
+         * A tray icon while marks are waiting: the state outlives this
+         * window, and without it you would have to reopen the window to
+         * find out you had left something unapplied.
+         */
+        setTrayIcon("synaptic", marked === 0 ? null : {
+            icon: "assets/icons/nuoveXT2/16/applications-system.png",
+            tip: marked + (marked === 1 ? " package is" :
+                " packages are") + " marked and not yet applied",
+            act: () => {
+                const win = windows.filter(
+                    (w) => w.command === "synaptic")[0];
+
+                if (win) {
+                    focusWindow(win);
+                } else {
+                    launch("synaptic");
+                }
+            }
+        });
     }
 
     draw();

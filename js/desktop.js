@@ -1297,6 +1297,50 @@ document.addEventListener("click", () => {
 
 paintDesktopIcons();
 
+/* -------------------------------------------------------- the tray */
+
+/*
+ * THE TRAY HOLDS WHAT APPLICATIONS PUT IN IT, and nothing else.
+ *
+ * It was empty, and that was honest: a tray with a decoration in it is
+ * not a tray.  It is still empty until something has a reason to be
+ * there, and the first thing that does is the package manager, which
+ * shows an icon while marks are waiting to be applied - a state the
+ * machine is really in, that outlives the window, and that you would
+ * otherwise have to reopen the window to find out about.  That is
+ * exactly what a tray icon is for.
+ *
+ * Clicking it raises the window that owns it, which is what clicking a
+ * tray icon does.
+ */
+const trayIcons = {};
+
+function setTrayIcon(owner, spec) {
+    const tray = document.getElementById("tray");
+
+    if (!spec) {
+        delete trayIcons[owner];
+    } else {
+        trayIcons[owner] = spec;
+    }
+    tray.textContent = "";
+    Object.keys(trayIcons).forEach((name) => {
+        const it = trayIcons[name];
+        const img = document.createElement("img");
+
+        img.className = "tray-icon";
+        img.src = it.icon;
+        img.alt = it.tip;
+        img.title = it.tip;
+        img.addEventListener("click", () => {
+            if (it.act) {
+                it.act();
+            }
+        });
+        tray.appendChild(img);
+    });
+}
+
 /* ---------------------------------------------------------- tooltips */
 
 /*

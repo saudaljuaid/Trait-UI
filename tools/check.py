@@ -576,8 +576,21 @@ def check_synaptic(page):
     page.wait_for_timeout(150)
     if page.is_disabled(".files-toolbar button:text-is('Apply')"):
         fails("marking a package left Apply dead")
+    #
+    # A TRAY ICON WHILE MARKS ARE WAITING, and none once they are applied.
+    # The tray holds what applications put in it; a tray with a decoration
+    # in it is not a tray.
+    #
+    if page.eval_on_selector_all("#tray .tray-icon", "(e) => e.length") \
+            != 1:
+        fails("a package is marked and the tray shows nothing, so closing "
+              "the window would lose that there is anything pending")
     page.click(".files-toolbar button:text-is('Apply')")
     page.wait_for_timeout(300)
+    if page.eval_on_selector_all("#tray .tray-icon", "(e) => e.length") \
+            != 0:
+        fails("the marks were applied and the tray still says something "
+              "is pending")
 
     page.click("#menu-button")
     page.wait_for_timeout(200)

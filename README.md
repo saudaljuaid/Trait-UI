@@ -151,6 +151,17 @@ actually is, which is what `lxpanel`'s pager draws. Two cells that merely
 changed colour could not tell you which desktop your work is on, which is
 the entire point of a pager.
 
+## The tray
+
+It holds what applications put in it, and nothing else. It was empty, and
+that was honest — a tray with a decoration in it is not a tray.
+
+The first thing with a reason to be there is the package manager, which
+shows an icon while marks are waiting to be applied: a state the machine
+is really in, that outlives the window, and that you would otherwise have
+to reopen the window to find out about. Clicking it raises that window.
+The icon goes when the marks do.
+
 ## Notifications
 
 `notification-daemon`'s bubble, which is what Debian's LXDE shows for a

@@ -22,7 +22,7 @@ HOST_FLAGS := -std=c11 -D_POSIX_C_SOURCE=200809L -O2 -g \
 	-Wstrict-prototypes -Wmissing-prototypes \
 	-I$(ROOT)/include -I$(ROOT)/src -I.
 
-SHELL_SOURCES := $(ROOT)/src/surface.c $(ROOT)/src/font.c \
+SHELL_SOURCES := $(ROOT)/src/surface.c $(ROOT)/src/theme.c $(ROOT)/src/font.c \
 	$(ROOT)/src/panel.c \
 	$(ROOT)/src/window.c $(ROOT)/src/taskmgr.c $(ROOT)/src/settings.c $(ROOT)/src/files.c $(ROOT)/src/terminal.c \
 	$(ROOT)/src/menu.c $(ROOT)/src/packages.c $(ROOT)/src/shell.c

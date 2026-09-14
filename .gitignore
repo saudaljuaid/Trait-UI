@@ -3,3 +3,4 @@ build/
 assets/wallpaper/wallpaper.bin
 build/c/loop-*.png
 build/c/bar-*.png
+build/c/theme-*.png

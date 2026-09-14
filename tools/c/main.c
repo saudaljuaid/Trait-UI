@@ -198,8 +198,9 @@ static void populate_settings(void)
     memset(&row, 0, sizeof(row));
     row.kind = TRAIT_SETTINGS_CHOICE;
     (void)snprintf(row.label, TRAIT_SETTINGS_TEXT_BYTES, "Widget theme");
-    (void)snprintf(row.value, TRAIT_SETTINGS_TEXT_BYTES, "Clearlooks");
+    row.setting = TRAIT_SET_WIDGET_THEME;
     (void)trait_settings_add_row(0U, &row);
+    row.setting = TRAIT_SET_NOTHING;
     (void)snprintf(row.label, TRAIT_SETTINGS_TEXT_BYTES, "Font size");
     (void)snprintf(row.value, TRAIT_SETTINGS_TEXT_BYTES, "Normal (11)");
     (void)trait_settings_add_row(0U, &row);
@@ -213,14 +214,17 @@ static void populate_settings(void)
 
     memset(&row, 0, sizeof(row));
     row.kind = TRAIT_SETTINGS_CHOICE;
-    (void)snprintf(row.label, TRAIT_SETTINGS_TEXT_BYTES, "Wallpaper mode");
-    (void)snprintf(row.value, TRAIT_SETTINGS_TEXT_BYTES, "Crop to fit");
+    (void)snprintf(row.label, TRAIT_SETTINGS_TEXT_BYTES, "File view");
+    row.setting = TRAIT_SET_FILES_VIEW;
     (void)trait_settings_add_row(1U, &row);
+    row.setting = TRAIT_SET_NOTHING;
     row.kind = TRAIT_SETTINGS_SWITCH;
     row.on = true;
     (void)snprintf(row.label, TRAIT_SETTINGS_TEXT_BYTES,
                    "Show icons on the desktop");
+    row.setting = TRAIT_SET_DESKTOP_ICONS;
     (void)trait_settings_add_row(1U, &row);
+    row.setting = TRAIT_SET_NOTHING;
 
     memset(&row, 0, sizeof(row));
     row.kind = TRAIT_SETTINGS_CHOICE;
@@ -973,6 +977,76 @@ int main(int argc, char **argv)
                "volume icon opens a slider that really moves the level "
                "to %u, and a window on desktop 2 is on the screen only "
                "when desktop 2 is\n", trait_shell_volume());
+    }
+
+    /*
+     * SETTINGS THAT CHANGE THE DESKTOP.  A press on the Widget row is
+     * routed through the shell like any other, and the frame after it
+     * shows EVERY window in the new palette - not just the Settings
+     * window that was clicked.
+     */
+    {
+        struct trait_event press;
+        struct trait_rect row;
+        uint32_t settings;
+        uint32_t was;
+
+        memset(&press, 0, sizeof(press));
+        press.kind = TRAIT_EVENT_POINTER_DOWN;
+
+        trait_shell_reset(&screen);
+        trait_shell_set_screen(whole());
+        (void)trait_panel_initialize();
+        (void)trait_panel_set_clock("15:43");
+        (void)trait_theme_select(0U);
+        populate_taskmgr();
+        populate_settings();
+        (void)trait_shell_open(TRAIT_APP_TASKMGR,
+            (struct trait_rect){ 110U, 110U, 520U, 300U });
+        settings = trait_shell_open(TRAIT_APP_SETTINGS,
+            (struct trait_rect){ 500U, 330U, 520U, 280U });
+
+        if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
+            flat(0x212121U);
+        }
+        trait_shell_draw();
+        (void)trait_panel_draw(whole());
+        if (!emit(out, "theme-before.png", whole())) {
+            return 1;
+        }
+
+        was = trait_theme_selected();
+        if (!trait_settings_row_bounds(trait_shell_window(settings), 0U,
+                                       &row)) {
+            return 1;
+        }
+        press.x = row.x + row.width - 40U;
+        press.y = row.y + row.height / 2U;
+        if (!trait_shell_handle(&press)) {
+            fprintf(stderr, "trait: a press on the widget row did "
+                            "nothing\n");
+            return 1;
+        }
+        /* Twice, to reach the dark one, so the frame is unmistakable. */
+        (void)trait_shell_handle(&press);
+        if (trait_theme_selected() == was) {
+            fprintf(stderr, "trait: the widget row did not change the "
+                            "theme\n");
+            return 1;
+        }
+
+        if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
+            flat(0x212121U);
+        }
+        trait_shell_draw();
+        (void)trait_panel_draw(whole());
+        if (!emit(out, "theme-after.png", whole())) {
+            return 1;
+        }
+        printf("proof: pressing the Widget row moved the desktop from "
+               "%s to %s, and the Task Manager behind it changed with "
+               "it\n", trait_theme_name(was),
+               trait_theme_name(trait_theme_selected()));
     }
     printf("proof: a %u-pixel panel over a %ux%u screen, %u tasks, a "
            "%u-column cpu graph and a clock that does not move when a "

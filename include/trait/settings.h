@@ -32,12 +32,39 @@ enum trait_settings_kind {
     TRAIT_SETTINGS_NOTE          /* text, changing nothing and saying so */
 };
 
+/*
+ * WHAT A ROW ACTUALLY CHANGES.
+ *
+ * A row used to carry a label and a value and nothing else, which made
+ * the whole window a picture: it listed themes it could not apply and
+ * offered switches that switched nothing.  `setting` says what the row
+ * IS, so pressing it can do the thing rather than look like it did.
+ */
+enum trait_settings_what {
+    TRAIT_SET_NOTHING = 0,
+    TRAIT_SET_WIDGET_THEME,
+    TRAIT_SET_DESKTOP_ICONS,
+    TRAIT_SET_SHOW_HIDDEN,
+    TRAIT_SET_FILES_VIEW
+};
+
 struct trait_settings_row {
     char label[TRAIT_SETTINGS_TEXT_BYTES];
     char value[TRAIT_SETTINGS_TEXT_BYTES];
     enum trait_settings_kind kind;
     bool on;
+    enum trait_settings_what setting;
 };
+
+/*
+ * Press a row.  A CHOICE steps to its next option and wraps; a SWITCH
+ * flips.  Returns true if something changed, and the change is real -
+ * picking a widget theme repaints every window on the desktop.
+ */
+bool trait_settings_press(uint32_t page, uint32_t row);
+/* Where a row sits, so a press can be turned into one. */
+bool trait_settings_row_bounds(const struct trait_window *window,
+    uint32_t row, struct trait_rect *out);
 
 struct trait_settings_page {
     char name[TRAIT_SETTINGS_TEXT_BYTES];

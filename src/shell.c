@@ -333,6 +333,18 @@ static bool handle_client(uint32_t slot, const struct trait_event *event)
                 return true;
             }
         }
+        /* And the rows on the page you are looking at. */
+        for (at = 0U; at < TRAIT_SETTINGS_MAX_ROWS; ++at) {
+            struct trait_rect row;
+
+            if (!trait_settings_row_bounds(&windows[slot], at, &row)) {
+                break;
+            }
+            if (trait_rect_contains(row, event->x, event->y)) {
+                return trait_settings_press(trait_settings_selected(),
+                                            at);
+            }
+        }
         return false;
     case TRAIT_APP_FILES:
         for (at = 0U; at < trait_files_child_count(trait_files_here());

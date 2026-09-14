@@ -2,6 +2,7 @@
 #include <trait/settings.h>
 
 #include <trait/font.h>
+#include <trait/files.h>
 #include <trait/theme.h>
 
 #define TAB_HEIGHT 24U
@@ -144,6 +145,90 @@ static void draw_tabs(struct trait_surface *surface,
     }
 }
 
+bool trait_settings_row_bounds(const struct trait_window *window,
+    uint32_t row, struct trait_rect *out)
+{
+    struct trait_rect client;
+
+    if (window == NULL || out == NULL || current >= page_count ||
+            row >= pages[current].row_count) {
+        return false;
+    }
+    client = trait_window_client(window);
+    out->x = client.x + 4U + PAGE_PAD;
+    out->y = client.y + 4U + TAB_HEIGHT + PAGE_PAD + row * ROW_HEIGHT;
+    out->width = client.width > 8U + PAGE_PAD * 2U ?
+        client.width - 8U - PAGE_PAD * 2U : 0U;
+    out->height = ROW_HEIGHT;
+    return true;
+}
+
+/*
+ * The value a row SHOWS is read from the thing it controls, not stored
+ * beside it.  A settings window that keeps its own copy of the state
+ * drifts from it - the page says Clearlooks while the desktop is dark -
+ * and that is worse than a page that cannot change anything at all.
+ */
+static void refresh(struct trait_settings_row *row)
+{
+    switch (row->setting) {
+    case TRAIT_SET_WIDGET_THEME:
+        copy(row->value, trait_theme_name(trait_theme_selected()),
+             TRAIT_SETTINGS_TEXT_BYTES);
+        break;
+    case TRAIT_SET_FILES_VIEW:
+        copy(row->value,
+             trait_files_view_mode() == TRAIT_FILES_LIST ?
+                 "Detailed list" : "Icons",
+             TRAIT_SETTINGS_TEXT_BYTES);
+        break;
+    case TRAIT_SET_DESKTOP_ICONS:
+    case TRAIT_SET_SHOW_HIDDEN:
+    case TRAIT_SET_NOTHING:
+    default:
+        break;
+    }
+}
+
+bool trait_settings_press(uint32_t page, uint32_t row)
+{
+    struct trait_settings_row *target;
+
+    if (page >= page_count || row >= pages[page].row_count) {
+        return false;
+    }
+    target = &pages[page].rows[row];
+    switch (target->setting) {
+    case TRAIT_SET_WIDGET_THEME: {
+        uint32_t next = trait_theme_selected() + 1U;
+
+        if (next >= trait_theme_count()) {
+            next = 0U;
+        }
+        if (!trait_theme_select(next)) {
+            return false;
+        }
+        refresh(target);
+        return true;
+    }
+    case TRAIT_SET_FILES_VIEW:
+        trait_files_set_view(
+            trait_files_view_mode() == TRAIT_FILES_LIST ?
+                TRAIT_FILES_ICONS : TRAIT_FILES_LIST);
+        refresh(target);
+        return true;
+    case TRAIT_SET_DESKTOP_ICONS:
+    case TRAIT_SET_SHOW_HIDDEN:
+        target->on = !target->on;
+        return true;
+    case TRAIT_SET_NOTHING:
+    default:
+        /* A note is not a control.  Pressing one does nothing and says
+         * so, rather than swallowing the press. */
+        return false;
+    }
+}
+
 void trait_settings_draw(struct trait_surface *surface,
     const struct trait_window *window)
 {
@@ -182,6 +267,9 @@ void trait_settings_draw(struct trait_surface *surface,
     draw_tabs(surface, window, client);
 
     page = &pages[current];
+    for (at = 0U; at < page->row_count; ++at) {
+        refresh(&page->rows[at]);
+    }
     top = body.y + PAGE_PAD;
     for (at = 0U; at < page->row_count; ++at) {
         const struct trait_settings_row *row = &page->rows[at];
@@ -293,6 +381,7 @@ bool trait_settings_self_test(void)
     copy(row.value, "Clearlooks", TRAIT_SETTINGS_TEXT_BYTES);
     row.kind = TRAIT_SETTINGS_CHOICE;
     row.on = false;
+    row.setting = TRAIT_SET_WIDGET_THEME;
     if (!trait_settings_add_row(0U, &row)) {
         return false;
     }
@@ -300,6 +389,7 @@ bool trait_settings_self_test(void)
     copy(row.value, "", TRAIT_SETTINGS_TEXT_BYTES);
     row.kind = TRAIT_SETTINGS_SWITCH;
     row.on = true;
+    row.setting = TRAIT_SET_DESKTOP_ICONS;
     if (!trait_settings_add_row(1U, &row)) {
         return false;
     }
@@ -315,6 +405,68 @@ bool trait_settings_self_test(void)
     trait_settings_select(9U);
     if (trait_settings_selected() != 1U) {
         return false;
+    }
+
+    /*
+     * And the rows CHANGE THINGS.  Pressing the widget-theme row must
+     * move the palette, not just the word on the page - so this reads the
+     * colour the rest of the desktop draws with, not the row's own text.
+     */
+    {
+        uint32_t was_theme = trait_theme_selected();
+        uint32_t was_bg = TRAIT_BG;
+
+        if (!trait_settings_press(0U, 0U)) {
+            return false;
+        }
+        if (trait_theme_selected() == was_theme) {
+            return false;
+        }
+        if (TRAIT_BG == was_bg) {
+            return false;
+        }
+        /* The page now SAYS what the desktop IS, because the value is
+         * read from the theme rather than stored beside it. */
+        {
+            const char *shown = pages[0].rows[0].value;
+            const char *real = trait_theme_name(trait_theme_selected());
+            uint32_t byte = 0U;
+
+            while (shown[byte] != '\0' && real[byte] != '\0' &&
+                    shown[byte] == real[byte]) {
+                ++byte;
+            }
+            if (shown[byte] != real[byte]) {
+                return false;
+            }
+        }
+        /* It WRAPS rather than stopping at the last theme. */
+        while (trait_theme_selected() != was_theme) {
+            if (!trait_settings_press(0U, 0U)) {
+                return false;
+            }
+        }
+        if (TRAIT_BG != was_bg) {
+            return false;
+        }
+        /* A switch flips. */
+        if (!trait_settings_press(1U, 0U)) {
+            return false;
+        }
+        if (pages[1].rows[0].on) {
+            return false;
+        }
+        /* A row that is not a control refuses the press rather than
+         * swallowing it. */
+        copy(row.label, "A note", TRAIT_SETTINGS_TEXT_BYTES);
+        row.kind = TRAIT_SETTINGS_NOTE;
+        row.setting = TRAIT_SET_NOTHING;
+        if (!trait_settings_add_row(1U, &row)) {
+            return false;
+        }
+        if (trait_settings_press(1U, 1U)) {
+            return false;
+        }
     }
     trait_settings_reset();
     return true;

@@ -1,15 +1,12 @@
-onion.png (originally onion_vegetables_16828.png) and
-assets/wallpaper/wallpaper.png (originally debian_onion_color_v2.png) were
-supplied by the project owner and committed by them directly.
+onion.png (the mark) and ../wallpaper/wallpaper.png are the project
+owner's own artwork, drawn by them, and committed by them directly.
 
-THEIR ORIGIN IS NOT RECORDED HERE BECAUSE IT WAS NOT GIVEN.  Everything
-else in this tree names where it came from and under what licence - the
-Debian packages by version, this project's own art as its own - and these
-two do not, because nobody has said.  The onion is finished cartoon
-artwork rather than something generated, and the filename it arrived with
-("onion_vegetables_16828.png") has the shape of a stock-library id.
+They arrived under the names onion_vegetables_16828.png and
+debian_onion_color_v2.png and were moved into this tree's layout; the
+files themselves are unchanged, byte for byte.
 
-That is a note, not an accusation: the owner may well have drawn or
-licensed both.  It is written down so the gap is visible rather than
-quietly filled in, and so it can be closed with one line when the answer
-is known.
+The mark is a PICTURE rather than a silhouette - it carries its own
+colours - which matters to anything drawing it: tinting it to a single
+ink, the way a flat mark is drawn, turns it into a blob.  See
+src/kernel/trait_panel.c in the Phipia OS tree, where that is exactly
+what happened the first time it went through that path.

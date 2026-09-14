@@ -681,6 +681,13 @@ setInterval(sampleCpu, 250);
  *     system { }  |  separator  |  item{command=run}  |  separator  |
  *     item{image=gnome-logout  command=logout}
  *
+ * THE LAST ROW IS NOT HERE.  A page has no session to end: the dialog
+ * that stood in for it closed every window and called that logging out,
+ * which is a control doing something other than what it is named.  The
+ * rule this desktop is built on says a button that cannot do what it
+ * says is not drawn, and it applies to the ones copied from the profile
+ * too - otherwise it is a rule about new work only.
+ *
  * `system` is the application menu, which LXDE builds from the .desktop
  * files on the machine and groups by their freedesktop category.  There
  * are no .desktop files in a browser, so the categories here are the
@@ -800,10 +807,6 @@ function buildMenu() {
     popup.appendChild(menuRule());
     popup.appendChild(menuRow("Run...", "applications-system", () => {
         openRunBox();
-    }));
-    popup.appendChild(menuRule());
-    popup.appendChild(menuRow("Logout", "gnome-logout", () => {
-        openLogoutBox();
     }));
 }
 
@@ -946,57 +949,6 @@ function openRunBox() {
     return frame;
 }
 
-/* ------------------------------------------------------ the logout box */
-
-/*
- * lxsession-logout offers Shut down, Reboot, Suspend, Hibernate, Log out
- * and Cancel.  Four of those six are things a page cannot do, and a
- * button that cannot do what it says is a button that lies - so this
- * offers the two it can honour and says plainly why the others are not
- * here.  Log out closes every window and puts the desktop back as it was
- * found.
- */
-function openLogoutBox() {
-    const frame = makeDialog("Log out", 340);
-    const body = document.createElement("div");
-    const row = document.createElement("div");
-    const cancel = document.createElement("button");
-    const out = document.createElement("button");
-    const banner = document.createElement("img");
-
-    /*
-     * lxsession-logout puts a banner across the top of its dialog.
-     * lxde-common ships one and it is vendored beside the panel's images
-     * - but it carries LXDE's own logo and wordmark, which on a desktop
-     * called Trait OS would be another project's name on this one's
-     * dialog.  So the MECHANISM is copied, at lxsession-logout's own
-     * 352 by 125 and in the same place, and the identity on it is this
-     * project's: tools/banner.html renders it.
-     */
-    banner.src = "assets/logo/logout-banner.png";
-    banner.alt = "";
-    banner.className = "logout-banner";
-    frame.appendChild(banner);
-    body.className = "body";
-    body.innerHTML = "Close every window and clear the desktop?<br>" +
-        "<span style=\"color:#666;font-size:12px\">Shut down, reboot, " +
-        "suspend and hibernate are not offered: a page cannot do them, " +
-        "and a button that cannot do what it says is not drawn.</span>";
-    row.className = "row";
-    cancel.textContent = "Cancel";
-    out.textContent = "Log out";
-    row.appendChild(cancel);
-    row.appendChild(out);
-    frame.appendChild(body);
-    frame.appendChild(row);
-    cancel.addEventListener("click", () => frame.remove());
-    out.addEventListener("click", () => {
-        frame.remove();
-        windows.slice().forEach(closeWindow);
-    });
-    return frame;
-}
-
 /* -------------------------------------------------------- the volume */
 
 /*
@@ -1135,8 +1087,6 @@ document.querySelector('[data-launch="lock"]').addEventListener("click",
         lockScreen.field.focus();
     });
 
-document.querySelector('[data-launch="logout"]').addEventListener("click",
-    () => { openLogoutBox(); });
 
 paintVolume();
 
@@ -1797,9 +1747,6 @@ const SHORTCUTS = [
     { keys: "C-A-l", label: "Lock the screen",
       match: (e, k) => e.ctrlKey && e.altKey && k === "l",
       run: () => document.querySelector('[data-launch="lock"]').click() },
-    { keys: "C-A-Delete", label: "Log out",
-      match: (e, k) => e.ctrlKey && e.altKey && k === "delete",
-      run: () => openLogoutBox() },
     { keys: "A-F4", label: "Close the focused window",
       match: (e, k) => e.altKey && k === "f4",
       run: () => {

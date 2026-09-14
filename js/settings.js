@@ -27,7 +27,24 @@ const SETTINGS = {
     panelEdge: "bottom",
     panelHeight: 26,
     clockFormat: "%R",
-    showHidden: false
+    showHidden: false,
+    desktopLabels: "dark"
+};
+
+/*
+ * pcmanfm writes desktop_fg and desktop_shadow as a PAIR, and they only
+ * make sense as one: white ink wants a dark halo and dark ink wants a
+ * light one.  Offering two independent colour pickers would let you pick
+ * white on white, which is a setting that makes the desktop unreadable
+ * and no file manager offers.  So the choices are pairs.
+ *
+ * "light" is the LXDE profile's own: desktop_fg=#ffffff
+ * desktop_shadow=#000000.  This desktop defaults to the other way round
+ * because its wallpaper is pale.
+ */
+const DESKTOP_LABELS = {
+    dark: { fg: "#000000", shadow: "#ffffff" },
+    light: { fg: "#ffffff", shadow: "#000000" }
 };
 
 const WIDGET_THEMES = {
@@ -139,6 +156,15 @@ function applyPanelHeight(px) {
     document.documentElement.style.setProperty("--panel-height", px + "px");
     SETTINGS.panelHeight = px;
     paintClock();
+}
+
+function applyDesktopLabels(which) {
+    const pair = DESKTOP_LABELS[which] || DESKTOP_LABELS.dark;
+
+    document.documentElement.style.setProperty("--desktop-fg", pair.fg);
+    document.documentElement.style.setProperty("--desktop-shadow",
+                                               pair.shadow);
+    SETTINGS.desktopLabels = which;
 }
 
 function applyClockFormat(fmt) {
@@ -300,6 +326,15 @@ function makeSettingsWindow() {
                 "sets to crop."));
             page.appendChild(toggle("desktop-icons", "Show icons on the desktop",
                 SETTINGS.desktopIcons, applyDesktopIcons));
+            page.appendChild(field("Icon label colour",
+                pick("desktop-labels",
+                     [["dark", "Dark text, light halo"],
+                      ["light", "Light text, dark halo"]],
+                     SETTINGS.desktopLabels, applyDesktopLabels),
+                "pcmanfm's desktop_fg and desktop_shadow, which it " +
+                "writes as a pair.  Its LXDE profile sets white on " +
+                "black; this desktop starts the other way round because " +
+                "its wallpaper is pale."));
         }],
         ["Panel", (page) => {
             page.appendChild(field("Position on screen",
@@ -320,6 +355,34 @@ function makeSettingsWindow() {
                       ["%I:%M %p", "%I:%M %p - 01:45 PM"]],
                      SETTINGS.clockFormat, applyClockFormat),
                 "ClockFmt in the panel's profile, which is %R."));
+        }],
+        ["Keyboard", (page) => {
+            /*
+             * READ OFF THE TABLE THE HANDLER RUNS.  This page cannot
+             * list a shortcut that does not work or miss one that does,
+             * because there is no second copy of the list to drift.
+             */
+            const list = document.createElement("div");
+
+            list.className = "gtk-tree keys";
+            SHORTCUTS.forEach((shortcut) => {
+                const line = document.createElement("div");
+                const keys = document.createElement("div");
+                const what = document.createElement("div");
+
+                line.className = "line";
+                keys.className = "keycap";
+                keys.textContent = shortcut.keys;
+                what.textContent = shortcut.label;
+                line.appendChild(keys);
+                line.appendChild(what);
+                list.appendChild(line);
+            });
+            page.appendChild(field("Shortcuts", list,
+                "Openbox's notation, which is what rc.xml writes: W is " +
+                "the super key, C control, A alt.  These are read from " +
+                "the same table the desktop runs, so the list and the " +
+                "keys cannot disagree."));
         }],
         ["Other", (page) => {
             page.appendChild(toggle("show-hidden", "Show hidden files in new windows",

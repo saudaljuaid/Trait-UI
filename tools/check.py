@@ -29,6 +29,23 @@ def fails(message):
     print("check: " + message, file=sys.stderr)
 
 
+def check_no_logout(page):
+    """Nothing anywhere offers to log out.  The dialog that used to closed
+    every window and called that a logout, which is a control doing
+    something other than what it is named; it is gone, and this is what
+    stops it coming back one launcher at a time."""
+    if page.eval_on_selector_all('[data-launch="logout"]',
+                                 "(e) => e.length") != 0:
+        fails("the panel still carries a logout launcher")
+    if page.eval_on_selector_all(".logout-banner", "(e) => e.length") != 0:
+        fails("a logout banner is still in the page")
+    if page.evaluate("() => typeof openLogoutBox") != "undefined":
+        fails("openLogoutBox is still defined")
+    keys = page.evaluate("() => SHORTCUTS.map((s) => s.keys)")
+    if "C-A-Delete" in keys:
+        fails("the logout shortcut is still bound: %s" % ", ".join(keys))
+
+
 def check_panel(page):
     box = page.eval_on_selector("#panel", """(el) => {
         const r = el.getBoundingClientRect();
@@ -147,8 +164,9 @@ def check_close(page):
 
 def check_menu(page):
     """The menu button's menu is what the profile says it holds: the
-    applications, a rule, Run, a rule, Logout.  A button that opened
-    nothing would be the button that lies this panel is not allowed."""
+    applications, a rule and Run.  The profile's logout row is NOT here -
+    a page has no session to end - so this asserts its absence as well as
+    Run's presence: a row that came back would be a button that lies."""
     page.click("#menu-button")
     page.wait_for_timeout(150)
     if not page.is_visible("#menu-popup.open"):
@@ -157,7 +175,10 @@ def check_menu(page):
     labels = page.eval_on_selector_all(
         "#menu-popup > .menu-item > span:not(.arrow)",
         "(e) => e.map((s) => s.textContent)")
-    for wanted in ("Run...", "Logout"):
+    if any("logout" in row.lower() or "log out" in row.lower()
+           for row in labels):
+        fails("the panel menu still offers a logout: %s" % ", ".join(labels))
+    for wanted in ("Run...",):
         if wanted not in labels:
             fails("the menu has no %r row, which the profile names"
                   % wanted)
@@ -414,7 +435,82 @@ def check_desktop_menu(page):
 
 
 SETTINGS_TABS = ["Widget", "Icon Theme", "Window Border", "Desktop",
-                 "Panel", "Other"]
+                 "Panel", "Keyboard", "Other"]
+
+
+def check_keyboard_page(page):
+    """The Keyboard page is generated from the table the handler runs, so
+    this asserts the two AGREE - same count, same accelerators, in order -
+    and then presses one of the listed accelerators and watches it do the
+    thing the page says it does.  A page listing shortcuts is worth
+    nothing if it is a second copy that can drift."""
+    page.evaluate("() => launch('settings')")
+    page.wait_for_timeout(300)
+    page.click(".gtk-tabs .tab:text-is('Keyboard')")
+    page.wait_for_timeout(200)
+    shown = page.eval_on_selector_all(
+        ".gtk-tree.keys .line .keycap", "(e) => e.map((k) => k.textContent)")
+    bound = page.evaluate("() => SHORTCUTS.map((s) => s.keys)")
+    if shown != bound:
+        fails("the Keyboard page lists %s but the desktop runs %s"
+              % (", ".join(shown), ", ".join(bound)))
+    labels = page.eval_on_selector_all(
+        ".gtk-tree.keys .line > div:nth-child(2)",
+        "(e) => e.map((d) => d.textContent)")
+    if any(not text.strip() for text in labels):
+        fails("a listed shortcut has no description")
+
+    # And one of them, pressed, does what the row claims.  C-A-t is on
+    # the page as "Open a terminal", so a terminal had better open.
+    before = page.evaluate("() => windows.length")
+    page.keyboard.press("Control+Alt+t")
+    page.wait_for_timeout(300)
+    if page.evaluate("() => windows.length") != before + 1:
+        fails("the page lists C-A-t as opening a terminal and it opened "
+              "nothing")
+    page.evaluate("() => windows.slice().forEach(closeWindow)")
+    page.wait_for_timeout(150)
+
+
+def check_desktop_labels(page):
+    """pcmanfm writes desktop_fg and desktop_shadow as a pair, and the
+    Desktop page offers them as a pair.  Read the COMPUTED colour off a
+    desktop icon's label, so a setting that changed nothing but its own
+    variable would fail."""
+    page.evaluate("() => launch('settings')")
+    page.wait_for_timeout(300)
+    page.click(".gtk-tabs .tab:text-is('Desktop')")
+    page.wait_for_timeout(200)
+
+    def label_ink():
+        return page.eval_on_selector(
+            ".desktop-icon span",
+            "(el) => getComputedStyle(el).color").replace(" ", "")
+
+    def label_halo():
+        return page.eval_on_selector(
+            ".desktop-icon span",
+            "(el) => getComputedStyle(el).textShadow").replace(" ", "")
+
+    was_ink, was_halo = label_ink(), label_halo()
+    if was_ink != "rgb(0,0,0)":
+        fails("the desktop labels start at %s rather than dark" % was_ink)
+    page.select_option('[data-setting="desktop-labels"]', "light")
+    page.wait_for_timeout(250)
+    if label_ink() != "rgb(255,255,255)":
+        fails("picking the light pair left the labels %s" % label_ink())
+    if label_halo() == was_halo:
+        fails("the halo did not follow the ink: still %s" % label_halo())
+    # The LXDE profile's own pair, which is what "light" means.
+    if "rgb(0,0,0)" not in label_halo():
+        fails("light text should carry the profile's black shadow, not %s"
+              % label_halo())
+    page.select_option('[data-setting="desktop-labels"]', "dark")
+    page.wait_for_timeout(250)
+    if label_ink() != was_ink or label_halo() != was_halo:
+        fails("putting the pair back did not restore the labels")
+    page.evaluate("() => windows.slice().forEach(closeWindow)")
+    page.wait_for_timeout(150)
 
 
 def check_settings(page):
@@ -842,22 +938,6 @@ def check_shortcuts(page):
     if page.eval_on_selector_all(".files-view", "(e) => e.length") != 1:
         fails("Super+E opened no file manager")
     page.evaluate("() => windows.slice().forEach(closeWindow)")
-    page.wait_for_timeout(150)
-
-
-def check_logout_banner(page):
-    """lxsession-logout puts a banner across the top of its dialog, at
-    352 by 125.  The mechanism is copied; the identity on it is not."""
-    page.click('[data-launch="logout"]')
-    page.wait_for_timeout(250)
-    if not page.is_visible(".dialog .logout-banner"):
-        fails("the logout dialog carries no banner")
-        return
-    src = page.get_attribute(".dialog .logout-banner", "src")
-    if "lxpanel" in src:
-        fails("the logout banner is LXDE's own, so this desktop's dialog "
-              "carries another project's name")
-    page.click(".dialog >> text=Cancel")
     page.wait_for_timeout(150)
 
 
@@ -1489,6 +1569,7 @@ def main():
                   "anything had happened")
 
         page.wait_for_timeout(800)
+        check_no_logout(page)
         check_panel(page)
         check_order(page)
         check_clock(page)
@@ -1505,7 +1586,6 @@ def main():
         check_clipboard(page)
         check_browser(page)
         check_shortcuts(page)
-        check_logout_banner(page)
         check_tooltip(page)
         check_panel_menu(page)
         check_panel_items(page)
@@ -1515,6 +1595,8 @@ def main():
         check_desktop_menu(page)
         check_files(page)
         check_settings(page)
+        check_keyboard_page(page)
+        check_desktop_labels(page)
         check_taskmgr(page)
         check_synaptic(page)
         check_notifications(page)

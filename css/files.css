@@ -496,3 +496,30 @@ input[type="range"].gtk { padding: 0; border: 0; background: none; }
     margin-right: 5px;
 }
 .files-tree .line > div:first-child { display: flex; align-items: center; }
+
+/*
+ * The Keyboard page's list.  Two columns - the accelerator in Openbox's
+ * own notation, then what it does - drawn as the same GTK tree the file
+ * manager's detailed view uses, so one kind of list has one look.
+ */
+.gtk-tree.keys {
+    max-height: none;
+    border: 1px solid var(--gtk-line);
+    background: var(--gtk-base);
+}
+.gtk-tree.keys .line {
+    display: grid;
+    grid-template-columns: 96px 1fr;
+    gap: 8px;
+    padding: 3px 6px;
+    align-items: baseline;
+}
+.gtk-tree.keys .line:nth-child(even) {
+    background: var(--gtk-base-prelight);
+}
+.gtk-tree.keys .keycap {
+    font-family: "DejaVu Sans Mono", monospace;
+    font-size: 11px;
+    color: var(--gtk-text);
+    white-space: nowrap;
+}

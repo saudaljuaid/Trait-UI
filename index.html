@@ -42,7 +42,11 @@
 
         space 2 | menu | launchbar(pcmanfm, x-www-browser) | space 4 |
         wincmd | space 4 | pager | space 4 | taskbar(expand) | cpu |
-        volume | tray | dclock | launchbar(screenlock, logout)
+        volume | tray | dclock | launchbar(screenlock)
+
+      The profile's last launcher is logout and it is not here: a
+      page has no session to end, and a button that cannot do what
+      it says is not drawn.
 
     Global says edge=bottom, height=26, fontcolor=#ffffff and
     background=1 with lxpanel's own background.png - all four are honoured
@@ -96,9 +100,6 @@
     <div class="plugin launchbar">
       <button class="launcher" data-launch="lock" title="Lock screen">
         <img src="assets/icons/nuoveXT2/system-lock-screen.png" alt="Lock">
-      </button>
-      <button class="launcher" data-launch="logout" title="Log out">
-        <img src="assets/icons/nuoveXT2/gnome-logout.png" alt="Log out">
       </button>
     </div>
   </div>

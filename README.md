@@ -16,7 +16,7 @@ Debian's `lxde-common`:
 Global { edge=bottom  height=26  fontcolor=#ffffff  background=1 }
 space 2 | menu | launchbar(pcmanfm, x-www-browser) | space 4 | wincmd |
 space 4 | pager | space 4 | taskbar(expand=1) | cpu | volume | tray |
-dclock(%R) | launchbar(screenlock, logout)
+dclock(%R) | launchbar(screenlock)
 ```
 
 Every number on that line is honoured rather than approximated, and the
@@ -55,19 +55,22 @@ value in `assets/logo/trait.svg`.
 ## Every button on it does what it is drawn as
 
 The menu button opens the menu the profile describes — the applications
-by freedesktop category, a rule, `Run...`, a rule, `Logout` — upwards off
-the panel, because the panel is at the foot of the screen. A category
-with nothing in it is not drawn; LXDE does not draw one either.
+by freedesktop category, a rule and `Run...` — upwards off the panel,
+because the panel is at the foot of the screen. A category with nothing in
+it is not drawn; LXDE does not draw one either.
 
 `Run...` runs this desktop's own programs and says `no such program` for
 anything else. The speaker opens a slider and its mark changes when you
 mute it. The padlock covers the whole screen, panel included — a lock you
-could click past would be a picture of a lock. `Logout` closes every
-window.
+could click past would be a picture of a lock.
 
-Four of `lxsession-logout`'s six buttons — shut down, reboot, suspend,
-hibernate — are **not** offered, because a page cannot do them and the
-dialog says so rather than drawing a button that lies.
+**The profile's last row and last launcher are `logout`, and neither is
+here.** A page has no session to end. What stood there closed every window
+and called that logging out, which is a control doing something other than
+what it is named — the same fault as a button that does nothing, wearing a
+more convincing coat. The rule applies to the rows copied from the profile
+too, or it is a rule about new work only. `tools/check.py` asserts the
+absence, so it cannot come back one launcher at a time.
 
 ## The desktop
 
@@ -115,7 +118,6 @@ keyboard's version of a button that lies.
 | `Super+D` | show the desktop |
 | `Ctrl+Alt+T` | a terminal |
 | `Ctrl+Alt+L` | lock the screen |
-| `Ctrl+Alt+Delete` | log out |
 | `Alt+F4` | close the focused window |
 | `Alt+Tab` | cycle windows |
 

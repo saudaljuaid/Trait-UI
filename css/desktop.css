@@ -364,9 +364,11 @@ html, body {
  *     separator { }
  *     item { image=gnome-logout  command=logout }
  *
- * so the menu is the applications, a rule, Run, a rule, and Logout - and
- * nothing else.  It opens UPWARDS from the button, because the panel is
- * at the foot of the screen.
+ * so the menu is the applications, a rule and Run.  The profile's last
+ * row is not drawn: a page has no session to end, and a button that
+ * cannot do what it says is not drawn here even when the profile asks
+ * for one.  It opens UPWARDS from the button, because the panel is at
+ * the foot of the screen.
  */
 #menu-popup {
     position: absolute;
@@ -552,11 +554,21 @@ html, body {
     border: 1px solid transparent;
 }
 .desktop-icon img { width: 48px; height: 48px; }
+/*
+ * pcmanfm's LXDE profile carries desktop_fg and desktop_shadow, which are
+ * the label's ink and the halo behind it - the halo is what keeps a label
+ * readable over a wallpaper that is light in one place and dark in
+ * another.  They are variables because Settings changes them, and the
+ * profile's own pair (#ffffff on #000000) is one of the choices there.
+ */
 .desktop-icon span {
     font-size: 12px;
     line-height: 14px;
-    color: #000000;
-    text-shadow: 0 0 3px #ffffff, 0 0 3px #ffffff, 1px 1px 0 #ffffff;
+    color: var(--desktop-fg, #000000);
+    text-shadow:
+        0 0 3px var(--desktop-shadow, #ffffff),
+        0 0 3px var(--desktop-shadow, #ffffff),
+        1px 1px 0 var(--desktop-shadow, #ffffff);
     word-break: break-word;
 }
 .desktop-icon:hover { background: rgba(134, 171, 217, 0.30); }
@@ -564,7 +576,9 @@ html, body {
     background: rgba(134, 171, 217, 0.65);
     border-color: #5f86b5;
 }
-.desktop-icon.selected span { text-shadow: 0 0 3px #ffffff; }
+.desktop-icon.selected span {
+    text-shadow: 0 0 3px var(--desktop-shadow, #ffffff);
+}
 
 /* The desktop's own menu, which is the same GTK menu the file manager's
  * menu bar drops - one look for one kind of thing. */
@@ -688,14 +702,6 @@ html, body {
 #switcher .row img { width: 20px; height: 20px; }
 #switcher .row.current { background: #86ABD9; color: #FFFFFF; }
 #switcher .empty { padding: 6px 10px; color: #6a6a6a; }
-
-/* lxsession-logout's banner, which lxde-common ships. */
-.logout-banner {
-    display: block;
-    width: 100%;
-    height: auto;
-    border-bottom: 1px solid #0d0d0d;
-}
 
 /* The window menu is created where it is needed rather than living in
  * the page, so it needs the z-index the others get from being late in

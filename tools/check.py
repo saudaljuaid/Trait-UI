@@ -343,6 +343,76 @@ def check_files(page):
     page.wait_for_timeout(150)
 
 
+def check_desktop(page):
+    """pcmanfm --desktop puts the home folder and the trash there, and
+    both open what they name."""
+    if page.eval_on_selector_all("#desktop-icons .desktop-icon",
+                                 "(e) => e.length") != 2:
+        fails("the desktop carries no icons")
+        return
+    #
+    # THE LABELS HAVE TO BE READABLE ON THIS WALLPAPER.  The profile's
+    # desktop_fg is #ffffff with a #000000 shadow, which is right for its
+    # own dark wallpaper and invisible on this white one, so the pair is
+    # inverted.  A copy so faithful you cannot read it is not a copy worth
+    # having, and this is the assertion that keeps it that way.
+    #
+    ink = page.eval_on_selector(
+        "#desktop-icons .desktop-icon span",
+        "(el) => getComputedStyle(el).color")
+    if ink.replace(" ", "") != "rgb(0,0,0)":
+        fails("the desktop labels are %s over a white wallpaper" % ink)
+
+    page.dblclick('.desktop-icon:has-text("Trash")')
+    page.wait_for_timeout(300)
+    if page.input_value(".files-toolbar .location") != "trash:///":
+        fails("the Trash icon opened somewhere that is not the trash")
+    page.click(".titlebar button.close")
+    page.wait_for_timeout(150)
+
+
+def check_desktop_menu(page):
+    page.mouse.click(600, 300, button="right")
+    page.wait_for_timeout(150)
+    if not page.is_visible("#desktop-menu.open"):
+        fails("a right click on the wallpaper dropped no menu")
+        return
+    page.click('#desktop-menu .row:has-text("Open in Terminal")')
+    page.wait_for_timeout(250)
+    if page.eval_on_selector_all(".window", "(e) => e.length") != 1:
+        fails("the desktop menu's terminal row opened nothing")
+        return
+
+    # Maximise fills the work area - the screen less the panel - and
+    # restores to where the window was.
+    before = page.eval_on_selector(".window", """(el) => {
+        const r = el.getBoundingClientRect();
+        return { x: Math.round(r.x), y: Math.round(r.y),
+                 w: Math.round(r.width) };
+    }""")
+    page.click(".titlebar button.maximize")
+    page.wait_for_timeout(200)
+    big = page.eval_on_selector(".window", """(el) => {
+        const r = el.getBoundingClientRect();
+        return { w: Math.round(r.width), h: Math.round(r.height) };
+    }""")
+    if big["w"] != 1024 or big["h"] != 768 - PANEL_HEIGHT:
+        fails("a maximised window is %dx%d where the work area is %dx%d"
+              % (big["w"], big["h"], 1024, 768 - PANEL_HEIGHT))
+    page.click(".titlebar button.maximize")
+    page.wait_for_timeout(200)
+    after = page.eval_on_selector(".window", """(el) => {
+        const r = el.getBoundingClientRect();
+        return { x: Math.round(r.x), y: Math.round(r.y),
+                 w: Math.round(r.width) };
+    }""")
+    if after != before:
+        fails("restoring put the window at %s where it had been at %s"
+              % (after, before))
+    page.click(".titlebar button.close")
+    page.wait_for_timeout(150)
+
+
 def main():
     with sync_playwright() as play:
         browser = play.chromium.launch(
@@ -362,6 +432,8 @@ def main():
         check_run_box(page)
         check_volume(page)
         check_lock(page)
+        check_desktop(page)
+        check_desktop_menu(page)
         check_files(page)
         check_terminal(page)
         check_wincmd(page)
@@ -376,7 +448,8 @@ def main():
           "panel, a Run box that runs, a speaker that says when it is "
           "muted, a lock that covers the panel, and a terminal that "
           "answers what is typed at it, and a 640x480 file manager "
-          "that navigates" % (" ".join(PLUGIN_ORDER), green))
+          "that navigates, over a desktop whose icons open what they "
+          "name" % (" ".join(PLUGIN_ORDER), green))
     return 0
 
 

@@ -183,11 +183,25 @@ function setMinimised(win, minimised) {
     }
 }
 
+/*
+ * Maximise fills the work area and restores to exactly where the window
+ * was, which is the half that makes it a toggle rather than a one-way
+ * trip.  A maximised window does not drag: there is nowhere for it to go.
+ */
+function toggleMaximised(win) {
+    win.maximised = !win.maximised;
+    win.frame.classList.toggle("maximised", win.maximised);
+    focusWindow(win);
+}
+
 /* Dragging by the title bar, which is the only place Openbox lets you. */
 function makeDraggable(win, handle) {
     handle.addEventListener("mousedown", (event) => {
         if (event.button !== 0 || event.target.tagName === "BUTTON") {
             return;
+        }
+        if (win.maximised) {
+            return;   /* nowhere to drag a window that fills the screen */
         }
         const startX = event.clientX;
         const startY = event.clientY;
@@ -214,7 +228,8 @@ function openWindow(spec) {
     const bar = document.createElement("div");
     const label = document.createElement("span");
     const win = { title: spec.title, icon: spec.icon, frame: frame,
-                  active: true, minimised: false };
+                  active: true, minimised: false, maximised: false,
+                  files: spec.files || null };
 
     frame.className = "window";
     frame.style.left = spec.x + "px";
@@ -226,22 +241,38 @@ function openWindow(spec) {
     label.className = "title";
     label.textContent = spec.title;
     bar.appendChild(label);
-    [["iconify", "_", () => setMinimised(win, true)],
-     ["maximize", "\u25A1", () => { /* one size, so this is a no-op */ }],
-     ["close", "\u2715", () => closeWindow(win)]].forEach(
-        ([kind, mark, act]) => {
-            if (kind === "maximize") {
-                return;   /* not drawn: there is nothing behind it */
-            }
+    /*
+     * THREE BUTTONS, AND MAXIMISE IS ONE OF THEM NOW.
+     *
+     * It was left off while there was nothing behind it - a control that
+     * does not do what it is drawn as does not get drawn.  There is
+     * something behind it now: the window fills the WORK AREA, which is
+     * the screen less the panel, because the panel's profile says
+     * setpartialstrut=1 and that is the space it reserves.
+     */
+    [["iconify", "\u2013", "Minimise", () => setMinimised(win, true)],
+     ["maximize", "\u25A1", "Maximise", () => toggleMaximised(win)],
+     ["close", "\u2715", "Close", () => closeWindow(win)]].forEach(
+        ([kind, mark, title, act]) => {
             const button = document.createElement("button");
 
             button.className = kind;
             button.textContent = mark;
-            button.title = kind === "close" ? "Close" : "Minimise";
-            button.addEventListener("click", act);
+            button.title = title;
+            button.addEventListener("click", (event) => {
+                event.stopPropagation();
+                act();
+            });
             bar.appendChild(button);
         });
 
+    /* Openbox maximises on a double click of the title bar, and so does
+     * this - the same gesture, on the same strip. */
+    bar.addEventListener("dblclick", (event) => {
+        if (event.target.tagName !== "BUTTON") {
+            toggleMaximised(win);
+        }
+    });
     frame.appendChild(bar);
     frame.appendChild(spec.body);
     frame.addEventListener("mousedown", () => focusWindow(win));
@@ -386,7 +417,8 @@ function launch(what) {
 
         openWindow({ title: "user", icon: "assets/logo/files.svg",
                      x: 120 + step, y: 70 + step,
-                     width: 640, height: 480, body: files.body });
+                     width: 640, height: 480, body: files.body,
+                     files: files });
         return;
     }
     const plain = { browser: ["Web Browser",
@@ -860,3 +892,148 @@ document.querySelector('[data-launch="logout"]').addEventListener("click",
     () => { openLogoutBox(); });
 
 paintVolume();
+
+/* ---------------------------------------------------- desktop icons */
+
+/*
+ * LXDE's desktop is pcmanfm --desktop, and what it puts there by default
+ * is the home folder, the trash, and any mounted volume.  There are no
+ * volumes to mount here, so there are two - and both open the folder they
+ * name in the file manager, because an icon on a desktop that opened
+ * nothing would be a picture of an icon.
+ */
+const DESKTOP_ICONS = [
+    ["user", "assets/icons/nuoveXT2/48/user-home.png", "/home/user"],
+    ["Trash", "assets/icons/nuoveXT2/48/user-trash.png", "trash:///"]
+];
+
+let desktopSelected = null;
+
+function paintDesktopIcons() {
+    const host = document.getElementById("desktop-icons");
+
+    host.textContent = "";
+    DESKTOP_ICONS.forEach(([label, icon, path]) => {
+        const cell = document.createElement("div");
+        const img = document.createElement("img");
+        const span = document.createElement("span");
+
+        cell.className = desktopSelected === label ?
+            "desktop-icon selected" : "desktop-icon";
+        img.src = icon;
+        img.alt = "";
+        span.textContent = label;
+        cell.appendChild(img);
+        cell.appendChild(span);
+        cell.addEventListener("click", (event) => {
+            event.stopPropagation();
+            desktopSelected = label;
+            paintDesktopIcons();
+        });
+        cell.addEventListener("dblclick", () => {
+            launch("files");
+            const opened = windows[windows.length - 1];
+
+            if (opened && opened.files) {
+                opened.files.go(path);
+            }
+        });
+        host.appendChild(cell);
+    });
+}
+
+document.getElementById("wallpaper").addEventListener("click", () => {
+    if (desktopSelected !== null) {
+        desktopSelected = null;
+        paintDesktopIcons();
+    }
+});
+
+/* ------------------------------------------------------ desktop menu */
+
+/*
+ * pcmanfm's desktop menu.  The rows it can carry out are live; the rest
+ * are DIMMED rather than left out, which is the same rule the file
+ * manager's menus follow - the menu keeps its shape and nothing pretends
+ * to work.
+ */
+const DESKTOP_MENU = [
+    ["Create New...", null],
+    ["Paste", null],
+    ["Select All", () => {
+        desktopSelected = DESKTOP_ICONS[0][0];
+        paintDesktopIcons();
+    }],
+    null,
+    ["Sort Files", null],
+    null,
+    ["Open in Terminal", () => launch("terminal")],
+    ["Open Files", () => launch("files")],
+    null,
+    ["Desktop Preferences", null]
+];
+
+function buildDesktopMenu() {
+    const menu = document.getElementById("desktop-menu");
+
+    DESKTOP_MENU.forEach((entry) => {
+        if (entry === null) {
+            const sep = document.createElement("div");
+
+            sep.className = "sep";
+            menu.appendChild(sep);
+            return;
+        }
+        const [label, act] = entry;
+        const row = document.createElement("div");
+
+        row.className = act ? "row" : "row off";
+        row.textContent = label;
+        if (act) {
+            row.addEventListener("click", () => {
+                menu.classList.remove("open");
+                act();
+            });
+        }
+        menu.appendChild(row);
+    });
+}
+
+buildDesktopMenu();
+
+document.getElementById("desktop").addEventListener("contextmenu",
+    (event) => {
+        const menu = document.getElementById("desktop-menu");
+        const onDesktop = event.target.closest(".window") === null &&
+            event.target.closest("#panel") === null &&
+            event.target.closest("#menu-popup") === null;
+
+        if (!onDesktop) {
+            return;   /* a window's own right click is the window's */
+        }
+        event.preventDefault();
+        menu.classList.add("open");
+        /* Pulled back onto the screen when it would hang off an edge,
+         * which is what a menu at the foot or the right has to do. */
+        const width = menu.offsetWidth;
+        const height = menu.offsetHeight;
+        const room = document.getElementById("desktop")
+            .getBoundingClientRect();
+        let x = event.clientX;
+        let y = event.clientY;
+
+        if (x + width > room.width) {
+            x = Math.max(0, room.width - width);
+        }
+        if (y + height > room.height - 26) {
+            y = Math.max(0, room.height - 26 - height);
+        }
+        menu.style.left = x + "px";
+        menu.style.top = y + "px";
+    });
+
+document.addEventListener("click", () => {
+    document.getElementById("desktop-menu").classList.remove("open");
+});
+
+paintDesktopIcons();

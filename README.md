@@ -69,6 +69,26 @@ Four of `lxsession-logout`'s six buttons — shut down, reboot, suspend,
 hibernate — are **not** offered, because a page cannot do them and the
 dialog says so rather than drawing a button that lies.
 
+## The desktop
+
+`pcmanfm --desktop` draws it, and the profile says how the names are
+painted — `desktop_fg=#ffffff` with `desktop_shadow=#000000`. That is
+right for the dark wallpaper the profile ships with and **invisible on
+this one**, which is white, so the pair is inverted rather than dropped:
+black ink with a white shadow, the same mechanism the other way up. A
+copy so faithful you cannot read it is not a copy worth having, and
+`check.py` asserts the labels are black so it stays that way.
+
+The home folder and the trash sit there and both open what they name. A
+right click drops pcmanfm's desktop menu, with the rows it cannot carry
+out dimmed rather than left out — the same rule the file manager's menus
+follow.
+
+Windows maximise from the title-bar button or a double click on the bar,
+to the **work area** — the screen less the panel, which is the space
+`setpartialstrut=1` in the panel's profile reserves — and restore to
+exactly where they were.
+
 ## The Files app
 
 `pcmanfm`'s shape, from `pcmanfm`'s own LXDE profile
@@ -160,6 +180,14 @@ them did not fail the first time and were rewritten:
   searched the screen for it, which the prompt already contains, because
   the host is called `phipia`. It echoes a word the prompt cannot be
   saying, and matches a whole row rather than a substring.
+
+Two bugs the checks found that nothing looked wrong about:
+
+- `#windows` is `inset: 0`, so with no window open it laid an invisible
+  sheet over the whole desktop and swallowed every click on a desktop
+  icon. The icons simply did not answer. `pointer-events: none` on the
+  layer, `auto` on each frame.
+- The status bar's free-space figure, described above.
 
 ## The wallpaper
 

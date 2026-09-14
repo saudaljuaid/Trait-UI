@@ -217,7 +217,17 @@ html, body {
  * with: a near-black border and a title bar that is lighter when the
  * window has focus than when it does not.
  */
-#windows { position: absolute; inset: 0; }
+/*
+ * THE WINDOW LAYER LETS CLICKS THROUGH WHERE THERE IS NO WINDOW.
+ *
+ * It is inset: 0, so it covers the whole screen whether or not anything
+ * is in it - and an invisible sheet over the desktop swallowed every
+ * click on a desktop icon.  Nothing looked wrong; the icons simply did
+ * not answer.  pointer-events: none on the layer and auto on each frame
+ * puts the clicks back where they belong.
+ */
+#windows { position: absolute; inset: 0; pointer-events: none; }
+#windows > .window { pointer-events: auto; }
 
 .window {
     position: absolute;
@@ -461,4 +471,93 @@ html, body {
     border: 1px solid #444;
     background: #12161d;
     color: #e6e9ee;
+}
+
+/* ------------------------------------------------------ desktop icons */
+
+/*
+ * LXDE draws the desktop with pcmanfm --desktop, and its profile says how
+ * the names are painted:
+ *
+ *     desktop_bg=#000000  desktop_fg=#ffffff  desktop_shadow=#000000
+ *
+ * White ink with a black shadow under it - which is right for the dark
+ * wallpaper that profile ships with and unreadable on this one, because
+ * this wallpaper is WHITE.  So the pair is inverted rather than dropped:
+ * black ink with a white shadow, which is the same mechanism doing the
+ * same job the other way up.  Keeping the profile's literal colours here
+ * would be a copy so faithful you could not read it.
+ */
+#desktop-icons {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 2px;
+    max-height: calc(100% - 60px);
+}
+.desktop-icon {
+    width: 86px;
+    padding: 4px 2px 5px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    text-align: center;
+    cursor: default;
+    border: 1px solid transparent;
+}
+.desktop-icon img { width: 48px; height: 48px; }
+.desktop-icon span {
+    font-size: 12px;
+    line-height: 14px;
+    color: #000000;
+    text-shadow: 0 0 3px #ffffff, 0 0 3px #ffffff, 1px 1px 0 #ffffff;
+    word-break: break-word;
+}
+.desktop-icon:hover { background: rgba(134, 171, 217, 0.30); }
+.desktop-icon.selected {
+    background: rgba(134, 171, 217, 0.65);
+    border-color: #5f86b5;
+}
+.desktop-icon.selected span { text-shadow: 0 0 3px #ffffff; }
+
+/* The desktop's own menu, which is the same GTK menu the file manager's
+ * menu bar drops - one look for one kind of thing. */
+#desktop-menu {
+    position: absolute;
+    display: none;
+    z-index: 4500;
+    min-width: 190px;
+    padding: 2px;
+    background: #EDECEB;
+    border: 1px solid #7a7a7a;
+    box-shadow: 1px 1px 4px rgba(0, 0, 0, 0.35);
+    color: #000000;
+    font-size: 13px;
+}
+#desktop-menu.open { display: block; }
+#desktop-menu .row { padding: 3px 10px; white-space: nowrap;
+                     cursor: default; }
+#desktop-menu .row:hover { background: #86ABD9; color: #ffffff; }
+#desktop-menu .row.off { color: #9a9a9a; }
+#desktop-menu .row.off:hover { background: none; color: #9a9a9a; }
+#desktop-menu .sep {
+    height: 1px;
+    margin: 3px 2px;
+    background: #B6B3AF;
+    border-bottom: 1px solid #FAFAF9;
+}
+
+/* A maximised window fills the work area - the screen less the panel,
+ * which is what setpartialstrut=1 in the panel's profile reserves. */
+.window.maximised {
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: calc(100% - 26px) !important;
+    border-width: 0 0 1px 0;
 }

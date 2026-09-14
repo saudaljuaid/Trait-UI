@@ -1,0 +1,11 @@
+The icons the C file manager draws, as PNGs, so make-app-icons can turn
+them into the planes the shell composites.  Copies of files already
+vendored in ../icons/nuoveXT2, and carrying that licence:
+
+    lxde-icon-theme 0.5.1-2.1 (nuoveXT2) - LGPL-3+
+
+Two sizes: 48 for the icon view, 16 for the Places pane and the list
+view, and each is RESAMPLED FROM THE ORIGINAL rather than from the other,
+because a picture reduced twice is a picture blurred twice.
+drive-harddisk is only shipped at 16 in the vendored set, so its 48 is
+grown from that one and looks it; it is used at 16 and nowhere else.

@@ -14,6 +14,7 @@
 #include <string.h>
 
 #include <trait/font.h>
+#include <trait/files.h>
 #include <trait/panel.h>
 #include <trait/settings.h>
 #include <trait/taskmgr.h>
@@ -248,6 +249,31 @@ static void populate_settings(void)
     (void)trait_settings_add_row(3U, &row);
 }
 
+
+/* The filesystem the file manager shows.  Small, and every byte of it is
+ * a number this window can stand behind: the folder sizes in the status
+ * bar are counted from these. */
+static uint32_t populate_files(void)
+{
+    uint32_t home;
+    uint32_t user;
+    uint32_t docs;
+
+    trait_files_reset();
+    home = trait_files_add(trait_files_root(), "home", true, 0U);
+    user = trait_files_add(home, "user", true, 0U);
+    (void)trait_files_add(user, "Desktop", true, 0U);
+    docs = trait_files_add(user, "Documents", true, 0U);
+    (void)trait_files_add(user, "Downloads", true, 0U);
+    (void)trait_files_add(user, "Music", true, 0U);
+    (void)trait_files_add(user, "Pictures", true, 0U);
+    (void)trait_files_add(user, "Videos", true, 0U);
+    (void)trait_files_add(user, "README.txt", false, 1284U);
+    (void)trait_files_add(docs, "report.txt", false, 20481U);
+    (void)trait_files_add(docs, "letter.txt", false, 4096U);
+    return user;
+}
+
 int main(int argc, char **argv)
 {
     const char *out = argc > 1 ? argv[1] : "build/c";
@@ -335,13 +361,60 @@ int main(int argc, char **argv)
             return 1;
         }
     }
+
+    /* The file manager, on a screen of its own, at pcmanfm's own
+     * 640x480 from its LXDE profile. */
+    if (!trait_files_self_test()) {
+        fprintf(stderr, "trait: file manager self-test failed\n");
+        return 1;
+    }
+    {
+        struct trait_window files;
+        uint32_t user = populate_files();
+
+        (void)trait_files_open(user);
+        memset(&files, 0, sizeof(files));
+        files.frame = (struct trait_rect){ 150U, 130U, 640U, 480U };
+        files.active = true;
+        trait_window_set_title(&files, "user");
+
+        if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
+            flat(0x212121U);
+        }
+        trait_window_draw(&screen, &files);
+        trait_files_draw(&screen, &files);
+        if (!emit(out, "files.png", files.frame)) {
+            return 1;
+        }
+
+        /* And the detailed list, with a run of things picked, so the
+         * status bar has something to count. */
+        trait_files_set_view(TRAIT_FILES_LIST);
+        trait_files_select(trait_files_child(user, 1U), false);
+        trait_files_select(trait_files_child(user, 2U), true);
+        trait_files_select(trait_files_child(user, 7U), true);
+        trait_window_draw(&screen, &files);
+        trait_files_draw(&screen, &files);
+        if (!emit(out, "files-list.png", files.frame)) {
+            return 1;
+        }
+        if (trait_panel_draw(whole()) != TRAIT_PANEL_STATUS_OK) {
+            return 1;
+        }
+        if (!emit(out, "files-desktop.png", whole())) {
+            return 1;
+        }
+    }
     printf("proof: a %u-pixel panel over a %ux%u screen, %u tasks, a "
            "%u-column cpu graph and a clock that does not move when a "
            "window opens; a task manager of %u processes sorted by a "
            "column that really reorders and reverses; a notebook of %u "
-           "pages where picking a tab changes the page\n",
+           "pages where picking a tab changes the page; and a file "
+           "manager over %u nodes whose folder sizes are counted rather "
+           "than stored\n",
            TRAIT_PANEL_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT,
            trait_panel_task_count(), TRAIT_PANEL_CPU_COLUMNS,
-           trait_taskmgr_count(), trait_settings_page_count());
+           trait_taskmgr_count(), trait_settings_page_count(),
+           trait_files_child_count(trait_files_here()));
     return 0;
 }

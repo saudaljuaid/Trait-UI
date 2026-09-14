@@ -33,6 +33,7 @@ static struct trait_taskmgr_row rows[TRAIT_TASKMGR_MAX_ROWS];
 static uint32_t row_count;
 static enum trait_taskmgr_column sort_column = TRAIT_TASKMGR_PID;
 static bool sort_descending;
+static uint32_t chosen = TRAIT_TASKMGR_MAX_ROWS;
 
 /* ================================================================ HELPERS */
 
@@ -186,6 +187,7 @@ static void memory(char *out, uint32_t kib, uint32_t capacity)
 void trait_taskmgr_reset(void)
 {
     row_count = 0U;
+    chosen = TRAIT_TASKMGR_MAX_ROWS;
 }
 
 bool trait_taskmgr_add(const struct trait_taskmgr_row *row)
@@ -205,6 +207,83 @@ bool trait_taskmgr_add(const struct trait_taskmgr_row *row)
 uint32_t trait_taskmgr_count(void)
 {
     return row_count;
+}
+
+void trait_taskmgr_select(uint32_t at)
+{
+    if (at < row_count) {
+        chosen = at;
+    }
+}
+
+uint32_t trait_taskmgr_selected(void)
+{
+    return chosen;
+}
+
+bool trait_taskmgr_has_selection(void)
+{
+    return chosen < row_count;
+}
+
+uint32_t trait_taskmgr_selected_pid(void)
+{
+    return chosen < row_count ? rows[chosen].pid : 0U;
+}
+
+bool trait_taskmgr_end_selected(void)
+{
+    uint32_t at;
+
+    if (chosen >= row_count) {
+        return false;
+    }
+    /* pid 1 is the session.  A task manager that lets you end the thing
+     * it is running inside is offering to turn the screen off. */
+    if (rows[chosen].pid == 1U) {
+        return false;
+    }
+    for (at = chosen; at + 1U < row_count; ++at) {
+        rows[at] = rows[at + 1U];
+    }
+    --row_count;
+    /* The selection does NOT follow the gap onto whatever moved up: the
+     * next press would then end a row nobody chose. */
+    chosen = TRAIT_TASKMGR_MAX_ROWS;
+    return true;
+}
+
+bool trait_taskmgr_row_bounds(const struct trait_window *window,
+    uint32_t at, struct trait_rect *out)
+{
+    struct trait_rect client;
+
+    if (window == NULL || out == NULL || at >= row_count) {
+        return false;
+    }
+    client = trait_window_client(window);
+    out->x = client.x;
+    out->y = client.y + TASKMGR_MENUBAR + TASKMGR_SUMMARY +
+        TASKMGR_HEADER + at * TASKMGR_ROW;
+    out->width = client.width;
+    out->height = TASKMGR_ROW;
+    return true;
+}
+
+bool trait_taskmgr_end_button(const struct trait_window *window,
+    struct trait_rect *out)
+{
+    struct trait_rect client;
+
+    if (window == NULL || out == NULL) {
+        return false;
+    }
+    client = trait_window_client(window);
+    out->width = 82U;
+    out->height = 22U;
+    out->x = client.x + client.width - out->width - TASKMGR_PAD;
+    out->y = client.y + client.height - out->height - 5U;
+    return true;
 }
 
 void trait_taskmgr_sort(enum trait_taskmgr_column column)
@@ -396,11 +475,20 @@ void trait_taskmgr_draw(struct trait_surface *surface,
         for (at = 0U; at < row_count; ++at) {
             uint32_t top = list_top + at * TASKMGR_ROW;
             uint32_t baseline = top + 12U;
+            uint32_t ink = at == chosen ? TRAIT_SEL_FG : TRAIT_TEXT;
 
             if (top + TASKMGR_ROW > list.y + list.height) {
                 break;
             }
-            if ((at & 1U) != 0U) {
+            if (at == chosen) {
+                struct trait_rect band;
+
+                band.x = list.x;
+                band.y = top;
+                band.width = list.width;
+                band.height = TASKMGR_ROW;
+                trait_surface_fill(surface, list, band, TRAIT_SEL_BG);
+            } else if ((at & 1U) != 0U) {
                 struct trait_rect band;
 
                 band.x = list.x;
@@ -424,26 +512,26 @@ void trait_taskmgr_draw(struct trait_surface *surface,
                 switch (column) {
                 case TRAIT_TASKMGR_COMMAND:
                     draw_cell(surface, list, cell, rows[at].command,
-                              baseline, TRAIT_TEXT, false);
+                              baseline, ink, false);
                     break;
                 case TRAIT_TASKMGR_USER:
                     draw_cell(surface, list, cell, rows[at].user,
-                              baseline, TRAIT_TEXT, false);
+                              baseline, ink, false);
                     break;
                 case TRAIT_TASKMGR_CPU:
                     tenths(scratch, rows[at].cpu_tenths, sizeof(scratch));
                     draw_cell(surface, list, cell, scratch, baseline,
-                              TRAIT_TEXT, true);
+                              ink, true);
                     break;
                 case TRAIT_TASKMGR_RSS:
                     memory(scratch, rows[at].rss_kib, sizeof(scratch));
                     draw_cell(surface, list, cell, scratch, baseline,
-                              TRAIT_TEXT, true);
+                              ink, true);
                     break;
                 default:
                     (void)number(scratch, rows[at].pid, sizeof(scratch));
                     draw_cell(surface, list, cell, scratch, baseline,
-                              TRAIT_TEXT, true);
+                              ink, true);
                     break;
                 }
             }
@@ -454,10 +542,9 @@ void trait_taskmgr_draw(struct trait_surface *surface,
     {
         struct trait_rect button;
 
-        button.width = 82U;
-        button.height = 22U;
-        button.x = client.x + client.width - button.width - TASKMGR_PAD;
-        button.y = client.y + client.height - button.height - 5U;
+        if (!trait_taskmgr_end_button(window, &button)) {
+            return;
+        }
         trait_surface_fill(surface, client, button, TRAIT_BG);
         for (at = 0U; at < button.width; ++at) {
             trait_surface_plot(surface, client, button.x + at, button.y,
@@ -474,9 +561,13 @@ void trait_taskmgr_draw(struct trait_surface *surface,
         {
             uint32_t width = trait_font_width("End Task");
 
+            /* DIMMED with nothing chosen: the button cannot end what
+             * has not been picked, and it should not look as though it
+             * could. */
             trait_font_draw(surface, client,
                 button.x + (button.width - width) / 2U,
-                button.y + 15U, "End Task", TRAIT_FG);
+                button.y + 15U, "End Task",
+                trait_taskmgr_has_selection() ? TRAIT_FG : TRAIT_LINE);
         }
     }
 }
@@ -493,6 +584,7 @@ bool trait_taskmgr_self_test(void)
     uint32_t first;
 
     trait_taskmgr_reset();
+    chosen = TRAIT_TASKMGR_MAX_ROWS;
     sort_column = TRAIT_TASKMGR_PID;
     sort_descending = false;
 
@@ -531,6 +623,59 @@ bool trait_taskmgr_self_test(void)
     }
     if (!trait_taskmgr_sort_descending()) {
         return false;
+    }
+
+    /* End Task. */
+    {
+        uint32_t was = trait_taskmgr_count();
+
+        /* Nothing chosen: the button cannot act. */
+        if (trait_taskmgr_has_selection()) {
+            return false;
+        }
+        if (trait_taskmgr_end_selected()) {
+            return false;
+        }
+        trait_taskmgr_select(0U);
+        if (!trait_taskmgr_has_selection()) {
+            return false;
+        }
+        if (!trait_taskmgr_end_selected()) {
+            return false;
+        }
+        if (trait_taskmgr_count() != was - 1U) {
+            return false;
+        }
+        /* The selection did NOT slide onto the row that moved up. */
+        if (trait_taskmgr_has_selection()) {
+            return false;
+        }
+    }
+    /* And the session refuses to be ended. */
+    {
+        struct trait_taskmgr_row session;
+        uint32_t at;
+
+        trait_taskmgr_reset();
+        copy(session.command, "trait-session", TRAIT_TASKMGR_NAME_BYTES);
+        copy(session.user, "user", TRAIT_TASKMGR_NAME_BYTES);
+        session.cpu_tenths = 20U;
+        session.rss_kib = 2400U;
+        session.pid = 1U;
+        if (!trait_taskmgr_add(&session)) {
+            return false;
+        }
+        for (at = 0U; at < trait_taskmgr_count(); ++at) {
+            if (rows[at].pid == 1U) {
+                trait_taskmgr_select(at);
+            }
+        }
+        if (trait_taskmgr_end_selected()) {
+            return false;
+        }
+        if (trait_taskmgr_count() != 1U) {
+            return false;
+        }
     }
     trait_taskmgr_reset();
     return true;

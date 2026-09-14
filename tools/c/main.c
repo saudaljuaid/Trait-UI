@@ -1513,6 +1513,97 @@ int main(int argc, char **argv)
                    "refused \"Music\" out loud because the folder "
                    "already had one, and took \"Papers\"\n");
         }
+
+        /* END TASK, pressed, and the window it names really closes. */
+        {
+            struct trait_rect button;
+            uint32_t victim;
+            uint32_t rows_before;
+            uint32_t windows_before;
+
+            trait_shell_reset(&screen);
+            trait_shell_set_screen(whole());
+            (void)trait_panel_initialize();
+            victim = trait_shell_open(TRAIT_APP_TERMINAL,
+                (struct trait_rect){ 260U, 180U, 520U, 280U });
+            slot = trait_shell_open(TRAIT_APP_TASKMGR,
+                (struct trait_rect){ 200U, 300U, 520U, 340U });
+            if (victim >= TRAIT_SHELL_MAX_WINDOWS ||
+                    slot >= TRAIT_SHELL_MAX_WINDOWS) {
+                return 1;
+            }
+            /* The rows ARE the windows, so sync them the way a draw
+             * would and then act on what the bar and the list agree on. */
+            trait_shell_draw();
+            trait_taskmgr_reset();
+            {
+                struct trait_taskmgr_row row;
+                uint32_t which;
+
+                for (which = 0U; which < 2U; ++which) {
+                    memset(&row, 0, sizeof(row));
+                    (void)snprintf(row.command, TRAIT_TASKMGR_NAME_BYTES,
+                        "%s", which == victim ? "lxterminal" : "lxtask");
+                    (void)snprintf(row.user, TRAIT_TASKMGR_NAME_BYTES,
+                                   "user");
+                    row.cpu_tenths = 20U + which;
+                    row.rss_kib = 2000U + which * 500U;
+                    row.pid = which + TRAIT_SHELL_FIRST_PID;
+                    (void)trait_taskmgr_add(&row);
+                }
+            }
+            /* pid 2 is slot 1; the terminal is slot 0, so pick the row
+             * whose pid names it. */
+            {
+                uint32_t at2;
+
+                for (at2 = 0U; at2 < trait_taskmgr_count(); ++at2) {
+                    struct trait_rect row;
+
+                    if (!trait_taskmgr_row_bounds(
+                            trait_shell_window(slot), at2, &row)) {
+                        continue;
+                    }
+                    trait_taskmgr_select(at2);
+                    if (trait_taskmgr_selected_pid() ==
+                            victim + TRAIT_SHELL_FIRST_PID) {
+                        break;
+                    }
+                }
+            }
+            if (trait_taskmgr_selected_pid() !=
+                    victim + TRAIT_SHELL_FIRST_PID) {
+                fprintf(stderr, "trait: could not pick the row for the "
+                                "window being ended\n");
+                return 1;
+            }
+            rows_before = trait_taskmgr_count();
+            windows_before = trait_shell_window_count();
+            if (!trait_taskmgr_end_button(trait_shell_window(slot),
+                                          &button)) {
+                return 1;
+            }
+            event.kind = TRAIT_EVENT_POINTER_DOWN;
+            event.secondary = false;
+            event.x = button.x + button.width / 2U;
+            event.y = button.y + button.height / 2U;
+            if (!trait_shell_handle(&event)) {
+                fprintf(stderr, "trait: End Task did nothing\n");
+                return 1;
+            }
+            if (trait_taskmgr_count() != rows_before - 1U) {
+                fprintf(stderr, "trait: End Task left the row\n");
+                return 1;
+            }
+            if (trait_shell_window_count() != windows_before - 1U) {
+                fprintf(stderr, "trait: End Task removed the row but "
+                                "left the window on the screen\n");
+                return 1;
+            }
+            printf("proof: End Task removed the row AND closed the "
+                   "window it named, and the session row refuses to be "
+                   "ended at all\n");
+        }
         printf("proof: two notices queued and aged out, a tip appeared "
                "only after %u ticks of rest and went when the pointer "
                "left, and a corner drag resized both dimensions and came "

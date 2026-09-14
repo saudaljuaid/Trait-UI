@@ -25,6 +25,13 @@
 
 #define TRAIT_SHELL_MAX_WINDOWS 8U
 
+/*
+ * The pid a window's Task Manager row carries, for slot 0.  It is 2 and
+ * not 1 because pid 1 is the session, which refuses to be ended - a
+ * window that happened to be opened first should not inherit that.
+ */
+#define TRAIT_SHELL_FIRST_PID 2U
+
 enum trait_shell_app {
     TRAIT_APP_FILES = 0,
     TRAIT_APP_TERMINAL,

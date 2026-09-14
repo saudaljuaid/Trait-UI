@@ -48,6 +48,26 @@ uint32_t trait_taskmgr_count(void);
 
 /* Sorting by the column already sorted on reverses it, which is what
  * every list with clickable headers does. */
+/*
+ * THE SELECTION, AND END TASK.
+ *
+ * The button was drawn and did nothing, which is the one thing this
+ * desktop does not do.  Ending a task removes the row; whether that also
+ * closes a window is the shell's business, because the Task Manager does
+ * not know windows exist.
+ */
+void trait_taskmgr_select(uint32_t at);
+uint32_t trait_taskmgr_selected(void);
+bool trait_taskmgr_has_selection(void);
+uint32_t trait_taskmgr_selected_pid(void);
+/* Removes the selected row.  Refuses pid 1 - the session itself - the
+ * way a task manager refuses to kill what it is running inside. */
+bool trait_taskmgr_end_selected(void);
+bool trait_taskmgr_row_bounds(const struct trait_window *window,
+    uint32_t at, struct trait_rect *out);
+bool trait_taskmgr_end_button(const struct trait_window *window,
+    struct trait_rect *out);
+
 void trait_taskmgr_sort(enum trait_taskmgr_column column);
 enum trait_taskmgr_column trait_taskmgr_sort_column(void);
 bool trait_taskmgr_sort_descending(void);

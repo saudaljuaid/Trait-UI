@@ -659,7 +659,9 @@ static bool handle_client(uint32_t slot, const struct trait_event *event)
     uint32_t at;
 
     switch (apps[slot]) {
-    case TRAIT_APP_TASKMGR:
+    case TRAIT_APP_TASKMGR: {
+        struct trait_rect box;
+
         /* A press on a column header sorts by it. */
         for (at = 0U; at < TRAIT_TASKMGR_COLUMNS; ++at) {
             struct trait_rect head;
@@ -673,7 +675,51 @@ static bool handle_client(uint32_t slot, const struct trait_event *event)
                 return true;
             }
         }
+        /* End Task, before the rows: it sits over the list's own area
+         * and a press on it must not also pick a row underneath. */
+        if (trait_taskmgr_end_button(&windows[slot], &box) &&
+                trait_rect_contains(box, event->x, event->y)) {
+            uint32_t pid = trait_taskmgr_selected_pid();
+
+            if (!trait_taskmgr_end_selected()) {
+                return false;
+            }
+            /*
+             * THE ROW AND THE WINDOW ARE THE SAME THING.  The Task
+             * Manager lists what the shell has open, so ending a row
+             * that has a window has to close it - a list that says a
+             * process is gone while its window is still on the screen is
+             * a list that lies.
+             *
+             * A WINDOW'S PID STARTS AT 2.  pid 1 is the session, which
+             * refuses to be ended; mapping slot 0 to pid 1 made the
+             * first window ever opened unkillable for a reason that had
+             * nothing to do with it, and it took a failing check to
+             * notice because slot 0 is usually something you would not
+             * think to end.
+             */
+            if (pid >= TRAIT_SHELL_FIRST_PID &&
+                    pid - TRAIT_SHELL_FIRST_PID <
+                        TRAIT_SHELL_MAX_WINDOWS &&
+                    used[pid - TRAIT_SHELL_FIRST_PID]) {
+                (void)trait_shell_close(pid - TRAIT_SHELL_FIRST_PID);
+            }
+            trait_shell_notify("Task Manager", "Task ended");
+            return true;
+        }
+        for (at = 0U; at < TRAIT_TASKMGR_MAX_ROWS; ++at) {
+            struct trait_rect row;
+
+            if (!trait_taskmgr_row_bounds(&windows[slot], at, &row)) {
+                break;
+            }
+            if (trait_rect_contains(row, event->x, event->y)) {
+                trait_taskmgr_select(at);
+                return true;
+            }
+        }
         return false;
+    }
     case TRAIT_APP_SETTINGS:
         for (at = 0U; at < trait_settings_page_count(); ++at) {
             struct trait_rect tab;

@@ -16,8 +16,9 @@
 
 static const char PROMPT[] = "user@trait:~$ ";
 
-static char lines[TRAIT_TERM_ROWS][TRAIT_TERM_LINE_BYTES];
+static char lines[TRAIT_TERM_HISTORY][TRAIT_TERM_LINE_BYTES];
 static uint32_t line_count;
+static uint32_t scrolled;
 static char input[TRAIT_TERM_LINE_BYTES];
 static uint32_t input_length;
 
@@ -62,6 +63,7 @@ static bool same(const char *a, const char *b)
 void trait_terminal_reset(void)
 {
     line_count = 0U;
+    scrolled = 0U;
     input_length = 0U;
     input[0] = '\0';
 }
@@ -113,12 +115,16 @@ void trait_terminal_print(const char *line)
 {
     uint32_t at;
 
-    if (line_count >= TRAIT_TERM_ROWS) {
-        for (at = 1U; at < TRAIT_TERM_ROWS; ++at) {
+    if (line_count >= TRAIT_TERM_HISTORY) {
+        for (at = 1U; at < TRAIT_TERM_HISTORY; ++at) {
             copy(lines[at - 1U], lines[at], TRAIT_TERM_LINE_BYTES);
         }
-        line_count = TRAIT_TERM_ROWS - 1U;
+        line_count = TRAIT_TERM_HISTORY - 1U;
     }
+    /* Anything printed brings the view back to the bottom, which is what
+     * a terminal does: output you scrolled away from is not output you
+     * want to miss. */
+    scrolled = 0U;
     copy(lines[line_count++], line == NULL ? "" : line,
          TRAIT_TERM_LINE_BYTES);
 }
@@ -126,6 +132,31 @@ void trait_terminal_print(const char *line)
 uint32_t trait_terminal_row_count(void)
 {
     return line_count;
+}
+
+void trait_terminal_scroll(int32_t by)
+{
+    /* Clamped at BOTH ends: past the top there is nothing to show, and
+     * past the bottom the prompt would float off the foot of the
+     * window. */
+    uint32_t most = line_count > TRAIT_TERM_ROWS ?
+        line_count - TRAIT_TERM_ROWS : 0U;
+
+    if (by < 0) {
+        uint32_t back = (uint32_t)(-by);
+
+        scrolled = scrolled > back ? scrolled - back : 0U;
+    } else {
+        scrolled += (uint32_t)by;
+    }
+    if (scrolled > most) {
+        scrolled = most;
+    }
+}
+
+uint32_t trait_terminal_scrolled(void)
+{
+    return scrolled;
 }
 
 const char *trait_terminal_row(uint32_t at)
@@ -234,6 +265,8 @@ void trait_terminal_draw(struct trait_surface *surface,
 {
     struct trait_rect client;
     uint32_t at;
+    uint32_t first = 0U;
+    uint32_t shown = 0U;
     uint32_t advance = trait_mono[0].advance;
 
     if (window == NULL || !trait_surface_valid(surface)) {
@@ -241,7 +274,19 @@ void trait_terminal_draw(struct trait_surface *surface,
     }
     client = trait_window_client(window);
     trait_surface_fill(surface, client, client, TERM_GROUND);
-    for (at = 0U; at < line_count; ++at) {
+    {
+        /* The window of history that is on screen: the last TERM_ROWS
+         * lines, moved back by however far it has been scrolled. */
+        uint32_t most = line_count > TRAIT_TERM_ROWS ?
+            line_count - TRAIT_TERM_ROWS : 0U;
+
+        first = most > scrolled ? most - scrolled : 0U;
+        shown = line_count - first;
+        if (shown > TRAIT_TERM_ROWS) {
+            shown = TRAIT_TERM_ROWS;
+        }
+    }
+    for (at = 0U; at < shown; ++at) {
         uint32_t baseline = client.y + TERM_PAD + TRAIT_MONO_ASCENT +
             at * TRAIT_MONO_HEIGHT;
 
@@ -249,13 +294,16 @@ void trait_terminal_draw(struct trait_surface *surface,
             break;
         }
         (void)draw_mono(surface, client, client.x + TERM_PAD, baseline,
-                        lines[at], TERM_INK);
+                        lines[first + at], TERM_INK);
     }
     /* The live prompt, and a BLOCK cursor after it - the old terminal's
      * cursor, not a thin bar. */
     {
+        /* The prompt sits after the last SHOWN line, not the last line
+         * held: scrolled back, it belongs off the bottom with the output
+         * it comes after. */
         uint32_t baseline = client.y + TERM_PAD + TRAIT_MONO_ASCENT +
-            line_count * TRAIT_MONO_HEIGHT;
+            shown * TRAIT_MONO_HEIGHT;
         struct trait_rect cursor;
         uint32_t pen;
 
@@ -305,16 +353,24 @@ bool trait_terminal_self_test(void)
     if (trait_terminal_row_count() != 0U) {
         return false;
     }
-    /* The scrollback drops the OLDEST line when it is full, so the last
-     * line written is always the last line held. */
-    for (uint32_t at = 0U; at < TRAIT_TERM_ROWS + 4U; ++at) {
-        trait_terminal_print(at + 1U == TRAIT_TERM_ROWS + 4U ?
+    /*
+     * The history drops the OLDEST line when it is full, so the last line
+     * written is always the last line held.
+     *
+     * This used to fill to TRAIT_TERM_ROWS and assert the buffer capped
+     * there, which was right when the terminal kept exactly what was on
+     * screen and became wrong the moment it got scrollback - the check
+     * was describing the absence of the feature.  It fills the whole
+     * HISTORY now.
+     */
+    for (uint32_t at = 0U; at < TRAIT_TERM_HISTORY + 4U; ++at) {
+        trait_terminal_print(at + 1U == TRAIT_TERM_HISTORY + 4U ?
                              "last" : "filler");
     }
-    if (trait_terminal_row_count() != TRAIT_TERM_ROWS) {
+    if (trait_terminal_row_count() != TRAIT_TERM_HISTORY) {
         return false;
     }
-    if (!same(trait_terminal_row(TRAIT_TERM_ROWS - 1U), "last")) {
+    if (!same(trait_terminal_row(TRAIT_TERM_HISTORY - 1U), "last")) {
         return false;
     }
     trait_terminal_reset();
@@ -369,6 +425,47 @@ bool trait_terminal_self_test(void)
     trait_terminal_enter();
     if (trait_terminal_row_count() != 0U) {
         return false;
+    }
+    /* Scrollback: more history than fits, and a view that moves. */
+    {
+        uint32_t at;
+
+        trait_terminal_reset();
+        for (at = 0U; at < TRAIT_TERM_ROWS + 10U; ++at) {
+            trait_terminal_print(at == 0U ? "first" :
+                (at + 1U == TRAIT_TERM_ROWS + 10U ? "last" : "middle"));
+        }
+        /* Nothing was dropped - the history holds more than a screen. */
+        if (trait_terminal_row_count() != TRAIT_TERM_ROWS + 10U) {
+            return false;
+        }
+        if (!same(trait_terminal_row(0U), "first")) {
+            return false;
+        }
+        if (trait_terminal_scrolled() != 0U) {
+            return false;
+        }
+        trait_terminal_scroll(5);
+        if (trait_terminal_scrolled() != 5U) {
+            return false;
+        }
+        /* It CLAMPS at the top rather than running off the front. */
+        trait_terminal_scroll(500);
+        if (trait_terminal_scrolled() != 10U) {
+            return false;
+        }
+        /* And at the bottom. */
+        trait_terminal_scroll(-500);
+        if (trait_terminal_scrolled() != 0U) {
+            return false;
+        }
+        /* Printing brings the view back down: output you scrolled away
+         * from is not output you want to miss. */
+        trait_terminal_scroll(6);
+        trait_terminal_print("something happened");
+        if (trait_terminal_scrolled() != 0U) {
+            return false;
+        }
     }
     trait_terminal_reset();
     return true;

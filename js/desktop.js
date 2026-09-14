@@ -1380,7 +1380,7 @@ document.addEventListener("mousedown", hideTip);
  * rather than left out.
  */
 const PANEL_MENU = [
-    ["Add / Remove Panel Items", null],
+    ["Add / Remove Panel Items", () => openPanelItems()],
     ["Panel Settings", () => launch("settings")],
     null,
     ["Create New Panel", null],
@@ -1397,6 +1397,62 @@ const PANEL_MENU = [
         dialog.appendChild(text);
     }]
 ];
+
+/*
+ * lxpanel's "Add / Remove Panel Items": the list of plugins on the bar,
+ * each of which can be taken off and put back.
+ *
+ * NOT EVERY PLUGIN.  The menu, the launchers and the task list stay,
+ * because between them they are how you reach anything at all - a panel
+ * you could strip to nothing would be a panel you could not get back.
+ * The ones offered are the ones whose absence is a preference rather
+ * than a trap, and the dialog says which and why rather than silently
+ * leaving three rows out.
+ */
+const PANEL_ITEMS = [
+    ["wincmd", "Minimise all windows"],
+    ["pager", "Desktop pager"],
+    ["cpu", "CPU usage monitor"],
+    ["volume", "Volume control"],
+    ["tray", "System tray"],
+    ["dclock", "Digital clock"]
+];
+
+function openPanelItems() {
+    const dialog = makeDialog("Panel Items", 330);
+    const body = document.createElement("div");
+    const note = document.createElement("div");
+
+    body.className = "body";
+    PANEL_ITEMS.forEach(([kind, label]) => {
+        const row = document.createElement("label");
+        const box = document.createElement("input");
+        const text = document.createElement("span");
+        const plugin = document.querySelector("#panel ." + kind);
+
+        row.className = "gtk-row";
+        box.type = "checkbox";
+        box.dataset.plugin = kind;
+        box.checked = plugin ? !plugin.hidden : false;
+        text.textContent = label;
+        box.addEventListener("change", () => {
+            if (plugin) {
+                plugin.hidden = !box.checked;
+            }
+        });
+        row.appendChild(box);
+        row.appendChild(text);
+        body.appendChild(row);
+    });
+    note.className = "gtk-hint";
+    note.textContent = "The menu, the launchers and the task list are " +
+        "not listed: between them they are how you reach anything at " +
+        "all, and a panel you could strip to nothing would be a panel " +
+        "you could not get back.";
+    body.appendChild(note);
+    dialog.appendChild(body);
+    return dialog;
+}
 
 function buildPanelMenu() {
     const menu = document.createElement("div");

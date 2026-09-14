@@ -1188,6 +1188,36 @@ def check_create(page):
     page.wait_for_timeout(150)
 
 
+def check_panel_items(page):
+    """lxpanel's Add / Remove Panel Items.  Unticking one takes it off the
+    bar; the three that are how you reach anything at all are not offered
+    and the dialog says why."""
+    page.click("#panel", button="right", position={"x": 400, "y": 13})
+    page.wait_for_timeout(200)
+    page.click("#panel-menu .row:text-is('Add / Remove Panel Items')")
+    page.wait_for_timeout(250)
+    if not page.is_visible(".dialog"):
+        fails("Add / Remove Panel Items opened nothing")
+        return
+    offered = page.eval_on_selector_all(
+        '.dialog input[data-plugin]',
+        "(e) => e.map((b) => b.dataset.plugin)")
+    for trap in ("menu", "taskbar", "launchbar"):
+        if trap in offered:
+            fails("%r can be taken off the panel, which would leave no "
+                  "way to put it back" % trap)
+    page.uncheck('.dialog input[data-plugin="dclock"]')
+    page.wait_for_timeout(200)
+    if page.is_visible("#clock"):
+        fails("unticking the clock left it on the bar")
+    page.check('.dialog input[data-plugin="dclock"]')
+    page.wait_for_timeout(200)
+    if not page.is_visible("#clock"):
+        fails("ticking the clock again did not put it back")
+    page.click(".dialog .titlebar button.close")
+    page.wait_for_timeout(150)
+
+
 def main():
     with sync_playwright() as play:
         browser = play.chromium.launch(
@@ -1222,6 +1252,7 @@ def main():
         check_logout_banner(page)
         check_tooltip(page)
         check_panel_menu(page)
+        check_panel_items(page)
         check_desktops(page)
         check_resize_and_switch(page)
         check_desktop(page)

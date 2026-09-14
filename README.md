@@ -173,7 +173,12 @@ that era has, after GTK's own 500ms delay. The text is moved out of
 draw its dark rounded box on top of ours — that box would be the one
 thing on this desktop that is not this desktop.
 
-A right click on the panel drops `lxpanel`'s own menu, above the bar.
+A right click on the panel drops `lxpanel`'s own menu, above the bar, and
+**Add / Remove Panel Items** takes a plugin off the bar and puts it back.
+The menu, the launchers and the task list are not offered: between them
+they are how you reach anything at all, and a panel you could strip to
+nothing would be a panel you could not get back. The dialog says that
+rather than silently leaving three rows out.
 
 ## The Files app
 

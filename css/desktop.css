@@ -80,6 +80,12 @@ html, body {
     flex: 0 0 auto;
     height: var(--panel-height);
 }
+/*
+ * `display: flex` above beats the hidden attribute, so a plugin taken
+ * off the panel stayed on it - the checkbox moved and the bar did not.
+ * This is the rule that lets `hidden` mean hidden.
+ */
+#panel .plugin[hidden] { display: none; }
 
 /*
  * A PANEL BUTTON'S HOVER IS A RAISED BEVEL, not a tint.  That is what GTK2

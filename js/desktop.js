@@ -1156,11 +1156,56 @@ const DESKTOP_ICONS = [
 
 let desktopSelected = null;
 
+/*
+ * WHAT IS ACTUALLY ON THE DESKTOP: the two standard marks, and then the
+ * contents of ~/Desktop.  pcmanfm's desktop IS that folder drawn on the
+ * root window, so a file made in it has to appear out here - a desktop
+ * that showed a fixed pair and ignored the folder it claims to be would
+ * make the "Create New..." row and the Paste row into decorations.
+ */
+function desktopEntries() {
+    const home = FS["/home/user/Desktop"];
+    const rows = DESKTOP_ICONS.slice();
+
+    if (!home) {
+        return rows;
+    }
+    home.dirs.slice().sort().forEach((d) => {
+        rows.push([d, FILES_ICONS48 + "folder.png",
+                   "/home/user/Desktop/" + d, true]);
+    });
+    Object.keys(home.files).sort()
+        .filter((f) => f[0] !== ".")
+        .forEach((f) => {
+            rows.push([f, FILES_ICONS48 + fileMark(f) + ".png",
+                       "/home/user/Desktop/" + f, false]);
+        });
+    return rows;
+}
+
+function openDesktopEntry(path, isDir) {
+    if (isDir === false) {
+        if (path.slice(-4) === ".txt" && appIsInstalled("leafpad")) {
+            launch("leafpad", path);
+        } else {
+            notify("Files", "There is no application installed that "
+                + "opens " + path.split("/").pop() + ".");
+        }
+        return;
+    }
+    launch("files");
+    const opened = windows[windows.length - 1];
+
+    if (opened && opened.files) {
+        opened.files.go(path);
+    }
+}
+
 function paintDesktopIcons() {
     const host = document.getElementById("desktop-icons");
 
     host.textContent = "";
-    DESKTOP_ICONS.forEach(([label, icon, path]) => {
+    desktopEntries().forEach(([label, icon, path, isDir]) => {
         const cell = document.createElement("div");
         const img = document.createElement("img");
         const span = document.createElement("span");
@@ -1178,12 +1223,7 @@ function paintDesktopIcons() {
             paintDesktopIcons();
         });
         cell.addEventListener("dblclick", () => {
-            launch("files");
-            const opened = windows[windows.length - 1];
-
-            if (opened && opened.files) {
-                opened.files.go(path);
-            }
+            openDesktopEntry(path, isDir);
         });
         host.appendChild(cell);
     });
@@ -1216,7 +1256,17 @@ const DESKTOP_MENU = [
             opened.files.go("/home/user/Desktop");
         }
     }],
-    ["Paste", null],
+    /* The desktop is ~/Desktop, so pasting on it puts the clipboard in
+     * that folder - and the icons out here are redrawn from it, so the
+     * result is visible where the paste was made. */
+    ["Paste", () => {
+        if (CLIP.names.length === 0) {
+            notify("Files", "There is nothing on the clipboard.");
+            return;
+        }
+        pasteInto("/home/user/Desktop");
+        paintDesktopIcons();
+    }],
     ["Select All", () => {
         desktopSelected = DESKTOP_ICONS[0][0];
         paintDesktopIcons();

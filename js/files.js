@@ -109,6 +109,153 @@ function writeFile(path, text) {
     return true;
 }
 
+/*
+ * THE CLIPBOARD, which belongs to the desktop rather than to a window:
+ * copying in one Files window and pasting in another is the whole point
+ * of having one.  `cut` says whether pasting should also take the names
+ * out of where they came from.
+ */
+const CLIP = { names: [], from: null, cut: false };
+
+/* "x.txt" already there becomes "x (copy).txt", then "x (copy 2).txt" -
+ * pcmanfm's shape, and never a silent overwrite. */
+function uniqueName(dir, name) {
+    const here = FS[dir];
+    const taken = (n) => here.dirs.indexOf(n) >= 0 ||
+        here.files[n] !== undefined;
+    const dot = name.lastIndexOf(".");
+    const stem = dot > 0 ? name.slice(0, dot) : name;
+    const ext = dot > 0 ? name.slice(dot) : "";
+    let tag = " (copy)";
+    let nth = 1;
+
+    if (!taken(name)) {
+        return name;
+    }
+    while (taken(stem + tag + ext)) {
+        nth += 1;
+        tag = " (copy " + nth + ")";
+    }
+    return stem + tag + ext;
+}
+
+/*
+ * Copying a FOLDER copies what is under it, so this walks the tree: the
+ * listing in FS and the text in FILE_TEXT both have to follow, or the
+ * copy would be a name with nothing behind it.
+ */
+function copyTree(from, to) {
+    const src = FS[from];
+
+    FS[to] = { dirs: [], files: {} };
+    Object.keys(src.files).forEach((f) => {
+        FS[to].files[f] = src.files[f];
+        if (FILE_TEXT[from + "/" + f] !== undefined) {
+            FILE_TEXT[to + "/" + f] = FILE_TEXT[from + "/" + f];
+        }
+    });
+    src.dirs.forEach((d) => {
+        FS[to].dirs.push(d);
+        copyTree(from + "/" + d, to + "/" + d);
+    });
+}
+
+function dropTree(path) {
+    if (!FS[path]) {
+        return;
+    }
+    FS[path].dirs.slice().forEach((d) => dropTree(path + "/" + d));
+    Object.keys(FS[path].files).forEach(
+        (f) => { delete FILE_TEXT[path + "/" + f]; });
+    delete FS[path];
+}
+
+/*
+ * PASTING, which is the clipboard's whole point and so belongs to the
+ * desktop rather than to one window: the file manager pastes into the
+ * folder it is showing, the desktop menu pastes into ~/Desktop, and both
+ * go through here.  Returns the names that landed, which is what the
+ * caller selects afterwards.
+ */
+function pasteInto(dir) {
+    const here = FS[dir];
+    const src = FS[CLIP.from];
+    const landed = [];
+
+    if (CLIP.names.length === 0 || !here || !src) {
+        return landed;
+    }
+    /* Moving a folder into itself would take the tree with it. */
+    if (CLIP.cut && CLIP.names.some(
+            (n) => dir === CLIP.from + "/" + n ||
+                dir.indexOf(CLIP.from + "/" + n + "/") === 0)) {
+        notify("Files", "A folder cannot be moved into itself.");
+        return landed;
+    }
+    if (CLIP.cut && CLIP.from === dir) {
+        return landed;
+    }
+    CLIP.names.forEach((name) => {
+        const isDir = src.dirs.indexOf(name) >= 0;
+        const to = uniqueName(dir, name);
+        const fromPath = CLIP.from === "/" ? "/" + name :
+            CLIP.from + "/" + name;
+        const toPath = dir === "/" ? "/" + to : dir + "/" + to;
+
+        if (isDir) {
+            if (!FS[fromPath]) {
+                return;
+            }
+            copyTree(fromPath, toPath);
+            here.dirs.push(to);
+            if (CLIP.cut) {
+                src.dirs.splice(src.dirs.indexOf(name), 1);
+                dropTree(fromPath);
+            }
+        } else {
+            if (src.files[name] === undefined) {
+                return;
+            }
+            here.files[to] = src.files[name];
+            if (FILE_TEXT[fromPath] !== undefined) {
+                FILE_TEXT[toPath] = FILE_TEXT[fromPath];
+            }
+            if (CLIP.cut) {
+                delete src.files[name];
+                delete FILE_TEXT[fromPath];
+            }
+        }
+        landed.push(to);
+    });
+    if (CLIP.cut) {
+        /* A cut is spent once it is pasted; a copy is not. */
+        CLIP.names = [];
+        CLIP.from = null;
+        CLIP.cut = false;
+    }
+    redrawFilesWindows();
+    return landed;
+}
+
+/*
+ * Every open Files window looks at the same filesystem, and so does the
+ * desktop - it draws ~/Desktop.  A change that only redrew the window it
+ * was made in would leave the others showing a filesystem that no longer
+ * exists, so anything that CHANGES the filesystem comes through here.
+ */
+function redrawFilesWindows() {
+    if (typeof windows !== "undefined") {
+        windows.forEach((w) => {
+            if (w.files && w.files.redraw) {
+                w.files.redraw();
+            }
+        });
+    }
+    if (typeof paintDesktopIcons === "function") {
+        paintDesktopIcons();
+    }
+}
+
 const PLACES = [
     ["user", "user-home", "/home/user"],
     ["Desktop", "user-desktop", "/home/user/Desktop"],
@@ -197,7 +344,11 @@ function makeFilesWindow() {
                   ["Open Terminal", () => launch("terminal")],
                   null,
                   ["Close", () => { closeFilesWindow(body); }]]],
-        ["Edit", [["Select All", () => selectAll()],
+        ["Edit", [["Cut", () => copySelection(true), "sel"],
+                  ["Copy", () => copySelection(false), "sel"],
+                  ["Paste", () => pasteHere(), "clip"],
+                  null,
+                  ["Select All", () => selectAll()],
                   ["Invert Selection", () => invertSelection()],
                   null,
                   ["Preferences", () => launch("settings")]]],
@@ -233,20 +384,29 @@ function makeFilesWindow() {
                 drop.appendChild(sep);
                 return;
             }
-            const [name, act] = row;
+            const [name, act, needs] = row;
             const cell = document.createElement("div");
 
             /*
              * A row with nothing behind it is DIMMED rather than left out,
              * so the menu keeps its shape and nothing pretends to work.
+             * `needs` names the state a row cannot work without - "sel" a
+             * selection to act on, "clip" something on the clipboard - and
+             * the row is dimmed until it is there.  A live Paste with an
+             * empty clipboard would be exactly the lie this file avoids.
              */
+            if (needs) {
+                cell.dataset.needs = needs;
+            }
             cell.className = act ? "row" : "row off";
             cell.textContent = name;
             if (act) {
                 cell.addEventListener("click", (event) => {
                     event.stopPropagation();
                     item.classList.remove("open");
-                    act();
+                    if (!cell.classList.contains("off")) {
+                        act();
+                    }
                 });
             }
             drop.appendChild(cell);
@@ -256,6 +416,12 @@ function makeFilesWindow() {
             const wasOpen = item.classList.contains("open");
 
             event.stopPropagation();
+            drop.querySelectorAll("[data-needs]").forEach((cell) => {
+                const ready = cell.dataset.needs === "clip" ?
+                    CLIP.names.length > 0 : state.selected.length > 0;
+
+                cell.classList.toggle("off", !ready);
+            });
             menubar.querySelectorAll(".m").forEach(
                 (m) => m.classList.remove("open"));
             if (!wasOpen) {
@@ -318,6 +484,51 @@ function makeFilesWindow() {
     panes.className = "files-panes";
     places.className = "files-places";
     view.className = "files-view";
+    /*
+     * The empty part of the view is a target too: right-clicking it is
+     * how pcmanfm offers Paste, and clicking it drops the selection.
+     */
+    view.addEventListener("contextmenu", (event) => {
+        if (event.target !== view) {
+            return;
+        }
+        event.preventDefault();
+        openBlankMenu(event.clientX, event.clientY);
+    });
+    view.addEventListener("click", (event) => {
+        if (event.target === view && state.selected.length > 0) {
+            state.selected = [];
+            draw();
+        }
+    });
+    /*
+     * Ctrl+X/C/V, which is what a file manager answers.  The view takes
+     * focus so the keys reach THIS window and not another one: two Files
+     * windows are open often enough that guessing would be wrong.
+     */
+    view.tabIndex = 0;
+    view.addEventListener("keydown", (event) => {
+        if (!event.ctrlKey && !event.metaKey) {
+            return;
+        }
+        if (event.key === "x" || event.key === "c") {
+            if (state.selected.length === 0) {
+                return;
+            }
+            event.preventDefault();
+            copySelection(event.key === "x");
+        } else if (event.key === "v") {
+            if (CLIP.names.length === 0) {
+                return;
+            }
+            event.preventDefault();
+            pasteHere();
+        } else if (event.key === "a") {
+            event.preventDefault();
+            selectAll();
+        }
+    });
+    view.addEventListener("mousedown", () => view.focus());
     view.addEventListener("click", () => {
         state.selected = [];
         draw();
@@ -410,6 +621,31 @@ function makeFilesWindow() {
 
         state.selected = all.filter(
             (n) => state.selected.indexOf(n) < 0);
+        draw();
+    }
+
+    /*
+     * Cut and Copy take the WHOLE selection, which is what makes the
+     * selection worth having.  Paste is refused with a word rather than
+     * silently when there is nothing to paste or nowhere to put it.
+     */
+    function copySelection(cut) {
+        if (state.selected.length === 0) {
+            return;
+        }
+        CLIP.names = state.selected.slice();
+        CLIP.from = state.path;
+        CLIP.cut = cut;
+    }
+
+    function pasteHere() {
+        const landed = pasteInto(state.path);
+
+        if (landed.length === 0) {
+            return;
+        }
+        state.selected = landed;
+        state.anchor = landed[landed.length - 1];
         draw();
     }
 
@@ -679,10 +915,24 @@ function makeFilesWindow() {
         dialog.appendChild(line);
     }
 
+    /*
+     * pcmanfm's menu on the EMPTY part of the view, which is where Paste
+     * lives: there is no item under the pointer to act on, so the rows
+     * are the ones that act on the folder itself.
+     */
+    function openBlankMenu(x, y) {
+        popupMenu([
+            ["Create Folder", () => createBox("folder")],
+            ["Create Blank File", () => createBox("file")],
+            null,
+            ["Paste", CLIP.names.length > 0 ? () => pasteHere() : null],
+            null,
+            ["Select All", () => selectAll()],
+            ["Reload", () => go(state.path, true)]
+        ], x, y);
+    }
+
     function openItemMenu(name, isDir, x, y) {
-        const menu = document.createElement("div");
-        const room = document.getElementById("desktop")
-            .getBoundingClientRect();
         const rows = [
             ["Open", () => {
                 if (isDir) {
@@ -700,11 +950,22 @@ function makeFilesWindow() {
                 }
             }],
             null,
+            ["Cut", () => copySelection(true)],
+            ["Copy", () => copySelection(false)],
+            null,
             ["Rename", () => renameBox(name, isDir)],
             ["Delete", () => deleteBox(name, isDir)],
             null,
             ["Properties", () => propertiesBox(name, isDir)]
         ];
+
+        popupMenu(rows, x, y);
+    }
+
+    function popupMenu(rows, x, y) {
+        const menu = document.createElement("div");
+        const room = document.getElementById("desktop")
+            .getBoundingClientRect();
 
         menu.id = "window-menu";
         menu.className = "open";
@@ -718,12 +979,16 @@ function makeFilesWindow() {
             }
             const row = document.createElement("div");
 
-            row.className = "row";
+            /* Same rule as the menu bar: a row with nothing behind it is
+             * dimmed, not live and silent. */
+            row.className = entry_[1] ? "row" : "row off";
             row.textContent = entry_[0];
-            row.addEventListener("click", () => {
-                menu.remove();
-                entry_[1]();
-            });
+            if (entry_[1]) {
+                row.addEventListener("click", () => {
+                    menu.remove();
+                    entry_[1]();
+                });
+            }
             menu.appendChild(row);
         });
         document.getElementById("desktop").appendChild(menu);
@@ -768,7 +1033,9 @@ function makeFilesWindow() {
                     writeFile(fullPath(wanted), "");
                 }
                 state.selected = [wanted];
+                state.anchor = wanted;
                 draw();
+                redrawFilesWindows();
                 return true;
             });
     }
@@ -867,6 +1134,7 @@ function makeFilesWindow() {
             state.selected = [wanted];
             dialog.remove();
             draw();
+            redrawFilesWindows();
         };
 
         cancel.addEventListener("click", () => dialog.remove());
@@ -911,6 +1179,7 @@ function makeFilesWindow() {
             state.selected = [];
             dialog.remove();
             draw();
+            redrawFilesWindows();
         });
     }
 
@@ -988,7 +1257,7 @@ function makeFilesWindow() {
     }
 
     draw();
-    return { body: body, state: state, go: go };
+    return { body: body, state: state, go: go, redraw: draw };
 }
 
 /* The window this lives in is closed the way any other is; the File menu

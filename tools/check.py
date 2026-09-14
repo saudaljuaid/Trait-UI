@@ -1040,6 +1040,138 @@ def check_multi_select(page):
     page.wait_for_timeout(150)
 
 
+def check_clipboard(page):
+    """Cut, Copy and Paste really move and copy: the filesystem under the
+    window is read back through a SECOND window opened on the target
+    folder, so a paste that only redrew where it was made would not pass.
+    Paste is dimmed while the clipboard is empty, because a live row that
+    does nothing is the one thing this desktop does not do."""
+    page.evaluate("() => launch('files')")
+    page.wait_for_timeout(300)
+
+    def rows_of(menu):
+        page.click(".files-menubar .m:text-is('%s')" % menu)
+        page.wait_for_timeout(150)
+        return page.eval_on_selector_all(
+            ".files-menubar .m.open .drop .row",
+            "(e) => e.map((r) => [r.textContent, r.classList.contains('off')])")
+
+    def shut():
+        page.keyboard.press("Escape")
+        page.click(".files-view", position={"x": 300, "y": 300})
+        page.wait_for_timeout(120)
+
+    def listing(path):
+        return page.evaluate(
+            """(p) => FS[p] ? FS[p].dirs.slice().sort().concat(
+                   Object.keys(FS[p].files).sort()) : null""", path)
+
+    # Nothing copied yet, so Paste must be dimmed and Cut/Copy too.
+    edit = dict((name, off) for name, off in rows_of("Edit"))
+    if edit.get("Paste") is not True:
+        fails("Paste is live with an empty clipboard")
+    if edit.get("Copy") is not True:
+        fails("Copy is live with nothing selected")
+    shut()
+
+    # Copy README.txt, then paste it into Documents through the location
+    # bar - and read the folder back, not the screen.
+    page.click(".files-entry:has(span:text-is('README.txt'))")
+    page.wait_for_timeout(120)
+    edit = dict((name, off) for name, off in rows_of("Edit"))
+    if edit.get("Copy") is not False:
+        fails("Copy is dimmed with a file selected")
+    page.click(".files-menubar .m.open .drop .row:text-is('Copy')")
+    page.wait_for_timeout(150)
+    edit = dict((name, off) for name, off in rows_of("Edit"))
+    if edit.get("Paste") is not False:
+        fails("Paste is still dimmed after a Copy")
+    shut()
+
+    page.fill(".window:has(.files-view) .location", "/home/user/Documents")
+    page.press(".window:has(.files-view) .location", "Enter")
+    page.wait_for_timeout(250)
+    page.click(".files-menubar .m:text-is('Edit')")
+    page.wait_for_timeout(150)
+    page.click(".files-menubar .m.open .drop .row:text-is('Paste')")
+    page.wait_for_timeout(250)
+    if "README.txt" not in (listing("/home/user/Documents") or []):
+        fails("a copy into Documents left %s"
+              % listing("/home/user/Documents"))
+    if "README.txt" not in (listing("/home/user/user") or
+                            listing("/home/user") or []):
+        fails("a COPY took the file out of where it came from")
+    # The content came with it, not just the name.
+    if page.evaluate("() => FILE_TEXT['/home/user/Documents/README.txt']") \
+            != page.evaluate("() => FILE_TEXT['/home/user/README.txt']"):
+        fails("the copy does not hold what the original holds")
+
+    # Pasting again must not overwrite: pcmanfm makes a "(copy)".
+    page.click(".files-menubar .m:text-is('Edit')")
+    page.wait_for_timeout(150)
+    page.click(".files-menubar .m.open .drop .row:text-is('Paste')")
+    page.wait_for_timeout(250)
+    again = listing("/home/user/Documents") or []
+    if "README (copy).txt" not in again:
+        fails("a second paste gave %s rather than a (copy)" % again)
+
+    # Now CUT that copy back out, into Downloads, and check both ends.
+    page.click(".files-entry:has(span:text-is('README (copy).txt'))")
+    page.wait_for_timeout(120)
+    page.click(".files-menubar .m:text-is('Edit')")
+    page.wait_for_timeout(150)
+    page.click(".files-menubar .m.open .drop .row:text-is('Cut')")
+    page.wait_for_timeout(150)
+    page.fill(".window:has(.files-view) .location", "/home/user/Downloads")
+    page.press(".window:has(.files-view) .location", "Enter")
+    page.wait_for_timeout(250)
+    page.click(".files-menubar .m:text-is('Edit')")
+    page.wait_for_timeout(150)
+    page.click(".files-menubar .m.open .drop .row:text-is('Paste')")
+    page.wait_for_timeout(250)
+    if "README (copy).txt" not in (listing("/home/user/Downloads") or []):
+        fails("a cut did not arrive: Downloads holds %s"
+              % listing("/home/user/Downloads"))
+    if "README (copy).txt" in (listing("/home/user/Documents") or []):
+        fails("a CUT left the file where it came from")
+
+    # A folder copies with what is under it.
+    page.fill(".window:has(.files-view) .location", "/home/user/Documents")
+    page.press(".window:has(.files-view) .location", "Enter")
+    page.wait_for_timeout(250)
+    page.click(".files-entry:has(span:text-is('Notes'))")
+    page.wait_for_timeout(120)
+    page.click(".files-menubar .m:text-is('Edit')")
+    page.wait_for_timeout(150)
+    page.click(".files-menubar .m.open .drop .row:text-is('Copy')")
+    page.wait_for_timeout(150)
+    page.fill(".window:has(.files-view) .location", "/home/user/Videos")
+    page.press(".window:has(.files-view) .location", "Enter")
+    page.wait_for_timeout(250)
+    page.click(".files-menubar .m:text-is('Edit')")
+    page.wait_for_timeout(150)
+    page.click(".files-menubar .m.open .drop .row:text-is('Paste')")
+    page.wait_for_timeout(300)
+    if listing("/home/user/Videos/Notes") != ["todo.txt"]:
+        fails("copying a folder gave %s under it"
+              % listing("/home/user/Videos/Notes"))
+
+    # Put the filesystem back, so the checks after this see what they
+    # expect: a check that leaves a mess is a check that breaks others.
+    page.evaluate("""() => {
+        delete FS['/home/user/Documents'].files['README.txt'];
+        delete FILE_TEXT['/home/user/Documents/README.txt'];
+        delete FS['/home/user/Downloads'].files['README (copy).txt'];
+        delete FILE_TEXT['/home/user/Downloads/README (copy).txt'];
+        FS['/home/user/Videos'].dirs = [];
+        delete FS['/home/user/Videos/Notes'];
+        delete FILE_TEXT['/home/user/Videos/Notes/todo.txt'];
+        CLIP.names = []; CLIP.from = null; CLIP.cut = false;
+        windows.slice().forEach(closeWindow);
+    }""")
+    page.wait_for_timeout(150)
+
+
 def check_item_menu(page):
     """pcmanfm's context menu on a file, and the two rows that change it.
     Rename and Delete have a filesystem of their own to change, so they
@@ -1050,7 +1182,7 @@ def check_item_menu(page):
     page.wait_for_timeout(250)
     rows = page.eval_on_selector_all(
         "#window-menu .row", "(e) => e.map((r) => r.textContent)")
-    if rows != ["Open", "Rename", "Delete", "Properties"]:
+    if rows != ["Open", "Cut", "Copy", "Rename", "Delete", "Properties"]:
         fails("the file menu carries %s" % ", ".join(rows))
         return
 
@@ -1370,6 +1502,7 @@ def main():
         check_window_menu(page)
         check_list_view(page)
         check_multi_select(page)
+        check_clipboard(page)
         check_browser(page)
         check_shortcuts(page)
         check_logout_banner(page)

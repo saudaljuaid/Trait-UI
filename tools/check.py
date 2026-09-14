@@ -907,6 +907,98 @@ def check_list_view(page):
     page.wait_for_timeout(150)
 
 
+def check_item_menu(page):
+    """pcmanfm's context menu on a file, and the two rows that change it.
+    Rename and Delete have a filesystem of their own to change, so they
+    change it - a row that quietly did nothing would be worse than none."""
+    page.evaluate("() => launch('files')")
+    page.wait_for_timeout(300)
+    page.click(".files-entry:has-text('README.txt')", button="right")
+    page.wait_for_timeout(250)
+    rows = page.eval_on_selector_all(
+        "#window-menu .row", "(e) => e.map((r) => r.textContent)")
+    if rows != ["Open", "Rename", "Delete", "Properties"]:
+        fails("the file menu carries %s" % ", ".join(rows))
+        return
+
+    # Properties says what it is, where it is and how big.
+    page.click("#window-menu .row:text-is('Properties')")
+    page.wait_for_timeout(250)
+    facts = page.eval_on_selector_all(
+        ".dialog .body b", "(e) => e.map((x) => x.textContent)")
+    if facts != ["Name", "Type", "Location", "Size", "Modified"]:
+        fails("Properties reports %s" % ", ".join(facts))
+    page.click(".dialog .titlebar button.close")
+    page.wait_for_timeout(150)
+
+    # A folder is reported by what is IN it: a folder has no size.
+    page.click(".files-entry:has-text('Documents')", button="right")
+    page.wait_for_timeout(250)
+    page.click("#window-menu .row:text-is('Properties')")
+    page.wait_for_timeout(250)
+    facts = page.eval_on_selector_all(
+        ".dialog .body b", "(e) => e.map((x) => x.textContent)")
+    if "Contents" not in facts:
+        fails("a folder's properties report %s, so it is being given a "
+              "size" % ", ".join(facts))
+    page.click(".dialog .titlebar button.close")
+    page.wait_for_timeout(150)
+
+    #
+    # Rename changes the name, and a folder keeps what is inside it.
+    #
+    # AND IT IS PUT BACK.  The filesystem is one object for the whole
+    # session, so a check that renames Documents and walks away leaves
+    # every later check looking for a folder that is not there - which is
+    # exactly what happened, as a thirty-second wait for
+    # .files-entry:has-text("Documents").
+    #
+    page.click(".files-entry:has-text('Documents')", button="right")
+    page.wait_for_timeout(250)
+    page.click("#window-menu .row:text-is('Rename')")
+    page.wait_for_timeout(200)
+    page.fill(".dialog input", "Papers")
+    page.press(".dialog input", "Enter")
+    page.wait_for_timeout(250)
+    names = page.eval_on_selector_all(
+        ".files-entry span", "(e) => e.map((x) => x.textContent)")
+    if "Papers" not in names or "Documents" in names:
+        fails("renaming a folder left the listing at %s"
+              % ", ".join(names))
+    page.dblclick(".files-entry:has-text('Papers')")
+    page.wait_for_timeout(250)
+    inside = page.eval_on_selector_all(
+        ".files-entry span", "(e) => e.map((x) => x.textContent)")
+    if "report.txt" not in inside:
+        fails("the renamed folder came up empty, so the rename left its "
+              "contents behind under the old name")
+
+    # Delete, on a file inside it rather than on the folder itself.
+    page.click(".files-entry:has-text('letter.txt')", button="right")
+    page.wait_for_timeout(250)
+    page.click("#window-menu .row:text-is('Delete')")
+    page.wait_for_timeout(200)
+    page.click(".dialog button:text-is('Delete')")
+    page.wait_for_timeout(250)
+    inside = page.eval_on_selector_all(
+        ".files-entry span", "(e) => e.map((x) => x.textContent)")
+    if "letter.txt" in inside:
+        fails("Delete left the file in the listing")
+
+    page.click('.files-toolbar button[title="Up"]')
+    page.wait_for_timeout(250)
+    page.click(".files-entry:has-text('Papers')", button="right")
+    page.wait_for_timeout(250)
+    page.click("#window-menu .row:text-is('Rename')")
+    page.wait_for_timeout(200)
+    page.fill(".dialog input", "Documents")
+    page.press(".dialog input", "Enter")
+    page.wait_for_timeout(250)
+
+    page.evaluate("() => windows.slice().forEach(closeWindow)")
+    page.wait_for_timeout(150)
+
+
 def main():
     with sync_playwright() as play:
         browser = play.chromium.launch(
@@ -926,6 +1018,7 @@ def main():
         check_run_box(page)
         check_volume(page)
         check_lock(page)
+        check_item_menu(page)
         check_window_menu(page)
         check_list_view(page)
         check_browser(page)

@@ -490,6 +490,13 @@ function makeFilesWindow() {
                    state.path + "/" + name);
             }
         });
+        line.addEventListener("contextmenu", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            state.selected = name;
+            draw();
+            openItemMenu(name, isDir, event.clientX, event.clientY);
+        });
         return line;
     }
 
@@ -529,6 +536,214 @@ function makeFilesWindow() {
         }
     }
 
+    /*
+     * pcmanfm's context menu on a file or folder: Open, then the two
+     * commands that change it, then Properties.  Rename and Delete work -
+     * this window has a filesystem of its own to change - and Open on a
+     * file nothing installed can read says so, which is more use than a
+     * row that quietly does nothing.
+     */
+    function fullPath(name) {
+        return state.path === "/" ? "/" + name : state.path + "/" + name;
+    }
+
+    function note(text) {
+        const dialog = makeDialog("Files", 330);
+        const line = document.createElement("div");
+
+        line.className = "body";
+        line.textContent = text;
+        dialog.appendChild(line);
+    }
+
+    function openItemMenu(name, isDir, x, y) {
+        const menu = document.createElement("div");
+        const room = document.getElementById("desktop")
+            .getBoundingClientRect();
+        const rows = [
+            ["Open", () => {
+                if (isDir) {
+                    go(fullPath(name));
+                } else if (name.slice(-4) === ".txt" &&
+                        appIsInstalled("leafpad")) {
+                    launch("leafpad");
+                } else if (name.slice(-4) === ".txt") {
+                    note("Nothing installed opens a text file. leafpad " +
+                        "is in the package manager.");
+                } else {
+                    note("There is no application installed that opens " +
+                        name + ".");
+                }
+            }],
+            null,
+            ["Rename", () => renameBox(name, isDir)],
+            ["Delete", () => deleteBox(name, isDir)],
+            null,
+            ["Properties", () => propertiesBox(name, isDir)]
+        ];
+
+        menu.id = "window-menu";
+        menu.className = "open";
+        rows.forEach((entry_) => {
+            if (entry_ === null) {
+                const sep = document.createElement("div");
+
+                sep.className = "sep";
+                menu.appendChild(sep);
+                return;
+            }
+            const row = document.createElement("div");
+
+            row.className = "row";
+            row.textContent = entry_[0];
+            row.addEventListener("click", () => {
+                menu.remove();
+                entry_[1]();
+            });
+            menu.appendChild(row);
+        });
+        document.getElementById("desktop").appendChild(menu);
+        menu.style.left = Math.min(x, Math.max(0,
+            room.width - menu.offsetWidth)) + "px";
+        menu.style.top = Math.min(y, Math.max(0,
+            room.height - menu.offsetHeight)) + "px";
+        const away = () => {
+            menu.remove();
+            document.removeEventListener("click", away);
+        };
+
+        setTimeout(() => document.addEventListener("click", away), 0);
+    }
+
+    function renameBox(name, isDir) {
+        const dialog = makeDialog("Rename", 330);
+        const wrap = document.createElement("div");
+        const field = document.createElement("input");
+        const row = document.createElement("div");
+        const cancel = document.createElement("button");
+        const ok = document.createElement("button");
+        const here = FS[state.path];
+
+        wrap.className = "body";
+        field.type = "text";
+        field.value = name;
+        wrap.appendChild(field);
+        row.className = "row";
+        cancel.textContent = "Cancel";
+        ok.textContent = "Rename";
+        row.appendChild(cancel);
+        row.appendChild(ok);
+        dialog.appendChild(wrap);
+        dialog.appendChild(row);
+
+        const rename = () => {
+            const wanted = field.value.trim();
+
+            if (wanted === "" || wanted === name) {
+                dialog.remove();
+                return;
+            }
+            if (isDir) {
+                /*
+                 * A folder carries its contents with it, so its entry in
+                 * FS moves too - a rename that left the contents behind
+                 * would be a new empty folder wearing the old name.
+                 */
+                FS[fullPath(wanted)] = FS[fullPath(name)];
+                delete FS[fullPath(name)];
+                here.dirs[here.dirs.indexOf(name)] = wanted;
+            } else {
+                here.files[wanted] = here.files[name];
+                delete here.files[name];
+            }
+            state.selected = wanted;
+            dialog.remove();
+            draw();
+        };
+
+        cancel.addEventListener("click", () => dialog.remove());
+        ok.addEventListener("click", rename);
+        field.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                rename();
+            }
+            if (event.key === "Escape") {
+                dialog.remove();
+            }
+        });
+        field.focus();
+        field.select();
+    }
+
+    function deleteBox(name, isDir) {
+        const dialog = makeDialog("Delete", 330);
+        const wrap = document.createElement("div");
+        const row = document.createElement("div");
+        const cancel = document.createElement("button");
+        const ok = document.createElement("button");
+        const here = FS[state.path];
+
+        wrap.className = "body";
+        wrap.textContent = "Delete \u201C" + name + "\u201D?";
+        row.className = "row";
+        cancel.textContent = "Cancel";
+        ok.textContent = "Delete";
+        row.appendChild(cancel);
+        row.appendChild(ok);
+        dialog.appendChild(wrap);
+        dialog.appendChild(row);
+        cancel.addEventListener("click", () => dialog.remove());
+        ok.addEventListener("click", () => {
+            if (isDir) {
+                here.dirs.splice(here.dirs.indexOf(name), 1);
+                delete FS[fullPath(name)];
+            } else {
+                delete here.files[name];
+            }
+            state.selected = null;
+            dialog.remove();
+            draw();
+        });
+    }
+
+    /*
+     * Properties: the name, what it is, where it is, and how big.  A
+     * FOLDER is reported by what is in it rather than by a size, which is
+     * what a file manager can actually say about one.
+     */
+    function propertiesBox(name, isDir) {
+        const dialog = makeDialog("Properties", 350);
+        const wrap = document.createElement("div");
+        const here = FS[state.path];
+        const inside = isDir ? FS[fullPath(name)] : null;
+        const facts = [
+            ["Name", name],
+            ["Type", isDir ? "Folder" : describe(name)],
+            ["Location", state.path],
+            [isDir ? "Contents" : "Size",
+             isDir ? (inside.dirs.length +
+                 Object.keys(inside.files).length) + " items" :
+                 humanSize(here.files[name])],
+            ["Modified", "14 Sep 2026"]
+        ];
+
+        wrap.className = "body";
+        facts.forEach(([label, value]) => {
+            const line = document.createElement("div");
+            const key = document.createElement("b");
+            const val = document.createElement("span");
+
+            line.style.cssText = "display:flex;gap:8px;margin-bottom:3px";
+            key.style.cssText = "flex:0 0 84px";
+            key.textContent = label;
+            val.textContent = value;
+            line.appendChild(key);
+            line.appendChild(val);
+            wrap.appendChild(line);
+        });
+        dialog.appendChild(wrap);
+    }
+
     function entry(name, mark, isDir) {
         const cell = document.createElement("div");
         const img = document.createElement("img");
@@ -551,6 +766,13 @@ function makeFilesWindow() {
                 go(state.path === "/" ? "/" + name :
                    state.path + "/" + name);
             }
+        });
+        cell.addEventListener("contextmenu", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            state.selected = name;
+            draw();
+            openItemMenu(name, isDir, event.clientX, event.clientY);
         });
         return cell;
     }

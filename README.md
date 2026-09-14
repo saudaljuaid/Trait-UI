@@ -202,6 +202,14 @@ so it reports what is actually in the folder. The first cut printed
 figure the desktop could stand behind — it was invented, and a status bar
 that makes up a number is worse than one that leaves the field out.
 
+A right click on a file or folder drops pcmanfm's context menu — Open,
+Rename, Delete, Properties — and the two rows that change things change
+them: this window has a filesystem of its own. Renaming a folder carries
+its contents with it; a rename that left them behind would be a new empty
+folder wearing the old name. Properties reports a **folder** by what is
+in it rather than by a size, because a folder's size is not a number a
+file manager can give you.
+
 Its mark, `assets/logo/files.svg`, is this project's own: a drawer with
 fanned papers, drawn in the same geometry as the Phipia mark — the same
 shear, the same rounding — and grey rather than a bright folder, because

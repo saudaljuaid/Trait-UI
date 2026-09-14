@@ -1226,6 +1226,143 @@ int main(int argc, char **argv)
                "focus to another window\n",
                trait_shell_desktop_icon_count());
     }
+
+    /*
+     * NOTIFICATIONS, TOOLTIPS AND RESIZING.
+     */
+    {
+        struct trait_event event;
+        struct trait_rect box;
+        struct trait_window *window;
+        uint32_t slot;
+        uint32_t at;
+        struct trait_rect was;
+
+        memset(&event, 0, sizeof(event));
+        trait_shell_reset(&screen);
+        trait_shell_set_screen(whole());
+        (void)trait_panel_initialize();
+        (void)trait_panel_set_clock("15:43");
+        populate_taskmgr();
+        slot = trait_shell_open(TRAIT_APP_TASKMGR,
+            (struct trait_rect){ 200U, 160U, 520U, 300U });
+        window = trait_shell_window(slot);
+        if (window == NULL) {
+            return 1;
+        }
+
+        /* A notice AGES OUT on its own rather than sitting there. */
+        trait_shell_notify("Package Manager", "2 packages installed");
+        trait_shell_notify("Files", "report.txt moved to Notes");
+        if (trait_shell_note_count() != 2U) {
+            fprintf(stderr, "trait: notices did not queue\n");
+            return 1;
+        }
+
+        /* Rest the pointer on the volume icon.  It must NOT show a tip
+         * at once - the delay is the whole of what makes it a tip. */
+        if (trait_panel_plugin_bounds(whole(), TRAIT_PANEL_PLUGIN_VOLUME,
+                &box) != TRAIT_PANEL_STATUS_OK) {
+            return 1;
+        }
+        event.kind = TRAIT_EVENT_POINTER_MOVE;
+        event.x = box.x + box.width / 2U;
+        event.y = box.y + box.height / 2U;
+        (void)trait_shell_handle(&event);
+        if (trait_shell_tip_visible()) {
+            fprintf(stderr, "trait: the tip appeared with no delay\n");
+            return 1;
+        }
+        for (at = 0U; at < TRAIT_SHELL_TIP_TICKS; ++at) {
+            trait_shell_tick();
+        }
+        if (!trait_shell_tip_visible()) {
+            fprintf(stderr, "trait: the tip never appeared\n");
+            return 1;
+        }
+
+        if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
+            flat(0x212121U);
+        }
+        trait_shell_draw_desktop();
+        trait_shell_draw();
+        (void)trait_panel_draw(whole());
+        trait_shell_draw_overlays();
+        if (!emit(out, "notes.png", whole())) {
+            return 1;
+        }
+
+        /* Moving away resets it. */
+        event.x = 400U;
+        event.y = 400U;
+        (void)trait_shell_handle(&event);
+        if (trait_shell_tip_visible()) {
+            fprintf(stderr, "trait: the tip survived the pointer "
+                            "leaving\n");
+            return 1;
+        }
+
+        /* RESIZE from the bottom-right corner: both dimensions at once. */
+        was = window->frame;
+        event.kind = TRAIT_EVENT_POINTER_DOWN;
+        event.x = was.x + was.width - 2U;
+        event.y = was.y + was.height - 2U;
+        if (!trait_shell_handle(&event)) {
+            fprintf(stderr, "trait: a press on the corner did nothing\n");
+            return 1;
+        }
+        event.kind = TRAIT_EVENT_POINTER_MOVE;
+        event.x += 90U;
+        event.y += 60U;
+        (void)trait_shell_handle(&event);
+        if (window->frame.width != was.width + 90U ||
+                window->frame.height != was.height + 60U) {
+            fprintf(stderr, "trait: the corner drag gave %ux%u, not "
+                            "%ux%u\n", window->frame.width,
+                    window->frame.height, was.width + 90U,
+                    was.height + 60U);
+            return 1;
+        }
+        /* It cannot be dragged smaller than the minimum, and dragging
+         * back out afterwards must not be offset by how far past the
+         * minimum the pointer went. */
+        event.x = was.x + 10U;
+        event.y = was.y + 10U;
+        (void)trait_shell_handle(&event);
+        if (window->frame.width < 180U || window->frame.height < 180U) {
+            fprintf(stderr, "trait: the window went below its minimum "
+                            "(%ux%u)\n", window->frame.width,
+                    window->frame.height);
+            return 1;
+        }
+        event.x = was.x + was.width - 2U;
+        event.y = was.y + was.height - 2U;
+        (void)trait_shell_handle(&event);
+        if (window->frame.width != was.width ||
+                window->frame.height != was.height) {
+            fprintf(stderr, "trait: dragging back drifted to %ux%u from "
+                            "%ux%u\n", window->frame.width,
+                    window->frame.height, was.width, was.height);
+            return 1;
+        }
+        event.kind = TRAIT_EVENT_POINTER_UP;
+        (void)trait_shell_handle(&event);
+
+        /* And notices really expire. */
+        for (at = 0U; at < 14U; ++at) {
+            trait_shell_tick();
+        }
+        if (trait_shell_note_count() != 0U) {
+            fprintf(stderr, "trait: %u notices never expired\n",
+                    trait_shell_note_count());
+            return 1;
+        }
+        printf("proof: two notices queued and aged out, a tip appeared "
+               "only after %u ticks of rest and went when the pointer "
+               "left, and a corner drag resized both dimensions and came "
+               "back to %ux%u exactly after hitting the minimum\n",
+               TRAIT_SHELL_TIP_TICKS, was.width, was.height);
+    }
     printf("proof: a %u-pixel panel over a %ux%u screen, %u tasks, a "
            "%u-column cpu graph and a clock that does not move when a "
            "window opens; a task manager of %u processes sorted by a "

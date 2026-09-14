@@ -25,6 +25,33 @@ static char run_text[48];
 static uint32_t run_length;
 static char run_error[64];
 
+static struct {
+    char title[TRAIT_SHELL_NOTE_BYTES];
+    char body[TRAIT_SHELL_NOTE_BYTES];
+    uint32_t life;
+} notes[TRAIT_SHELL_MAX_NOTES];
+static uint32_t note_count;
+
+static char tip_text[48];
+static uint32_t tip_rested;
+static uint32_t tip_x;
+static uint32_t tip_y;
+
+/* Resizing: which edge is being dragged, and the frame it started from. */
+static bool resizing;
+static uint32_t resize_slot;
+static uint32_t resize_edges;
+static struct trait_rect resize_from;
+static uint32_t resize_ox;
+static uint32_t resize_oy;
+
+#define EDGE_LEFT 0x1U
+#define EDGE_RIGHT 0x2U
+#define EDGE_TOP 0x4U
+#define EDGE_BOTTOM 0x8U
+#define RESIZE_GRIP 5U
+#define MIN_WINDOW 180U
+
 static bool switcher_open;
 static uint32_t switcher_at;
 
@@ -110,6 +137,10 @@ void trait_shell_reset(struct trait_surface *surface)
     run_text[0] = '\0';
     run_error[0] = '\0';
     switcher_open = false;
+    note_count = 0U;
+    tip_rested = 0U;
+    tip_text[0] = '\0';
+    resizing = false;
     stack_depth = 0U;
     dragging = false;
     dragging_entry = false;
@@ -160,6 +191,104 @@ void trait_shell_send_to_desktop(uint32_t slot, uint32_t desktop)
         return;
     }
     windows[slot].desktop = desktop;
+}
+
+static void copy_note(char *out, const char *text)
+{
+    uint32_t at = 0U;
+
+    while (text != NULL && text[at] != '\0' &&
+            at + 1U < TRAIT_SHELL_NOTE_BYTES) {
+        out[at] = text[at];
+        ++at;
+    }
+    out[at] = '\0';
+}
+
+void trait_shell_notify(const char *title, const char *body)
+{
+    uint32_t at;
+
+    /* Full means the OLDEST goes, not the newest refused: the thing that
+     * just happened is the thing worth saying. */
+    if (note_count == TRAIT_SHELL_MAX_NOTES) {
+        for (at = 1U; at < TRAIT_SHELL_MAX_NOTES; ++at) {
+            notes[at - 1U] = notes[at];
+        }
+        --note_count;
+    }
+    copy_note(notes[note_count].title, title);
+    copy_note(notes[note_count].body, body);
+    notes[note_count].life = 12U;
+    ++note_count;
+}
+
+uint32_t trait_shell_note_count(void)
+{
+    return note_count;
+}
+
+const char *trait_shell_note_title(uint32_t at)
+{
+    return at < note_count ? notes[at].title : "";
+}
+
+const char *trait_shell_note_body(uint32_t at)
+{
+    return at < note_count ? notes[at].body : "";
+}
+
+void trait_shell_tick(void)
+{
+    uint32_t at = 0U;
+
+    while (at < note_count) {
+        if (notes[at].life != 0U) {
+            --notes[at].life;
+        }
+        if (notes[at].life == 0U) {
+            uint32_t move;
+
+            for (move = at + 1U; move < note_count; ++move) {
+                notes[move - 1U] = notes[move];
+            }
+            --note_count;
+            continue;
+        }
+        ++at;
+    }
+    if (tip_text[0] != '\0' && tip_rested < TRAIT_SHELL_TIP_TICKS) {
+        ++tip_rested;
+    }
+}
+
+bool trait_shell_tip_visible(void)
+{
+    return tip_text[0] != '\0' && tip_rested >= TRAIT_SHELL_TIP_TICKS;
+}
+
+const char *trait_shell_tip_text(void)
+{
+    return tip_text;
+}
+
+struct trait_rect trait_shell_tip_bounds(void)
+{
+    struct trait_rect box = { 0U, 0U, 0U, 0U };
+
+    if (!trait_shell_tip_visible()) {
+        return box;
+    }
+    box.width = trait_font_width(tip_text) + 14U;
+    box.height = 20U;
+    box.x = tip_x > box.width / 2U ? tip_x - box.width / 2U : 0U;
+    if (box.x + box.width > shell_screen.x + shell_screen.width) {
+        box.x = shell_screen.x + shell_screen.width - box.width;
+    }
+    /* ABOVE the pointer, because the bar is at the foot of the screen and
+     * a tip below it would be off the display. */
+    box.y = tip_y > box.height + 6U ? tip_y - box.height - 6U : 0U;
+    return box;
 }
 
 bool trait_shell_menu_open(void)
@@ -653,6 +782,83 @@ static uint32_t switcher_list(uint32_t *out, uint32_t capacity)
     return count;
 }
 
+/*
+ * WHICH EDGES A POINT IS ON.  Openbox resizes from the border, so this
+ * asks how close the point is to each edge of the frame and returns a
+ * SET: a corner is two edges, which is what makes a corner drag change
+ * both dimensions at once.  Returning a single edge is why some window
+ * managers make you drag twice to resize diagonally.
+ */
+static uint32_t edges_at(uint32_t slot, uint32_t x, uint32_t y)
+{
+    struct trait_rect frame = windows[slot].frame;
+    uint32_t edges = 0U;
+
+    if (!trait_rect_contains(frame, x, y)) {
+        return 0U;
+    }
+    if (x < frame.x + RESIZE_GRIP) {
+        edges |= EDGE_LEFT;
+    }
+    if (x + RESIZE_GRIP >= frame.x + frame.width) {
+        edges |= EDGE_RIGHT;
+    }
+    if (y < frame.y + RESIZE_GRIP) {
+        edges |= EDGE_TOP;
+    }
+    if (y + RESIZE_GRIP >= frame.y + frame.height) {
+        edges |= EDGE_BOTTOM;
+    }
+    return edges;
+}
+
+/*
+ * A resize, applied from the frame the drag STARTED on rather than the
+ * one it last had.  Accumulating deltas frame by frame drifts, and it
+ * drifts worst when the window hits its minimum size and the pointer
+ * carries on - the window then grows from the wrong place on the way
+ * back.
+ */
+static void resize_to(uint32_t x, uint32_t y)
+{
+    struct trait_window *window = &windows[resize_slot];
+    struct trait_rect frame = resize_from;
+    int32_t dx = (int32_t)x - (int32_t)resize_ox;
+    int32_t dy = (int32_t)y - (int32_t)resize_oy;
+
+    if ((resize_edges & EDGE_RIGHT) != 0U) {
+        int32_t width = (int32_t)frame.width + dx;
+
+        frame.width = width < (int32_t)MIN_WINDOW ? MIN_WINDOW :
+            (uint32_t)width;
+    }
+    if ((resize_edges & EDGE_BOTTOM) != 0U) {
+        int32_t height = (int32_t)frame.height + dy;
+
+        frame.height = height < (int32_t)MIN_WINDOW ? MIN_WINDOW :
+            (uint32_t)height;
+    }
+    if ((resize_edges & EDGE_LEFT) != 0U) {
+        int32_t left = (int32_t)frame.x + dx;
+        int32_t width = (int32_t)frame.width - dx;
+
+        if (width >= (int32_t)MIN_WINDOW && left >= 0) {
+            frame.x = (uint32_t)left;
+            frame.width = (uint32_t)width;
+        }
+    }
+    if ((resize_edges & EDGE_TOP) != 0U) {
+        int32_t top = (int32_t)frame.y + dy;
+        int32_t height = (int32_t)frame.height - dy;
+
+        if (height >= (int32_t)MIN_WINDOW && top >= 0) {
+            frame.y = (uint32_t)top;
+            frame.height = (uint32_t)height;
+        }
+    }
+    window->frame = frame;
+}
+
 static bool shell_run_go(void)
 {
     static const struct {
@@ -876,7 +1082,70 @@ bool trait_shell_handle(const struct trait_event *event)
     }
 
     if (event->kind == TRAIT_EVENT_POINTER_MOVE) {
+        if (resizing) {
+            resize_to(event->x, event->y);
+            return true;
+        }
         if (!dragging) {
+            /*
+             * Not dragging: this is a hover.  The tip RESETS when the
+             * pointer moves to something else and counts up while it
+             * rests - which is what makes it a tip rather than something
+             * that flashes as the mouse crosses the bar.
+             */
+            struct trait_panel_hit over =
+                trait_panel_hit(shell_screen, event->x, event->y);
+            const char *label = "";
+
+            switch (over.kind) {
+            case TRAIT_PANEL_HIT_MENU:
+                label = "Applications";
+                break;
+            case TRAIT_PANEL_HIT_LAUNCHER:
+                label = over.index == 0U ? "File Manager" :
+                    (over.index == 1U ? "Package Manager" : "Terminal");
+                break;
+            case TRAIT_PANEL_HIT_WINCMD:
+                label = "Show the desktop";
+                break;
+            case TRAIT_PANEL_HIT_PAGER:
+                label = "Workspace";
+                break;
+            case TRAIT_PANEL_HIT_VOLUME:
+                label = "Volume";
+                break;
+            case TRAIT_PANEL_HIT_CLOCK:
+                label = "Clock";
+                break;
+            default:
+                label = "";
+                break;
+            }
+            {
+                uint32_t at = 0U;
+                bool same_tip = true;
+
+                while (label[at] != '\0' || tip_text[at] != '\0') {
+                    if (label[at] != tip_text[at]) {
+                        same_tip = false;
+                        break;
+                    }
+                    ++at;
+                }
+                tip_x = event->x;
+                tip_y = event->y;
+                if (!same_tip) {
+                    at = 0U;
+                    while (label[at] != '\0' &&
+                            at + 1U < sizeof(tip_text)) {
+                        tip_text[at] = label[at];
+                        ++at;
+                    }
+                    tip_text[at] = '\0';
+                    tip_rested = 0U;
+                    return true;
+                }
+            }
             return false;
         }
         windows[drag_slot].frame.x = event->x > drag_dx ?
@@ -887,9 +1156,10 @@ bool trait_shell_handle(const struct trait_event *event)
     }
 
     if (event->kind == TRAIT_EVENT_POINTER_UP) {
-        bool was = dragging;
+        bool was = dragging || resizing;
 
         dragging = false;
+        resizing = false;
         if (dragging_entry) {
             uint32_t over = trait_shell_at(event->x, event->y);
 
@@ -1036,6 +1306,25 @@ bool trait_shell_handle(const struct trait_event *event)
             }
         }
         return true;
+    }
+    /*
+     * THE BORDER RESIZES, and it is tested before the title bar: the top
+     * corners are both, and a window whose top-left corner moves the
+     * window instead of resizing it has no way to be made shorter from
+     * the top.
+     */
+    {
+        uint32_t edges = edges_at(slot, event->x, event->y);
+
+        if (edges != 0U && !windows[slot].maximised) {
+            resizing = true;
+            resize_slot = slot;
+            resize_edges = edges;
+            resize_from = windows[slot].frame;
+            resize_ox = event->x;
+            resize_oy = event->y;
+            return true;
+        }
     }
     title = trait_window_title(&windows[slot]);
     if (trait_rect_contains(title, event->x, event->y)) {
@@ -1284,6 +1573,70 @@ void trait_shell_draw_overlays(void)
                 windows[order[at]].title,
                 at == switcher_at ? TRAIT_SEL_FG : TRAIT_FG);
         }
+    }
+    /*
+     * Notifications stack up from the bar's top edge, newest at the
+     * bottom - nearest where the eye already is when something on the
+     * bar caused it.
+     */
+    {
+        uint32_t at;
+
+        for (at = 0U; at < note_count; ++at) {
+            struct trait_rect box;
+            uint32_t edge;
+
+            box.width = 220U;
+            box.height = 46U;
+            box.x = shell_screen.x + shell_screen.width - box.width - 10U;
+            box.y = shell_screen.y + shell_screen.height -
+                TRAIT_PANEL_HEIGHT - 8U -
+                (note_count - at) * (box.height + 6U);
+            trait_surface_fill(canvas, box, box, TRAIT_BG);
+            for (edge = 0U; edge < box.width; ++edge) {
+                trait_surface_plot(canvas, box, box.x + edge, box.y,
+                                   TRAIT_LINE);
+                trait_surface_plot(canvas, box, box.x + edge,
+                                   box.y + box.height - 1U, TRAIT_LINE);
+            }
+            for (edge = 0U; edge < box.height; ++edge) {
+                trait_surface_plot(canvas, box, box.x, box.y + edge,
+                                   TRAIT_LINE);
+                trait_surface_plot(canvas, box, box.x + box.width - 1U,
+                                   box.y + edge, TRAIT_LINE);
+            }
+            trait_font_draw(canvas, box, box.x + 10U, box.y + 18U,
+                            notes[at].title, TRAIT_FG);
+            trait_font_draw(canvas, box, box.x + 10U, box.y + 34U,
+                            notes[at].body, TRAIT_TEXT);
+        }
+    }
+    /*
+     * The tip last of all, because it is the thing nearest the pointer
+     * and nothing should be able to cover it.  GTK's tooltip is a pale
+     * yellow box, which is what tooltip_bg_color is in every GTK2 theme
+     * that ships one - it is not the widget background, and using the
+     * widget background is how a tip stops looking like a tip.
+     */
+    if (trait_shell_tip_visible()) {
+        struct trait_rect box = trait_shell_tip_bounds();
+        uint32_t edge;
+
+        trait_surface_fill(canvas, box, box, 0xF5F5B5U);
+        for (edge = 0U; edge < box.width; ++edge) {
+            trait_surface_plot(canvas, box, box.x + edge, box.y,
+                               0x000000U);
+            trait_surface_plot(canvas, box, box.x + edge,
+                               box.y + box.height - 1U, 0x000000U);
+        }
+        for (edge = 0U; edge < box.height; ++edge) {
+            trait_surface_plot(canvas, box, box.x, box.y + edge,
+                               0x000000U);
+            trait_surface_plot(canvas, box, box.x + box.width - 1U,
+                               box.y + edge, 0x000000U);
+        }
+        trait_font_draw(canvas, box, box.x + 7U, box.y + 14U,
+                        tip_text, 0x000000U);
     }
 }
 

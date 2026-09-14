@@ -76,6 +76,33 @@ const char *trait_shell_run_error(void);
 bool trait_shell_switcher_open(void);
 uint32_t trait_shell_switcher_at(void);
 
+/*
+ * NOTIFICATIONS.  Something happened that the user did not watch happen -
+ * a package applied, a file moved - and the desktop says so.  A queue
+ * rather than one slot, because two things can happen at once and the
+ * second one silently replacing the first is worse than no notice.
+ */
+#define TRAIT_SHELL_MAX_NOTES 3U
+#define TRAIT_SHELL_NOTE_BYTES 64U
+
+void trait_shell_notify(const char *title, const char *body);
+uint32_t trait_shell_note_count(void);
+const char *trait_shell_note_title(uint32_t at);
+const char *trait_shell_note_body(uint32_t at);
+/* One tick of the clock: notices age out on their own. */
+void trait_shell_tick(void);
+
+/*
+ * TOOLTIPS.  A pointer resting on a bar button says what it is.  The
+ * DELAY is the whole of what makes a tip helpful rather than a thing that
+ * flashes at you while you move the mouse across the screen - GTK's own
+ * is 500ms, and this counts ticks rather than guessing.
+ */
+#define TRAIT_SHELL_TIP_TICKS 5U
+bool trait_shell_tip_visible(void);
+const char *trait_shell_tip_text(void);
+struct trait_rect trait_shell_tip_bounds(void);
+
 bool trait_shell_menu_open(void);
 bool trait_shell_volume_open(void);
 uint32_t trait_shell_volume(void);

@@ -1,0 +1,16 @@
+The icons the C panel draws, as PNGs, so tools/c/make-app-icons can turn
+them into the planes the shell composites.  They are copies of files
+already vendored in ../icons/ and carry those licences:
+
+  browser.png, file-manager.png, gnome-fs-desktop.png,
+  gtk-preferences.png, network.png, system-file-manager.png,
+  terminal.png
+      lxde-icon-theme 0.5.1-2.1 (nuoveXT2) - LGPL-3+
+
+  volume.png, volume-muted.png, wincmd.png
+      lxpanel-data 0.11.1-2 - GPL-2+
+      (stock_volume.png, mute.png and window-manager.png, renamed to
+      what the panel asks for rather than to what lxpanel filed them as)
+
+The menu button's mark is not here: it is the owner's onion, in
+../logo/onion.png, and generated from there.

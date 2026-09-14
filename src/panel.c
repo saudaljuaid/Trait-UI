@@ -448,19 +448,39 @@ static void draw_pager(struct trait_rect box)
     }
 }
 
+/*
+ * Which task button is where.  draw_tasks() lays them out and this has to
+ * agree with it exactly, so both go through here rather than each working
+ * it out - a hit test that computes its own layout is a hit test that
+ * drifts a pixel at a time until the wrong button answers.
+ */
+static bool task_button(struct trait_rect box, uint32_t drawn,
+    uint32_t live, struct trait_rect *out)
+{
+    uint32_t width;
+
+    if (live == 0U || box.width == 0U) {
+        return false;
+    }
+    width = box.width / live;
+    if (width > TRAIT_PANEL_MAX_TASK_WIDTH) {
+        width = TRAIT_PANEL_MAX_TASK_WIDTH;
+    }
+    out->x = box.x + drawn * width;
+    out->y = box.y + 2U;
+    out->width = width > 2U ? width - 2U : width;
+    out->height = box.height - 4U;
+    return true;
+}
+
 static void draw_tasks(struct trait_rect box)
 {
     uint32_t live = trait_panel_task_count();
-    uint32_t width;
     uint32_t drawn = 0U;
     uint32_t slot;
 
     if (live == 0U || box.width == 0U) {
         return;
-    }
-    width = box.width / live;
-    if (width > TRAIT_PANEL_MAX_TASK_WIDTH) {
-        width = TRAIT_PANEL_MAX_TASK_WIDTH;
     }
     for (slot = 0U; slot < TRAIT_PANEL_MAX_TASKS; ++slot) {
         struct trait_rect button;
@@ -470,10 +490,9 @@ static void draw_tasks(struct trait_rect box)
         if (!panel_task_used[slot] || task->desktop != panel_desktop) {
             continue;
         }
-        button.x = box.x + drawn * width;
-        button.y = box.y + 2U;
-        button.width = width > 2U ? width - 2U : width;
-        button.height = box.height - 4U;
+        if (!task_button(box, drawn, live, &button)) {
+            continue;
+        }
         raised(box, button,
                task->active ? TRAIT_TASK_FACE_ACTIVE : TRAIT_TASK_FACE,
                TRAIT_TASK_LIGHT, TRAIT_TASK_DARK);
@@ -531,6 +550,79 @@ static void draw_clock(struct trait_rect box)
     trait_font_draw(canvas, box,
         box.x + (box.width > text ? (box.width - text) / 2U : 0U),
         box.y + box.height - 8U, panel_clock, TRAIT_INK);
+}
+
+struct trait_panel_hit trait_panel_hit(struct trait_rect screen,
+    uint32_t x, uint32_t y)
+{
+    struct trait_panel_hit hit = { TRAIT_PANEL_HIT_NONE, 0U };
+    struct trait_rect box;
+    uint32_t at;
+
+    if (trait_panel_plugin_bounds(screen, TRAIT_PANEL_PLUGIN_MENU, &box) ==
+            TRAIT_PANEL_STATUS_OK &&
+            trait_rect_contains(box, x, y)) {
+        hit.kind = TRAIT_PANEL_HIT_MENU;
+        return hit;
+    }
+    if (trait_panel_plugin_bounds(screen, TRAIT_PANEL_PLUGIN_LAUNCHBAR,
+            &box) == TRAIT_PANEL_STATUS_OK &&
+            trait_rect_contains(box, x, y)) {
+        hit.kind = TRAIT_PANEL_HIT_LAUNCHER;
+        hit.index = (x - box.x) / TRAIT_BUTTON;
+        return hit;
+    }
+    if (trait_panel_plugin_bounds(screen, TRAIT_PANEL_PLUGIN_WINCMD,
+            &box) == TRAIT_PANEL_STATUS_OK &&
+            trait_rect_contains(box, x, y)) {
+        hit.kind = TRAIT_PANEL_HIT_WINCMD;
+        return hit;
+    }
+    if (trait_panel_plugin_bounds(screen, TRAIT_PANEL_PLUGIN_PAGER,
+            &box) == TRAIT_PANEL_STATUS_OK &&
+            trait_rect_contains(box, x, y)) {
+        uint32_t cell = (x - box.x - TRAIT_PAGER_INSET) / TRAIT_PAGER_CELL;
+
+        hit.kind = TRAIT_PANEL_HIT_PAGER;
+        hit.index = cell < panel_desktops ? cell : panel_desktops - 1U;
+        return hit;
+    }
+    if (trait_panel_plugin_bounds(screen, TRAIT_PANEL_PLUGIN_TASKBAR,
+            &box) == TRAIT_PANEL_STATUS_OK &&
+            trait_rect_contains(box, x, y)) {
+        uint32_t live = trait_panel_task_count();
+        uint32_t drawn = 0U;
+
+        for (at = 0U; at < TRAIT_PANEL_MAX_TASKS; ++at) {
+            struct trait_rect button;
+
+            if (!panel_task_used[at] ||
+                    panel_tasks[at].desktop != panel_desktop) {
+                continue;
+            }
+            if (task_button(box, drawn, live, &button) &&
+                    trait_rect_contains(button, x, y)) {
+                hit.kind = TRAIT_PANEL_HIT_TASK;
+                hit.index = at;
+                return hit;
+            }
+            ++drawn;
+        }
+        return hit;
+    }
+    if (trait_panel_plugin_bounds(screen, TRAIT_PANEL_PLUGIN_VOLUME,
+            &box) == TRAIT_PANEL_STATUS_OK &&
+            trait_rect_contains(box, x, y)) {
+        hit.kind = TRAIT_PANEL_HIT_VOLUME;
+        return hit;
+    }
+    if (trait_panel_plugin_bounds(screen, TRAIT_PANEL_PLUGIN_CLOCK,
+            &box) == TRAIT_PANEL_STATUS_OK &&
+            trait_rect_contains(box, x, y)) {
+        hit.kind = TRAIT_PANEL_HIT_CLOCK;
+        return hit;
+    }
+    return hit;
 }
 
 enum trait_panel_status trait_panel_draw(struct trait_rect screen)

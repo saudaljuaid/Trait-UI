@@ -79,39 +79,86 @@ void trait_window_set_title(struct trait_window *window, const char *text)
  * as pictures because at eight pixels a picture is the same handful of
  * lines with a file around it.
  */
-static void buttons(struct trait_surface *surface, struct trait_rect title,
-    uint32_t ink)
+#define BUTTON_MARK 8U
+
+/*
+ * ONE DEFINITION of where each button is, used to draw it and to answer a
+ * press on it.  Two definitions drift, and the way that shows up is a
+ * close button that closes when you click slightly to the left of it.
+ */
+bool trait_window_button_bounds(const struct trait_window *window,
+    enum trait_window_button which, struct trait_rect *out)
 {
-    uint32_t size = 8U;
-    uint32_t top = title.y + (title.height - size) / 2U;
-    uint32_t right = title.x + title.width;
+    struct trait_rect title = trait_window_title(window);
+    uint32_t right;
+    uint32_t step;
+
+    if (window == NULL || out == NULL || title.width < 90U) {
+        return false;
+    }
+    right = title.x + title.width;
+    step = BUTTON_MARK + 8U;
+    out->y = title.y + (title.height - BUTTON_MARK) / 2U;
+    out->width = BUTTON_MARK;
+    out->height = BUTTON_MARK;
+    switch (which) {
+    case TRAIT_WINDOW_CLOSE:
+        out->x = right - 6U - BUTTON_MARK;
+        return true;
+    case TRAIT_WINDOW_MAXIMISE:
+        out->x = right - 6U - BUTTON_MARK - step;
+        return true;
+    case TRAIT_WINDOW_MINIMISE:
+        out->x = right - 6U - BUTTON_MARK - step * 2U;
+        return true;
+    default:
+        return false;
+    }
+}
+
+static void buttons(struct trait_surface *surface, struct trait_rect title,
+    const struct trait_window *window, uint32_t ink)
+{
+    struct trait_rect box;
     uint32_t at;
 
     if (title.width < 90U) {
         return;
     }
-    /* close: a cross */
-    for (at = 0U; at < size; ++at) {
-        uint32_t left = right - 6U - size;
-
-        trait_surface_plot(surface, title, left + at, top + at, ink);
-        trait_surface_plot(surface, title, left + at,
-                           top + size - 1U - at, ink);
+    if (trait_window_button_bounds(window, TRAIT_WINDOW_CLOSE, &box)) {
+        for (at = 0U; at < BUTTON_MARK; ++at) {
+            trait_surface_plot(surface, title, box.x + at, box.y + at,
+                               ink);
+            trait_surface_plot(surface, title, box.x + at,
+                box.y + BUTTON_MARK - 1U - at, ink);
+        }
     }
-    /* maximise: a box */
-    for (at = 0U; at < size; ++at) {
-        uint32_t left = right - 6U - size * 2U - 8U;
-
-        trait_surface_plot(surface, title, left + at, top, ink);
-        trait_surface_plot(surface, title, left + at, top + size - 1U, ink);
-        trait_surface_plot(surface, title, left, top + at, ink);
-        trait_surface_plot(surface, title, left + size - 1U, top + at, ink);
+    if (trait_window_button_bounds(window, TRAIT_WINDOW_MAXIMISE, &box)) {
+        for (at = 0U; at < BUTTON_MARK; ++at) {
+            trait_surface_plot(surface, title, box.x + at, box.y, ink);
+            trait_surface_plot(surface, title, box.x + at,
+                box.y + BUTTON_MARK - 1U, ink);
+            trait_surface_plot(surface, title, box.x, box.y + at, ink);
+            trait_surface_plot(surface, title,
+                box.x + BUTTON_MARK - 1U, box.y + at, ink);
+        }
+        /* A MAXIMISED window's button shows the restore mark - two
+         * offset boxes - because a button that looks the same in both
+         * states does not say which one you are in. */
+        if (window->maximised) {
+            for (at = 0U; at < BUTTON_MARK - 3U; ++at) {
+                trait_surface_plot(surface, title, box.x + 3U + at,
+                                   box.y + 3U, ink);
+                trait_surface_plot(surface, title, box.x + 3U,
+                                   box.y + 3U + at, ink);
+            }
+        }
     }
-    /* minimise: a bar along the bottom */
-    for (at = 0U; at < size; ++at) {
-        uint32_t left = right - 6U - size * 3U - 16U;
-
-        trait_surface_plot(surface, title, left + at, top + size - 1U, ink);
+    if (trait_window_button_bounds(window, TRAIT_WINDOW_MINIMISE, &box)) {
+        for (at = 0U; at < BUTTON_MARK; ++at) {
+            trait_surface_plot(surface, title, box.x + at,
+                box.y + BUTTON_MARK - 1U, ink);
+        }
     }
 }
 
@@ -148,6 +195,6 @@ void trait_window_draw(struct trait_surface *surface,
     }
     trait_font_draw(surface, title, title.x + 7U,
         title.y + title.height - 7U, window->title, ink);
-    buttons(surface, title, ink);
+    buttons(surface, title, window, ink);
     trait_surface_fill(surface, client, client, TRAIT_BG);
 }

@@ -4,11 +4,13 @@
 #include <trait/files.h>
 #include <trait/packages.h>
 #include <trait/panel.h>
+#include <trait/window.h>
 #include <trait/settings.h>
 #include <trait/taskmgr.h>
 #include <trait/terminal.h>
 
 static struct trait_surface *canvas;
+static struct trait_rect shell_screen;
 static struct trait_window windows[TRAIT_SHELL_MAX_WINDOWS];
 static enum trait_shell_app apps[TRAIT_SHELL_MAX_WINDOWS];
 static bool used[TRAIT_SHELL_MAX_WINDOWS];
@@ -73,12 +75,26 @@ void trait_shell_reset(struct trait_surface *surface)
     uint32_t at;
 
     canvas = surface;
+    shell_screen.x = 0U;
+    shell_screen.y = 0U;
+    shell_screen.width = surface != NULL ? surface->width : 0U;
+    shell_screen.height = surface != NULL ? surface->height : 0U;
     stack_depth = 0U;
     dragging = false;
     dragging_entry = false;
     for (at = 0U; at < TRAIT_SHELL_MAX_WINDOWS; ++at) {
         used[at] = false;
     }
+}
+
+void trait_shell_set_screen(struct trait_rect screen)
+{
+    shell_screen = screen;
+}
+
+struct trait_rect trait_shell_screen(void)
+{
+    return shell_screen;
 }
 
 uint32_t trait_shell_open(enum trait_shell_app app, struct trait_rect at)
@@ -150,7 +166,8 @@ uint32_t trait_shell_at(uint32_t x, uint32_t y)
     while (at != 0U) {
         uint32_t slot = stack[--at];
 
-        if (trait_rect_contains(windows[slot].frame, x, y)) {
+        if (!windows[slot].minimised &&
+                trait_rect_contains(windows[slot].frame, x, y)) {
             return slot;
         }
     }
@@ -178,21 +195,41 @@ void trait_shell_focus(uint32_t slot)
     }
 }
 
-/* The close button's box, which is where the title bar's cross is drawn -
- * one definition, so the thing that is drawn and the thing that answers
- * a click cannot drift apart. */
-static bool close_box(uint32_t slot, struct trait_rect *out)
+/* A press near a title-bar button counts as on it: the marks are eight
+ * pixels and a pointer is not that accurate, so the box is grown by two
+ * on every side.  The DRAWN mark is still the mark - this widens what
+ * answers, not what is shown. */
+static bool button_box(uint32_t slot, enum trait_window_button which,
+    struct trait_rect *out)
 {
-    struct trait_rect title = trait_window_title(&windows[slot]);
-
-    if (title.width < 90U) {
+    if (!trait_window_button_bounds(&windows[slot], which, out)) {
         return false;
     }
-    out->x = title.x + title.width - 6U - 8U - 2U;
-    out->y = title.y + (title.height - 8U) / 2U - 2U;
-    out->width = 12U;
-    out->height = 12U;
+    out->x = out->x > 2U ? out->x - 2U : 0U;
+    out->y = out->y > 2U ? out->y - 2U : 0U;
+    out->width += 4U;
+    out->height += 4U;
     return true;
+}
+
+/* Maximise fills the work area - the screen above the panel - and never
+ * the panel itself, or the bar is under the window that covers it. */
+static void toggle_maximise(uint32_t slot, struct trait_rect screen)
+{
+    struct trait_window *window = &windows[slot];
+
+    if (window->maximised) {
+        window->frame = window->restore;
+        window->maximised = false;
+        return;
+    }
+    window->restore = window->frame;
+    window->frame.x = screen.x;
+    window->frame.y = screen.y;
+    window->frame.width = screen.width;
+    window->frame.height = screen.height > TRAIT_PANEL_HEIGHT ?
+        screen.height - TRAIT_PANEL_HEIGHT : screen.height;
+    window->maximised = true;
 }
 
 static bool handle_client(uint32_t slot, const struct trait_event *event)
@@ -276,6 +313,76 @@ static bool handle_client(uint32_t slot, const struct trait_event *event)
         return false;
     case TRAIT_APP_TERMINAL:
     default:
+        return false;
+    }
+}
+
+/*
+ * What a press on the bar MEANS.  The panel reports what was hit; this is
+ * the only place that knows a launcher opens an application and a task
+ * button belongs to a window, because it is the only place that knows
+ * windows exist.
+ */
+static const enum trait_shell_app LAUNCHER_APPS[3] = {
+    TRAIT_APP_FILES, TRAIT_APP_PACKAGES, TRAIT_APP_TERMINAL
+};
+
+static bool shell_panel_press(struct trait_panel_hit hit)
+{
+    struct trait_rect where = { 220U, 160U, 560U, 360U };
+
+    switch (hit.kind) {
+    case TRAIT_PANEL_HIT_LAUNCHER:
+        if (hit.index >= 3U) {
+            return false;
+        }
+        return trait_shell_open(LAUNCHER_APPS[hit.index], where) <
+            TRAIT_SHELL_MAX_WINDOWS;
+    case TRAIT_PANEL_HIT_TASK:
+        if (hit.index >= TRAIT_SHELL_MAX_WINDOWS || !used[hit.index]) {
+            return false;
+        }
+        /* Pressing the button of the window that already has focus
+         * MINIMISES it, which is what a taskbar does - otherwise the
+         * button has nothing to say for the focused window. */
+        if (trait_shell_focused() == hit.index &&
+                !windows[hit.index].minimised) {
+            windows[hit.index].minimised = true;
+            return true;
+        }
+        windows[hit.index].minimised = false;
+        trait_shell_focus(hit.index);
+        return true;
+    case TRAIT_PANEL_HIT_PAGER:
+        return trait_panel_set_desktop(hit.index, 2U) ==
+            TRAIT_PANEL_STATUS_OK;
+    case TRAIT_PANEL_HIT_WINCMD: {
+        /* Show the desktop: minimise everything, or put it all back if
+         * everything is already down. */
+        bool any_up = false;
+        uint32_t at;
+
+        for (at = 0U; at < TRAIT_SHELL_MAX_WINDOWS; ++at) {
+            if (used[at] && !windows[at].minimised) {
+                any_up = true;
+            }
+        }
+        for (at = 0U; at < TRAIT_SHELL_MAX_WINDOWS; ++at) {
+            if (used[at]) {
+                windows[at].minimised = any_up;
+            }
+        }
+        return true;
+    }
+    case TRAIT_PANEL_HIT_VOLUME:
+    case TRAIT_PANEL_HIT_MENU:
+    case TRAIT_PANEL_HIT_CLOCK:
+    case TRAIT_PANEL_HIT_NONE:
+    default:
+        /* Reported so the caller knows the press landed on the bar - and
+         * so it does not fall through to a window underneath - but the
+         * menu and the volume popup are not built here yet, and pressing
+         * them changes nothing rather than pretending to. */
         return false;
     }
 }
@@ -365,6 +472,22 @@ bool trait_shell_handle(const struct trait_event *event)
         return was;
     }
 
+    /*
+     * THE PANEL IS ALWAYS ON TOP, so it is asked first - before the
+     * window stack.  A maximised window ends at the bar's top edge, but
+     * a window dragged over it would otherwise swallow presses meant for
+     * the bar, and a taskbar you cannot click is the worst version of a
+     * control that does not do what it is drawn as.
+     */
+    {
+        struct trait_panel_hit hit =
+            trait_panel_hit(shell_screen, event->x, event->y);
+
+        if (hit.kind != TRAIT_PANEL_HIT_NONE) {
+            return shell_panel_press(hit);
+        }
+    }
+
     slot = trait_shell_at(event->x, event->y);
     if (slot >= TRAIT_SHELL_MAX_WINDOWS) {
         return false;
@@ -374,9 +497,33 @@ bool trait_shell_handle(const struct trait_event *event)
      * this function is always talking about the window on top. */
     trait_shell_focus(slot);
 
-    if (close_box(slot, &close) &&
+    if (button_box(slot, TRAIT_WINDOW_CLOSE, &close) &&
             trait_rect_contains(close, event->x, event->y)) {
         return trait_shell_close(slot);
+    }
+    if (button_box(slot, TRAIT_WINDOW_MAXIMISE, &close) &&
+            trait_rect_contains(close, event->x, event->y)) {
+        toggle_maximise(slot, shell_screen);
+        return true;
+    }
+    if (button_box(slot, TRAIT_WINDOW_MINIMISE, &close) &&
+            trait_rect_contains(close, event->x, event->y)) {
+        windows[slot].minimised = true;
+        /* Focus goes to whatever is now the top VISIBLE window, not to
+         * the one that just went away. */
+        {
+            uint32_t at = stack_depth;
+
+            while (at != 0U) {
+                uint32_t under = stack[--at];
+
+                if (used[under] && !windows[under].minimised) {
+                    trait_shell_focus(under);
+                    break;
+                }
+            }
+        }
+        return true;
     }
     title = trait_window_title(&windows[slot]);
     if (trait_rect_contains(title, event->x, event->y)) {
@@ -390,6 +537,46 @@ bool trait_shell_handle(const struct trait_event *event)
     return true;
 }
 
+/*
+ * THE BAR'S TASK LIST IS THE WINDOW LIST.  Anything that opens, closes or
+ * minimises a window calls this, so the buttons on the bar are the
+ * windows that exist rather than a list somebody remembered to update.
+ * A taskbar carrying a button for a window that closed is the same bug as
+ * a button that does nothing, wearing a different coat.
+ */
+static const char *const APP_ICONS[TRAIT_APP_COUNT] = {
+    "file-manager", "terminal", "gtk-preferences", "gtk-preferences",
+    "gtk-preferences"
+};
+
+static void sync_panel(void)
+{
+    uint32_t at;
+
+    for (at = 0U; at < TRAIT_SHELL_MAX_WINDOWS &&
+            at < TRAIT_PANEL_MAX_TASKS; ++at) {
+        struct trait_panel_task task;
+        uint32_t byte = 0U;
+
+        if (!used[at]) {
+            (void)trait_panel_clear_task(at);
+            continue;
+        }
+        task.icon = APP_ICONS[apps[at]];
+        task.active = trait_shell_focused() == at &&
+            !windows[at].minimised;
+        task.minimised = windows[at].minimised;
+        task.desktop = 0U;
+        while (windows[at].title[byte] != '\0' &&
+                byte + 1U < TRAIT_PANEL_LABEL_BYTES) {
+            task.label[byte] = windows[at].title[byte];
+            ++byte;
+        }
+        task.label[byte] = '\0';
+        (void)trait_panel_set_task(at, &task);
+    }
+}
+
 void trait_shell_draw(void)
 {
     uint32_t at;
@@ -397,11 +584,15 @@ void trait_shell_draw(void)
     if (!trait_surface_valid(canvas)) {
         return;
     }
+    sync_panel();
     /* FORWARDS: bottom first, so the top window is drawn last and covers
      * what it is over.  The same order the hit test walks backwards. */
     for (at = 0U; at < stack_depth; ++at) {
         uint32_t slot = stack[at];
 
+        if (windows[slot].minimised) {
+            continue;
+        }
         trait_window_draw(canvas, &windows[slot]);
         switch (apps[slot]) {
         case TRAIT_APP_FILES:
@@ -466,6 +657,7 @@ bool trait_shell_self_test(void)
     uint32_t upper;
 
     trait_shell_reset(canvas);
+    trait_shell_set_screen((struct trait_rect){ 0U, 0U, 1280U, 800U });
     lower = trait_shell_open(TRAIT_APP_TASKMGR,
         (struct trait_rect){ 100U, 100U, 300U, 200U });
     upper = trait_shell_open(TRAIT_APP_TERMINAL,
@@ -523,6 +715,89 @@ bool trait_shell_self_test(void)
     }
     if (trait_shell_window(upper) != NULL) {
         return false;
+    }
+
+    /*
+     * And the bar.  A press on a launcher has to OPEN something, and a
+     * press on the button of the focused window has to put it down -
+     * both were pictures until the panel got a hit test.
+     */
+    {
+        struct trait_panel_hit hit;
+        uint32_t opened;
+
+        trait_shell_reset(canvas);
+        /* The self-test may run before a surface exists, so it says what
+         * the screen is rather than inferring it from one.  Without this
+         * the work area is nought by nought and "maximised" means a
+         * window of no size - which is what the first run of this found. */
+        trait_shell_set_screen((struct trait_rect){ 0U, 0U, 1280U, 800U });
+        (void)trait_panel_initialize();
+        hit.kind = TRAIT_PANEL_HIT_LAUNCHER;
+        hit.index = 0U;
+        if (!shell_panel_press(hit)) {
+            return false;
+        }
+        if (trait_shell_window_count() != 1U) {
+            return false;
+        }
+        opened = trait_shell_focused();
+        if (trait_shell_app_of(opened) != TRAIT_APP_FILES) {
+            return false;
+        }
+        /* A launcher index the bar does not have opens nothing rather
+         * than reading off the end of the table. */
+        hit.index = 9U;
+        if (shell_panel_press(hit)) {
+            return false;
+        }
+        if (trait_shell_window_count() != 1U) {
+            return false;
+        }
+        /* The focused window's own task button minimises it. */
+        hit.kind = TRAIT_PANEL_HIT_TASK;
+        hit.index = opened;
+        if (!shell_panel_press(hit)) {
+            return false;
+        }
+        if (!windows[opened].minimised) {
+            return false;
+        }
+        /* A minimised window is not under the pointer any more. */
+        if (trait_shell_at(windows[opened].frame.x + 5U,
+                windows[opened].frame.y + 5U) <
+                TRAIT_SHELL_MAX_WINDOWS) {
+            return false;
+        }
+        /* And pressing it again brings it back. */
+        if (!shell_panel_press(hit)) {
+            return false;
+        }
+        if (windows[opened].minimised) {
+            return false;
+        }
+        /* Maximise fills the work area and stops at the panel. */
+        toggle_maximise(opened, shell_screen);
+        if (!windows[opened].maximised) {
+            return false;
+        }
+        if (windows[opened].frame.y + windows[opened].frame.height +
+                TRAIT_PANEL_HEIGHT != shell_screen.height) {
+            return false;
+        }
+        /* And unmaximising puts it back where it was, not somewhere
+         * plausible. */
+        {
+            struct trait_rect was = windows[opened].restore;
+
+            toggle_maximise(opened, shell_screen);
+            if (windows[opened].frame.x != was.x ||
+                    windows[opened].frame.y != was.y ||
+                    windows[opened].frame.width != was.width ||
+                    windows[opened].frame.height != was.height) {
+                return false;
+            }
+        }
     }
     trait_shell_reset(canvas);
     return true;

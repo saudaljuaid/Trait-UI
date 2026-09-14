@@ -36,6 +36,15 @@ enum trait_shell_app {
 
 void trait_shell_reset(struct trait_surface *surface);
 
+/*
+ * The screen the shell lays out against.  Taken from the surface by
+ * trait_shell_reset(), and settable on its own because the two are not
+ * the same thing: a surface is where pixels go, a screen is what
+ * "maximised" means.  The self-test needs the second without the first.
+ */
+void trait_shell_set_screen(struct trait_rect screen);
+struct trait_rect trait_shell_screen(void);
+
 /* Returns the slot, or TRAIT_SHELL_MAX_WINDOWS if there is no room. */
 uint32_t trait_shell_open(enum trait_shell_app app, struct trait_rect at);
 bool trait_shell_close(uint32_t slot);

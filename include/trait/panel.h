@@ -111,6 +111,34 @@ enum trait_panel_status trait_panel_plugin_bounds(
     struct trait_rect screen, enum trait_panel_plugin which,
     struct trait_rect *out);
 
+/*
+ * WHAT A PRESS ON THE BAR LANDED ON.
+ *
+ * The panel draws launchers, a pager and a task button per window.  Until
+ * this existed every one of them was a picture: drawn as a control and
+ * doing nothing when pressed, which is the one thing this desktop is
+ * built not to do.  The bar does not know what a launcher should LAUNCH -
+ * it reports what was hit and the shell decides.
+ */
+enum trait_panel_hit_kind {
+    TRAIT_PANEL_HIT_NONE = 0,
+    TRAIT_PANEL_HIT_MENU,
+    TRAIT_PANEL_HIT_LAUNCHER,   /* index: which launcher */
+    TRAIT_PANEL_HIT_WINCMD,
+    TRAIT_PANEL_HIT_PAGER,      /* index: which desktop */
+    TRAIT_PANEL_HIT_TASK,       /* index: which task slot */
+    TRAIT_PANEL_HIT_VOLUME,
+    TRAIT_PANEL_HIT_CLOCK
+};
+
+struct trait_panel_hit {
+    enum trait_panel_hit_kind kind;
+    uint32_t index;
+};
+
+struct trait_panel_hit trait_panel_hit(struct trait_rect screen,
+    uint32_t x, uint32_t y);
+
 enum trait_panel_status trait_panel_draw(struct trait_rect screen);
 
 const char *trait_panel_status_string(enum trait_panel_status status);

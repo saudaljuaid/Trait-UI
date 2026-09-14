@@ -771,6 +771,94 @@ int main(int argc, char **argv)
                    handled, run.frames, trait_terminal_row(0U));
         }
     }
+
+    /*
+     * THE BAR, PRESSED FOR REAL.  Every one of these went through
+     * trait_panel_hit() from a screen coordinate - nothing here asks the
+     * panel where its buttons are and then calls a function directly,
+     * because that would prove the function works and not the button.
+     */
+    {
+        struct trait_event press;
+        struct trait_rect box;
+        uint32_t opened;
+        uint32_t before;
+
+        memset(&press, 0, sizeof(press));
+        press.kind = TRAIT_EVENT_POINTER_DOWN;
+
+        trait_shell_reset(&screen);
+        trait_shell_set_screen(whole());
+        (void)trait_panel_initialize();
+        (void)trait_panel_set_clock("15:43");
+        populate_files();
+        (void)trait_files_open(populate_files());
+
+        /* Press the first launcher on the bar. */
+        if (trait_panel_plugin_bounds(whole(),
+                TRAIT_PANEL_PLUGIN_LAUNCHBAR, &box) !=
+                TRAIT_PANEL_STATUS_OK) {
+            return 1;
+        }
+        before = trait_shell_window_count();
+        press.x = box.x + 8U;
+        press.y = box.y + box.height / 2U;
+        if (!trait_shell_handle(&press)) {
+            fprintf(stderr, "trait: a press on a launcher did nothing\n");
+            return 1;
+        }
+        if (trait_shell_window_count() != before + 1U) {
+            fprintf(stderr, "trait: the launcher opened no window\n");
+            return 1;
+        }
+        opened = trait_shell_focused();
+
+        if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
+            flat(0x212121U);
+        }
+        trait_shell_draw();
+        (void)trait_panel_draw(whole());
+        if (!emit(out, "bar-opened.png", whole())) {
+            return 1;
+        }
+
+        /*
+         * Now press that window's own button on the task bar.  It is the
+         * focused window, so the bar must put it DOWN - and the frame
+         * after this is the proof, because the window is gone from the
+         * screen and its button is still on the bar.
+         */
+        if (trait_panel_plugin_bounds(whole(), TRAIT_PANEL_PLUGIN_TASKBAR,
+                &box) != TRAIT_PANEL_STATUS_OK) {
+            return 1;
+        }
+        press.x = box.x + 20U;
+        press.y = box.y + box.height / 2U;
+        if (!trait_shell_handle(&press)) {
+            fprintf(stderr, "trait: a press on a task button did "
+                            "nothing\n");
+            return 1;
+        }
+        if (trait_shell_at(trait_shell_window(opened)->frame.x + 5U,
+                trait_shell_window(opened)->frame.y + 5U) <
+                TRAIT_SHELL_MAX_WINDOWS) {
+            fprintf(stderr, "trait: the minimised window is still "
+                            "under the pointer\n");
+            return 1;
+        }
+        if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
+            flat(0x212121U);
+        }
+        trait_shell_draw();
+        (void)trait_panel_draw(whole());
+        if (!emit(out, "bar-minimised.png", whole())) {
+            return 1;
+        }
+        printf("proof: a press at (%u,%u) on the bar opened a window and "
+               "a press on its task button put it away, both through "
+               "trait_panel_hit() from screen coordinates\n",
+               box.x + 20U, box.y + box.height / 2U);
+    }
     printf("proof: a %u-pixel panel over a %ux%u screen, %u tasks, a "
            "%u-column cpu graph and a clock that does not move when a "
            "window opens; a task manager of %u processes sorted by a "

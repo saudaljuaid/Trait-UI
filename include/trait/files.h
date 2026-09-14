@@ -73,6 +73,15 @@ void trait_files_clear_selection(void);
 bool trait_files_is_selected(uint32_t node);
 uint32_t trait_files_selected_count(void);
 
+/*
+ * MOVING A THING BY DRAGGING IT.  Returns false and moves nothing if the
+ * target is not a folder, or is the file's own folder, or is the thing
+ * being dragged - or is inside it, which is the case that silently
+ * detaches a whole subtree from the filesystem.
+ */
+bool trait_files_move(uint32_t node, uint32_t into);
+bool trait_files_is_inside(uint32_t node, uint32_t maybe_ancestor);
+
 void trait_files_set_view(enum trait_files_view view);
 enum trait_files_view trait_files_view_mode(void);
 

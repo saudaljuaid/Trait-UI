@@ -18,6 +18,8 @@ static const char PROMPT[] = "user@trait:~$ ";
 
 static char lines[TRAIT_TERM_ROWS][TRAIT_TERM_LINE_BYTES];
 static uint32_t line_count;
+static char input[TRAIT_TERM_LINE_BYTES];
+static uint32_t input_length;
 
 static void copy(char *out, const char *text, uint32_t capacity)
 {
@@ -60,6 +62,49 @@ static bool same(const char *a, const char *b)
 void trait_terminal_reset(void)
 {
     line_count = 0U;
+    input_length = 0U;
+    input[0] = '\0';
+}
+
+void trait_terminal_type(char ch)
+{
+    /* Printable only.  A control character in the line buffer would be
+     * drawn as nothing and counted as something, so the cursor would sit
+     * one place right of where the text ends. */
+    if (ch < 32 || ch > 126) {
+        return;
+    }
+    if (input_length + 1U >= TRAIT_TERM_LINE_BYTES) {
+        return;
+    }
+    input[input_length++] = ch;
+    input[input_length] = '\0';
+}
+
+void trait_terminal_backspace(void)
+{
+    if (input_length == 0U) {
+        return;
+    }
+    input[--input_length] = '\0';
+}
+
+void trait_terminal_enter(void)
+{
+    char held[TRAIT_TERM_LINE_BYTES];
+
+    /* The line is cleared BEFORE it runs, not after: `clear` empties the
+     * screen, and a line cleared afterwards would put the command back
+     * on a screen it had just wiped. */
+    copy(held, input, sizeof(held));
+    input_length = 0U;
+    input[0] = '\0';
+    trait_terminal_run(held);
+}
+
+const char *trait_terminal_input(void)
+{
+    return input;
 }
 
 /* The scrollback is a window, not a buffer: once it is full the oldest
@@ -217,6 +262,8 @@ void trait_terminal_draw(struct trait_surface *surface,
         if (baseline + TRAIT_MONO_DESCENT <= client.y + client.height) {
             pen = draw_mono(surface, client, client.x + TERM_PAD, baseline,
                             PROMPT, TERM_PROMPT_INK);
+            pen = draw_mono(surface, client, pen, baseline, input,
+                            TERM_INK);
             cursor.x = pen;
             cursor.y = baseline - TRAIT_MONO_ASCENT + 2U;
             cursor.width = advance;
@@ -268,6 +315,59 @@ bool trait_terminal_self_test(void)
         return false;
     }
     if (!same(trait_terminal_row(TRAIT_TERM_ROWS - 1U), "last")) {
+        return false;
+    }
+    trait_terminal_reset();
+
+    /* Typing puts characters on the line and nothing on the screen; only
+     * return commits it. */
+    trait_terminal_type('p');
+    trait_terminal_type('w');
+    trait_terminal_type('d');
+    if (!same(trait_terminal_input(), "pwd")) {
+        return false;
+    }
+    if (trait_terminal_row_count() != 0U) {
+        return false;
+    }
+    trait_terminal_backspace();
+    if (!same(trait_terminal_input(), "pw")) {
+        return false;
+    }
+    trait_terminal_type('d');
+    trait_terminal_enter();
+    if (trait_terminal_row_count() != 2U) {
+        return false;
+    }
+    if (!same(trait_terminal_row(1U), "/home/user")) {
+        return false;
+    }
+    /* Return leaves the line EMPTY, or the next command is typed onto
+     * the end of the last one. */
+    if (!same(trait_terminal_input(), "")) {
+        return false;
+    }
+    /* Backspace on an empty line does nothing rather than running off
+     * the front of the buffer. */
+    trait_terminal_backspace();
+    if (!same(trait_terminal_input(), "")) {
+        return false;
+    }
+    /* A control character is refused, so the cursor cannot end up right
+     * of where the text is. */
+    trait_terminal_type('\t');
+    if (!same(trait_terminal_input(), "")) {
+        return false;
+    }
+    /* `clear` typed and entered empties the screen and leaves nothing
+     * behind - including itself. */
+    trait_terminal_type('c');
+    trait_terminal_type('l');
+    trait_terminal_type('e');
+    trait_terminal_type('a');
+    trait_terminal_type('r');
+    trait_terminal_enter();
+    if (trait_terminal_row_count() != 0U) {
         return false;
     }
     trait_terminal_reset();

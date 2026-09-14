@@ -54,6 +54,25 @@ bool trait_shell_handle(const struct trait_event *event);
 
 void trait_shell_draw(void);
 
+/*
+ * THE MAIN LOOP.
+ *
+ * The event source is a CALLBACK rather than a device, which is what lets
+ * the same loop serve a real keyboard and mouse on the metal and a
+ * scripted list in the harness: the loop does not know where events come
+ * from, and neither of those two has to be compiled into the other.
+ *
+ * Fill `out` and return true for another event; return false to stop.
+ * `redraw` is called once after any event that CHANGED something, not
+ * once per event - a desktop that repaints on every mouse move is a
+ * desktop that does nothing else.
+ */
+typedef bool (*trait_event_source)(struct trait_event *out, void *context);
+typedef void (*trait_present_fn)(void *context);
+
+uint32_t trait_shell_run(trait_event_source next, trait_present_fn redraw,
+    void *context);
+
 bool trait_shell_self_test(void);
 
 #endif /* TRAIT_SHELL_H */

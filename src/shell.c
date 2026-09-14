@@ -29,6 +29,11 @@ static uint32_t drag_slot;
 static uint32_t drag_dx;
 static uint32_t drag_dy;
 
+/* A drag that started on a file-manager entry rather than a title bar:
+ * releasing it over a folder moves the thing there. */
+static bool dragging_entry;
+static uint32_t drag_node;
+
 static const char *const TITLES[TRAIT_APP_COUNT] = {
     "user", "user@trait: ~", "Task Manager", "Desktop Preferences",
     "Package Manager"
@@ -70,6 +75,7 @@ void trait_shell_reset(struct trait_surface *surface)
     canvas = surface;
     stack_depth = 0U;
     dragging = false;
+    dragging_entry = false;
     for (at = 0U; at < TRAIT_SHELL_MAX_WINDOWS; ++at) {
         used[at] = false;
     }
@@ -236,6 +242,8 @@ static bool handle_client(uint32_t slot, const struct trait_event *event)
                 continue;
             }
             node = trait_files_child(trait_files_here(), at);
+            dragging_entry = true;
+            drag_node = node;
             if (event->double_click) {
                 /* Opening a FILE is not opening a folder, and pretending
                  * it is would be the file manager lying about what it
@@ -293,10 +301,19 @@ bool trait_shell_handle(const struct trait_event *event)
                 (event->modifiers & TRAIT_MOD_ALT) != 0U) {
             return trait_shell_close(slot);
         }
-        if (apps[slot] == TRAIT_APP_TERMINAL &&
-                event->special == TRAIT_KEY_ENTER) {
-            trait_terminal_run("");
-            return true;
+        if (apps[slot] == TRAIT_APP_TERMINAL) {
+            if (event->special == TRAIT_KEY_ENTER) {
+                trait_terminal_enter();
+                return true;
+            }
+            if (event->special == TRAIT_KEY_BACKSPACE) {
+                trait_terminal_backspace();
+                return true;
+            }
+            if (event->key != 0) {
+                trait_terminal_type(event->key);
+                return true;
+            }
         }
         return false;
     }
@@ -316,6 +333,35 @@ bool trait_shell_handle(const struct trait_event *event)
         bool was = dragging;
 
         dragging = false;
+        if (dragging_entry) {
+            uint32_t over = trait_shell_at(event->x, event->y);
+
+            dragging_entry = false;
+            if (over < TRAIT_SHELL_MAX_WINDOWS &&
+                    apps[over] == TRAIT_APP_FILES) {
+                uint32_t at;
+
+                for (at = 0U;
+                        at < trait_files_child_count(trait_files_here());
+                        ++at) {
+                    struct trait_rect cell;
+                    uint32_t target;
+
+                    if (!trait_files_entry_bounds(&windows[over], at,
+                                                  &cell)) {
+                        continue;
+                    }
+                    if (!trait_rect_contains(cell, event->x, event->y)) {
+                        continue;
+                    }
+                    target = trait_files_child(trait_files_here(), at);
+                    /* trait_files_move() refuses every bad case itself -
+                     * onto a file, onto its own folder, into itself - so
+                     * this does not have to know which they are. */
+                    return trait_files_move(drag_node, target);
+                }
+            }
+        }
         return was;
     }
 
@@ -377,6 +423,32 @@ void trait_shell_draw(void)
             break;
         }
     }
+}
+
+uint32_t trait_shell_run(trait_event_source next, trait_present_fn redraw,
+    void *context)
+{
+    struct trait_event event;
+    uint32_t handled = 0U;
+
+    if (next == NULL) {
+        return 0U;
+    }
+    /* Paint once BEFORE the first event, or the desktop is not on screen
+     * until somebody touches it. */
+    if (redraw != NULL) {
+        redraw(context);
+    }
+    while (next(&event, context)) {
+        if (!trait_shell_handle(&event)) {
+            continue;
+        }
+        ++handled;
+        if (redraw != NULL) {
+            redraw(context);
+        }
+    }
+    return handled;
 }
 
 /*

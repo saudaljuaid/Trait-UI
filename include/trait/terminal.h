@@ -25,6 +25,17 @@
 #define TRAIT_TERM_LINE_BYTES 96U
 
 void trait_terminal_reset(void);
+
+/*
+ * THE LINE BEING TYPED.  A terminal that prints a prompt and cannot be
+ * typed at is a picture of a terminal, so there is a real input line
+ * here: characters go on the end, backspace takes one off, and return
+ * runs what is there and clears it.
+ */
+void trait_terminal_type(char ch);
+void trait_terminal_backspace(void);
+void trait_terminal_enter(void);
+const char *trait_terminal_input(void);
 void trait_terminal_print(const char *line);
 /* Runs a command line: echoes it after the prompt, then its output. */
 void trait_terminal_run(const char *command);

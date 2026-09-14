@@ -457,6 +457,70 @@ uint32_t trait_files_selected_count(void)
     return selected_count;
 }
 
+bool trait_files_is_inside(uint32_t node, uint32_t maybe_ancestor)
+{
+    uint32_t walk;
+
+    if (node >= node_count || maybe_ancestor >= node_count) {
+        return false;
+    }
+    walk = node;
+    while (walk != 0U) {
+        if (walk == maybe_ancestor) {
+            return true;
+        }
+        walk = nodes[walk].parent;
+    }
+    return false;
+}
+
+bool trait_files_move(uint32_t node, uint32_t into)
+{
+    uint32_t from;
+    uint32_t at;
+
+    if (node >= node_count || into >= node_count || node == 0U) {
+        return false;
+    }
+    if (!nodes[into].folder) {
+        return false;
+    }
+    if (node == into) {
+        return false;
+    }
+    /*
+     * A FOLDER CANNOT BE MOVED INSIDE ITSELF.  Allowing it detaches the
+     * whole subtree from the root - every node still exists, nothing can
+     * reach any of them, and the bug shows up later as a folder that
+     * vanished rather than as a bad drag.
+     */
+    if (trait_files_is_inside(into, node)) {
+        return false;
+    }
+    from = nodes[node].parent;
+    if (from == into) {
+        return false;
+    }
+    if (from >= node_count ||
+            child_counts[into] >= TRAIT_FILES_MAX_CHILDREN) {
+        return false;
+    }
+    for (at = 0U; at < child_counts[from]; ++at) {
+        if (children[from][at] != node) {
+            continue;
+        }
+        for (; at + 1U < child_counts[from]; ++at) {
+            children[from][at] = children[from][at + 1U];
+        }
+        --child_counts[from];
+        break;
+    }
+    children[into][child_counts[into]++] = node;
+    nodes[node].parent = into;
+    selected_count = 0U;
+    return true;
+}
+
 void trait_files_set_view(enum trait_files_view view)
 {
     view_mode = view;
@@ -856,5 +920,43 @@ bool trait_files_self_test(void)
         return false;      /* ctrl on a selected item REMOVES it */
     }
     trait_files_clear_selection();
+
+    /* Dragging: report.txt out of Documents and into Notes. */
+    {
+        uint32_t report = trait_files_child(docs, 1U);
+
+        if (report >= TRAIT_FILES_MAX_NODES) {
+            return false;
+        }
+        if (!trait_files_move(report, notes)) {
+            return false;
+        }
+        if (trait_files_child_count(notes) != 2U) {
+            return false;
+        }
+        /* And it is gone from where it was, not copied. */
+        if (trait_files_child_count(docs) != 1U) {
+            return false;
+        }
+        /* The sizes follow, because they are counted: Notes now holds
+         * both files and Documents holds only what is under Notes. */
+        if (trait_files_folder_bytes(notes) != 2300U) {
+            return false;
+        }
+        /* Moving a folder INTO ITSELF is refused - the case that would
+         * detach the subtree from the root. */
+        if (trait_files_move(docs, notes)) {
+            return false;
+        }
+        /* And into its own current parent is refused, because it changes
+         * nothing and would still cost a remove and an add. */
+        if (trait_files_move(notes, docs)) {
+            return false;
+        }
+        /* A file is not a folder, so nothing can be moved into one. */
+        if (trait_files_move(notes, report)) {
+            return false;
+        }
+    }
     return true;
 }

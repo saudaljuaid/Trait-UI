@@ -321,6 +321,68 @@ static void populate_packages(void)
                              "Archiver", false);
 }
 
+
+/*
+ * THE EVENT SOURCE, scripted.  On the metal this is a keyboard and a
+ * mouse; here it is a list, and trait_shell_run() cannot tell the
+ * difference - which is the point of it taking a callback.
+ */
+struct script {
+    const struct trait_event *events;
+    uint32_t count;
+    uint32_t at;
+    const char *out;
+    uint32_t frames;
+};
+
+static bool script_next(struct trait_event *out, void *context)
+{
+    struct script *run = context;
+
+    if (run->at >= run->count) {
+        return false;
+    }
+    *out = run->events[run->at++];
+    return true;
+}
+
+/* The loop asks for a repaint only after an event that CHANGED
+ * something, so the frame count is a measurement of that rather than of
+ * how many events were sent. */
+static void script_present(void *context)
+{
+    struct script *run = context;
+    char name[64];
+
+    if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
+        flat(0x212121U);
+    }
+    trait_shell_draw();
+    (void)trait_panel_draw(whole());
+    snprintf(name, sizeof(name), "loop-%02u.png", run->frames++);
+    (void)emit(run->out, name, whole());
+}
+
+static struct trait_event typed(char ch)
+{
+    struct trait_event event;
+
+    memset(&event, 0, sizeof(event));
+    event.kind = TRAIT_EVENT_KEY;
+    event.key = ch;
+    return event;
+}
+
+static struct trait_event special_key(uint32_t which)
+{
+    struct trait_event event;
+
+    memset(&event, 0, sizeof(event));
+    event.kind = TRAIT_EVENT_KEY;
+    event.special = which;
+    return event;
+}
+
 int main(int argc, char **argv)
 {
     const char *out = argc > 1 ? argv[1] : "build/c";
@@ -648,6 +710,66 @@ int main(int argc, char **argv)
         printf("proof: a press raised a covered window, a press on a "
                "column header sorted by it, and a press on a tab changed "
                "the page - all through the shell's own hit test\n");
+    }
+
+    /*
+     * THE MAIN LOOP, run for real: a terminal opened, a command typed
+     * into it a character at a time, and return pressed.  Nothing here
+     * calls the terminal - every keystroke goes through the shell's
+     * routing to whatever window has focus.
+     */
+    {
+        static struct trait_event events[16];
+        struct script run;
+        uint32_t count = 0U;
+        uint32_t term;
+
+        trait_shell_reset(&screen);
+        term = trait_shell_open(TRAIT_APP_TERMINAL,
+            (struct trait_rect){ 200U, 180U, 560U, 320U });
+        if (term >= TRAIT_SHELL_MAX_WINDOWS) {
+            return 1;
+        }
+        trait_terminal_reset();
+
+        events[count++] = typed('u');
+        events[count++] = typed('n');
+        events[count++] = typed('a');
+        events[count++] = typed('m');
+        events[count++] = typed('e');
+        events[count++] = typed(' ');
+        events[count++] = typed('-');
+        events[count++] = typed('x');
+        events[count++] = special_key(TRAIT_KEY_BACKSPACE);
+        events[count++] = typed('a');
+        events[count++] = special_key(TRAIT_KEY_ENTER);
+
+        run.events = events;
+        run.count = count;
+        run.at = 0U;
+        run.out = out;
+        run.frames = 0U;
+
+        {
+            uint32_t handled = trait_shell_run(script_next,
+                                               script_present, &run);
+
+            if (handled != count) {
+                fprintf(stderr, "trait: the loop handled %u of %u "
+                                "events\n", handled, count);
+                return 1;
+            }
+            /* The backspace really took the 'x' off, so the command that
+             * ran was "uname -a" and not "uname -xa". */
+            if (trait_terminal_row_count() != 2U) {
+                fprintf(stderr, "trait: the typed command did not run\n");
+                return 1;
+            }
+            printf("proof: %u keystrokes went through the shell to the "
+                   "focused window and %u frames came out; the command "
+                   "line survived a backspace and ran as \"%s\"\n",
+                   handled, run.frames, trait_terminal_row(0U));
+        }
     }
     printf("proof: a %u-pixel panel over a %ux%u screen, %u tasks, a "
            "%u-column cpu graph and a clock that does not move when a "

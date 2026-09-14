@@ -1,0 +1,5 @@
+phipia.svg is this project's own mark, drawn to the proportions of the
+logo the project was given.  No part of it is taken from another icon
+set, and it is the panel's menu button - which is where LXDE puts its own
+lxde-icon.png.  That file is vendored in ../icons/lxpanel/ as well,
+because the panel's geometry was measured off it.

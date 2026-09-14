@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Phipia UI</title>
+<link rel="stylesheet" href="css/desktop.css">
+</head>
+<body>
+<div id="desktop">
+  <div id="wallpaper"></div>
+
+  <!--
+    THE PANEL, PLUGIN FOR PLUGIN.
+
+    The order below is not a guess: it is the plugin list out of LXDE's own
+    default panel profile, /etc/xdg/lxpanel/LXDE/panels/panel, shipped in
+    lxde-common.  Nothing has been added, moved or left out.
+
+        space 2 | menu | launchbar(pcmanfm, x-www-browser) | space 4 |
+        wincmd | space 4 | pager | space 4 | taskbar(expand) | cpu |
+        volume | tray | dclock | launchbar(screenlock, logout)
+
+    Global says edge=bottom, height=26, fontcolor=#ffffff and
+    background=1 with lxpanel's own background.png - all four are honoured
+    in desktop.css rather than approximated.
+  -->
+  <div id="panel">
+    <div class="space" style="width:2px"></div>
+
+    <button class="plugin menu" id="menu-button" title="Menu">
+      <img src="assets/logo/phipia.svg" alt="Menu" width="24" height="24">
+    </button>
+
+    <div class="plugin launchbar">
+      <button class="launcher" data-launch="files" title="File Manager">
+        <img src="assets/icons/nuoveXT2/file-manager.png" alt="File Manager">
+      </button>
+      <button class="launcher" data-launch="browser" title="Web Browser">
+        <img src="assets/icons/nuoveXT2/browser.png" alt="Web Browser">
+      </button>
+      <button class="launcher" data-launch="terminal" title="Terminal">
+        <img src="assets/icons/nuoveXT2/terminal.png" alt="Terminal">
+      </button>
+    </div>
+
+    <div class="space" style="width:4px"></div>
+
+    <button class="plugin wincmd" id="wincmd" title="Minimise all windows">
+      <img src="assets/icons/lxpanel/window-manager.png" alt="Show desktop">
+    </button>
+
+    <div class="space" style="width:4px"></div>
+
+    <div class="plugin pager" id="pager"></div>
+
+    <div class="space" style="width:4px"></div>
+
+    <div class="plugin taskbar" id="taskbar"></div>
+
+    <div class="plugin cpu" id="cpu" title="CPU usage">
+      <canvas id="cpu-canvas" width="36" height="22"></canvas>
+    </div>
+
+    <button class="plugin volume" id="volume" title="Volume">
+      <img src="assets/icons/lxpanel/stock_volume.png" alt="Volume">
+    </button>
+
+    <div class="plugin tray" id="tray"></div>
+
+    <div class="plugin dclock" id="clock">00:00</div>
+
+    <div class="plugin launchbar">
+      <button class="launcher" data-launch="lock" title="Lock screen">
+        <img src="assets/icons/nuoveXT2/system-lock-screen.png" alt="Lock">
+      </button>
+      <button class="launcher" data-launch="logout" title="Log out">
+        <img src="assets/icons/nuoveXT2/gnome-logout.png" alt="Log out">
+      </button>
+    </div>
+  </div>
+</div>
+<script src="js/desktop.js"></script>
+</body>
+</html>

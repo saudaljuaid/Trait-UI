@@ -1,0 +1,206 @@
+/*
+ * THE PANEL IS 26 PIXELS AND EVERY NUMBER HERE COMES FROM SOMEWHERE.
+ *
+ * LXDE's default panel profile (lxde-common, /etc/xdg/lxpanel/LXDE/
+ * panels/panel) says: edge=bottom, height=26, fontcolor=#ffffff,
+ * background=1 with backgroundfile=/usr/share/lxpanel/images/
+ * background.png.  That file is a 1x26 strip - one column of the
+ * gradient, tiled across - and it is vendored here unaltered rather
+ * than reproduced as a CSS gradient, because a hand-written ramp would
+ * be a near-miss of a thing that is only 26 pixels tall.
+ */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+    /* Debian's default interface font is Sans 10, which resolves to
+     * DejaVu Sans at 10pt - 13px at 96dpi. */
+    font-family: "DejaVu Sans", "Bitstream Vera Sans", Verdana, sans-serif;
+    font-size: 13px;
+    -webkit-font-smoothing: antialiased;
+}
+
+#desktop {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+#wallpaper {
+    position: absolute;
+    inset: 0;
+    background: #2b2f3a url("../assets/wallpaper/wallpaper.png") center / cover no-repeat;
+}
+
+/* ------------------------------------------------------------- the panel */
+
+#panel {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 26px;
+    display: flex;
+    align-items: stretch;
+    background: url("../assets/icons/lxpanel/background.png") repeat-x;
+    color: #ffffff;
+    user-select: none;
+}
+
+#panel .space { flex: 0 0 auto; }
+
+#panel .plugin {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+    height: 26px;
+}
+
+/*
+ * A PANEL BUTTON'S HOVER IS A RAISED BEVEL, not a tint.  That is what GTK2
+ * draws for a flat toolbar button under the prelight state, and the panel
+ * is a GTK2 toolbar.
+ */
+#panel button {
+    background: none;
+    border: 1px solid transparent;
+    padding: 0 1px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    cursor: default;
+}
+#panel button:hover {
+    border-top-color: rgba(255, 255, 255, 0.45);
+    border-left-color: rgba(255, 255, 255, 0.45);
+    border-right-color: rgba(0, 0, 0, 0.55);
+    border-bottom-color: rgba(0, 0, 0, 0.55);
+    background: rgba(255, 255, 255, 0.10);
+}
+#panel button:active {
+    border-top-color: rgba(0, 0, 0, 0.55);
+    border-left-color: rgba(0, 0, 0, 0.55);
+    border-right-color: rgba(255, 255, 255, 0.35);
+    border-bottom-color: rgba(255, 255, 255, 0.35);
+    background: rgba(0, 0, 0, 0.20);
+}
+
+#panel .launcher img,
+#panel .wincmd img,
+#panel .volume img { display: block; width: 22px; height: 22px; }
+
+#panel .menu img { display: block; width: 22px; height: 22px; }
+
+#panel .launchbar { display: flex; align-items: center; }
+
+/* ------------------------------------------------------------- the pager */
+
+/*
+ * Two desktops, which is LXDE's default.  The current one is filled with
+ * the selection colour and the other is left as the panel's own dark.
+ */
+#pager { display: flex; align-items: center; gap: 1px; padding: 2px 0; }
+
+.desk {
+    width: 28px;
+    height: 20px;
+    border: 1px solid #1b1b1b;
+    background: #6d6d6d;
+    cursor: default;
+}
+.desk.current { background: #4a6c9b; }
+
+/* ------------------------------------------------------------ the taskbar */
+
+/*
+ * expand=1 in the profile, so the task buttons take every pixel the rest
+ * of the panel has not claimed.  MaxTaskWidth=150 and spacing=1 are the
+ * profile's too.
+ */
+/*
+ * #panel #taskbar, not #taskbar: `#panel .plugin` above is one id and one
+ * class, so a bare id loses to it and the taskbar sat at its content width
+ * with expand=1 in the profile saying otherwise.  The panel rendered with
+ * the clock jammed against the pager and looked almost right, which is how
+ * it survived the first screenshot.
+ */
+#panel #taskbar {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 1px;
+    overflow: hidden;
+}
+
+.task {
+    max-width: 150px;
+    min-width: 0;
+    flex: 1 1 150px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 4px;
+    color: #ffffff;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    /* FlatButton=0: a task button is a real raised GTK button. */
+    border: 1px solid;
+    border-top-color: #8a8a8a;
+    border-left-color: #8a8a8a;
+    border-right-color: #1c1c1c;
+    border-bottom-color: #1c1c1c;
+    background: linear-gradient(#4e4e4e, #343434);
+    cursor: default;
+}
+.task img { width: 16px; height: 16px; flex: 0 0 auto; }
+.task span { overflow: hidden; text-overflow: ellipsis; }
+.task.active {
+    border-top-color: #1c1c1c;
+    border-left-color: #1c1c1c;
+    border-right-color: #8a8a8a;
+    border-bottom-color: #8a8a8a;
+    background: linear-gradient(#2a2a2a, #3a3a3a);
+}
+
+/* ---------------------------------------------------------------- the cpu */
+
+/*
+ * lxpanel's cpu plugin, to its own numbers: the widget asks for 40 by the
+ * panel height, BORDER_SIZE is 2, the ground is the style's black and the
+ * plot is gdk_color_parse("green") - X11 green, which is #00FF00 and not
+ * any softer green a screenshot might suggest.
+ */
+#cpu {
+    width: 40px;
+    height: 26px;
+    padding: 2px;
+    background: #000000;
+}
+#cpu canvas { display: block; width: 36px; height: 22px; }
+
+/* -------------------------------------------------------------- the tray */
+
+#tray { display: flex; align-items: center; gap: 2px; padding: 0 2px; }
+#tray .tray-icon { width: 16px; height: 16px; display: block; }
+
+/* ------------------------------------------------------------- the clock */
+
+/*
+ * ClockFmt=%R and BoldFont=0 - hours and minutes, 24-hour, in the panel's
+ * plain font.  The padding is lxpanel's own 4 pixels either side.
+ */
+#clock {
+    padding: 0 4px;
+    font-size: 13px;
+    line-height: 26px;
+    color: #ffffff;
+    white-space: nowrap;
+}

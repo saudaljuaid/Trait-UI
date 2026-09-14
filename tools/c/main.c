@@ -359,6 +359,7 @@ static void script_present(void *context)
     }
     trait_shell_draw();
     (void)trait_panel_draw(whole());
+    trait_shell_draw_overlays();
     snprintf(name, sizeof(name), "loop-%02u.png", run->frames++);
     (void)emit(run->out, name, whole());
 }
@@ -858,6 +859,120 @@ int main(int argc, char **argv)
                "a press on its task button put it away, both through "
                "trait_panel_hit() from screen coordinates\n",
                box.x + 20U, box.y + box.height / 2U);
+
+        /*
+         * THE LAST THREE: the menu button opens the menu, the volume
+         * icon opens the slider, and the pager really switches - a
+         * window on desktop 2 is not on the screen when you are looking
+         * at desktop 1.
+         */
+        rebuild_menu();
+        if (trait_panel_plugin_bounds(whole(), TRAIT_PANEL_PLUGIN_MENU,
+                &box) != TRAIT_PANEL_STATUS_OK) {
+            return 1;
+        }
+        press.x = box.x + box.width / 2U;
+        press.y = box.y + box.height / 2U;
+        if (!trait_shell_handle(&press) || !trait_shell_menu_open()) {
+            fprintf(stderr, "trait: the menu button opened nothing\n");
+            return 1;
+        }
+        if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
+            flat(0x212121U);
+        }
+        trait_shell_draw();
+        (void)trait_panel_draw(whole());
+        trait_shell_draw_overlays();
+        if (!emit(out, "bar-menu.png", whole())) {
+            return 1;
+        }
+        /* Pressing it again shuts it, which a menu that can only be
+         * dismissed by clicking away does not do. */
+        if (!trait_shell_handle(&press) || trait_shell_menu_open()) {
+            fprintf(stderr, "trait: the menu button did not close it\n");
+            return 1;
+        }
+
+        if (trait_panel_plugin_bounds(whole(), TRAIT_PANEL_PLUGIN_VOLUME,
+                &box) != TRAIT_PANEL_STATUS_OK) {
+            return 1;
+        }
+        press.x = box.x + box.width / 2U;
+        press.y = box.y + box.height / 2U;
+        if (!trait_shell_handle(&press) || !trait_shell_volume_open()) {
+            fprintf(stderr, "trait: the volume icon opened nothing\n");
+            return 1;
+        }
+        /* Press near the foot of the slider: quiet, and the bar's icon
+         * must follow it down to the muted mark. */
+        {
+            uint32_t was = trait_shell_volume();
+
+            press.x = box.x + box.width / 2U;
+            press.y = box.y - 6U;
+            if (!trait_shell_handle(&press)) {
+                return 1;
+            }
+            if (trait_shell_volume() >= was) {
+                fprintf(stderr, "trait: pressing the foot of the slider "
+                                "did not turn it down (%u -> %u)\n",
+                        was, trait_shell_volume());
+                return 1;
+            }
+        }
+        if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
+            flat(0x212121U);
+        }
+        trait_shell_draw();
+        (void)trait_panel_draw(whole());
+        trait_shell_draw_overlays();
+        if (!emit(out, "bar-volume.png", whole())) {
+            return 1;
+        }
+
+        /* And the pager. Put a window on desktop 2 and switch to it. */
+        {
+            uint32_t here = trait_shell_open(TRAIT_APP_TASKMGR,
+                (struct trait_rect){ 300U, 220U, 520U, 320U });
+
+            if (here >= TRAIT_SHELL_MAX_WINDOWS) {
+                return 1;
+            }
+            trait_shell_send_to_desktop(here, 1U);
+            /* It is on the other desktop, so it is not on this screen. */
+            if (trait_shell_at(320U, 240U) < TRAIT_SHELL_MAX_WINDOWS) {
+                fprintf(stderr, "trait: a window on another desktop is "
+                                "still on this one\n");
+                return 1;
+            }
+            if (trait_panel_plugin_bounds(whole(),
+                    TRAIT_PANEL_PLUGIN_PAGER, &box) !=
+                    TRAIT_PANEL_STATUS_OK) {
+                return 1;
+            }
+            press.x = box.x + box.width - 6U;
+            press.y = box.y + box.height / 2U;
+            (void)trait_shell_handle(&press);
+            trait_shell_set_desktop(1U);
+            if (trait_shell_at(320U, 240U) != here) {
+                fprintf(stderr, "trait: switching desktop did not bring "
+                                "its window\n");
+                return 1;
+            }
+            if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
+                flat(0x212121U);
+            }
+            trait_shell_draw();
+            (void)trait_panel_draw(whole());
+            trait_shell_draw_overlays();
+            if (!emit(out, "bar-desktop2.png", whole())) {
+                return 1;
+            }
+        }
+        printf("proof: the menu button opens and closes the menu, the "
+               "volume icon opens a slider that really moves the level "
+               "to %u, and a window on desktop 2 is on the screen only "
+               "when desktop 2 is\n", trait_shell_volume());
     }
     printf("proof: a %u-pixel panel over a %ux%u screen, %u tasks, a "
            "%u-column cpu graph and a clock that does not move when a "

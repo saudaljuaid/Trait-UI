@@ -43,6 +43,19 @@ void trait_shell_reset(struct trait_surface *surface);
  * "maximised" means.  The self-test needs the second without the first.
  */
 void trait_shell_set_screen(struct trait_rect screen);
+
+/* Which workspace is showing.  Windows on the others are not drawn and
+ * not hit, which is what a workspace IS. */
+void trait_shell_set_desktop(uint32_t desktop);
+uint32_t trait_shell_desktop(void);
+void trait_shell_send_to_desktop(uint32_t slot, uint32_t desktop);
+
+/* The two things the bar can open.  They are shell state rather than
+ * panel state because both are overlays that sit above every window, and
+ * the shell is what knows there are windows to sit above. */
+bool trait_shell_menu_open(void);
+bool trait_shell_volume_open(void);
+uint32_t trait_shell_volume(void);
 struct trait_rect trait_shell_screen(void);
 
 /* Returns the slot, or TRAIT_SHELL_MAX_WINDOWS if there is no room. */
@@ -62,6 +75,9 @@ void trait_shell_focus(uint32_t slot);
 bool trait_shell_handle(const struct trait_event *event);
 
 void trait_shell_draw(void);
+/* Call AFTER the panel: an open menu or slider sits above everything,
+ * including the bar that opened it. */
+void trait_shell_draw_overlays(void);
 
 /*
  * THE MAIN LOOP.

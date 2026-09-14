@@ -27,6 +27,9 @@ struct trait_window {
     bool active;
     bool minimised;
     bool maximised;
+    /* Which workspace it is on.  The pager switches which one you are
+     * looking at; this is what makes that mean something. */
+    uint32_t desktop;
     /* Where it was before it was maximised, so unmaximising puts it
      * back rather than guessing a size. */
     struct trait_rect restore;

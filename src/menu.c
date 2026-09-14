@@ -45,6 +45,22 @@ uint32_t trait_menu_row_count(void)
     return row_count;
 }
 
+bool trait_menu_row_is_rule(uint32_t at)
+{
+    if (at >= row_count) {
+        return false;
+    }
+    return rows[at].rule;
+}
+
+const char *trait_menu_row_label(uint32_t at)
+{
+    if (at >= row_count || rows[at].rule) {
+        return NULL;
+    }
+    return rows[at].label;
+}
+
 static uint32_t menu_height(void)
 {
     uint32_t total = 4U;

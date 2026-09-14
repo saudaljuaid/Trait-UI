@@ -40,6 +40,10 @@ struct trait_menu_row {
 void trait_menu_reset(void);
 bool trait_menu_add(const char *label, bool category, bool rule);
 uint32_t trait_menu_row_count(void);
+/* What a row IS, so a hit test does not have to keep its own copy of the
+ * list to know whether a given y landed on a rule or a command. */
+bool trait_menu_row_is_rule(uint32_t at);
+const char *trait_menu_row_label(uint32_t at);
 
 /* Where the menu sits given the button it hangs off and the screen. */
 struct trait_rect trait_menu_bounds(struct trait_rect screen,

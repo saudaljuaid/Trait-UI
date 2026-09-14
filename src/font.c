@@ -1,18 +1,83 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 #include <trait/font.h>
 
-#include "trait_font.h"
+#include "trait_font_10.h"
+#include "trait_font_11.h"
+#include "trait_font_13.h"
 
-#define TRAIT_FONT_COUNT (sizeof(trait_font) / sizeof(trait_font[0]))
+/*
+ * THREE SIZES, RASTERISED AHEAD OF TIME.
+ *
+ * There is no font server behind a framebuffer and no scaler either, so
+ * "a different font size" means a different set of bitmaps.  Settings
+ * offers the three that exist; offering a slider over sizes that were
+ * never generated would be a control that does nothing, and scaling one
+ * set to stand in for the others is how text stops looking like text.
+ */
+struct trait_font_face {
+    const struct trait_glyph *glyphs;
+    uint32_t count;
+    uint32_t first;
+    uint32_t ascent;
+    uint32_t height;
+    uint32_t points;
+};
 
-static const struct trait_font_glyph *glyph_for(char ch)
+static const struct trait_font_face FACES[] = {
+    { (const struct trait_glyph *)trait_font_10,
+      sizeof(trait_font_10) / sizeof(trait_font_10[0]),
+      TRAIT_FONT_10_FIRST, TRAIT_FONT_10_ASCENT, TRAIT_FONT_10_HEIGHT,
+      10U },
+    { (const struct trait_glyph *)trait_font_11,
+      sizeof(trait_font_11) / sizeof(trait_font_11[0]),
+      TRAIT_FONT_11_FIRST, TRAIT_FONT_11_ASCENT, TRAIT_FONT_11_HEIGHT,
+      11U },
+    { (const struct trait_glyph *)trait_font_13,
+      sizeof(trait_font_13) / sizeof(trait_font_13[0]),
+      TRAIT_FONT_13_FIRST, TRAIT_FONT_13_ASCENT, TRAIT_FONT_13_HEIGHT,
+      13U }
+};
+
+#define FACE_COUNT (sizeof(FACES) / sizeof(FACES[0]))
+
+static uint32_t face_at = 1U;   /* 11px, the LXDE default */
+
+uint32_t trait_font_size_count(void)
+{
+    return (uint32_t)FACE_COUNT;
+}
+
+uint32_t trait_font_size_points(uint32_t at)
+{
+    if (at >= FACE_COUNT) {
+        return 0U;
+    }
+    return FACES[at].points;
+}
+
+bool trait_font_select(uint32_t at)
+{
+    if (at >= FACE_COUNT) {
+        return false;
+    }
+    face_at = at;
+    return true;
+}
+
+uint32_t trait_font_selected(void)
+{
+    return face_at;
+}
+
+static const struct trait_glyph *glyph_for(char ch)
 {
     uint32_t code = (uint32_t)(unsigned char)ch;
+    const struct trait_font_face *face = &FACES[face_at];
 
-    if (code < TRAIT_FONT_FIRST || code > TRAIT_FONT_LAST) {
+    if (code < face->first || code - face->first >= face->count) {
         return NULL;
     }
-    return &trait_font[code - TRAIT_FONT_FIRST];
+    return &face->glyphs[code - face->first];
 }
 
 uint32_t trait_font_width(const char *text)
@@ -24,7 +89,8 @@ uint32_t trait_font_width(const char *text)
         return 0U;
     }
     for (at = 0U; text[at] != '\0'; ++at) {
-        const struct trait_font_glyph *glyph = glyph_for(text[at]);
+        const struct trait_glyph *glyph =
+            glyph_for(text[at]);
 
         if (glyph != NULL) {
             total += glyph->advance;
@@ -35,7 +101,7 @@ uint32_t trait_font_width(const char *text)
 
 uint32_t trait_font_line_height(void)
 {
-    return TRAIT_FONT_HEIGHT;
+    return FACES[face_at].height;
 }
 
 void trait_font_draw(struct trait_surface *surface, struct trait_rect clip,
@@ -44,12 +110,13 @@ void trait_font_draw(struct trait_surface *surface, struct trait_rect clip,
     uint32_t pen = x;
     uint32_t at;
 
-    if (text == NULL || baseline < TRAIT_FONT_ASCENT) {
+    if (text == NULL || baseline < FACES[face_at].ascent) {
         return;
     }
     for (at = 0U; text[at] != '\0'; ++at) {
-        const struct trait_font_glyph *glyph = glyph_for(text[at]);
-        uint32_t top = baseline - TRAIT_FONT_ASCENT;
+        const struct trait_glyph *glyph =
+            glyph_for(text[at]);
+        uint32_t top = baseline - FACES[face_at].ascent;
         uint32_t row;
         uint32_t column;
 
@@ -59,7 +126,7 @@ void trait_font_draw(struct trait_surface *surface, struct trait_rect clip,
              * of a missing character pretending to be a character. */
             continue;
         }
-        for (row = 0U; row < TRAIT_FONT_HEIGHT; ++row) {
+        for (row = 0U; row < FACES[face_at].height; ++row) {
             for (column = 0U; column < glyph->width; ++column) {
                 uint32_t alpha =
                     glyph->coverage[row * glyph->width + column];

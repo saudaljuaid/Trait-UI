@@ -89,6 +89,15 @@ enum trait_files_view trait_files_view_mode(void);
 bool trait_files_entry_bounds(const struct trait_window *window,
     uint32_t at, struct trait_rect *out);
 
+/* What a node IS, for anything drawing it outside this window - the
+ * desktop draws ~/Desktop, and it should not need its own copy of the
+ * extension-to-mark table to do it. */
+const char *trait_files_node_name(uint32_t node);
+const char *trait_files_node_mark(uint32_t node);
+void trait_files_draw_icon_at(struct trait_surface *surface,
+    struct trait_rect clip, const char *mark, uint32_t size,
+    uint32_t left, uint32_t top);
+
 void trait_files_draw(struct trait_surface *surface,
     const struct trait_window *window);
 

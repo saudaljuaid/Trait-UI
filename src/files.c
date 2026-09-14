@@ -246,6 +246,29 @@ static void human(char *out, uint32_t bytes, uint32_t capacity)
 
 /* ================================================================== MODEL */
 
+const char *trait_files_node_name(uint32_t node)
+{
+    if (node >= node_count) {
+        return "";
+    }
+    return nodes[node].name;
+}
+
+const char *trait_files_node_mark(uint32_t node)
+{
+    if (node >= node_count) {
+        return "text-x-generic";
+    }
+    return mark_for(&nodes[node]);
+}
+
+void trait_files_draw_icon_at(struct trait_surface *surface,
+    struct trait_rect clip, const char *mark, uint32_t size,
+    uint32_t left, uint32_t top)
+{
+    draw_icon(surface, clip, mark, size, left, top);
+}
+
 void trait_files_reset(void)
 {
     uint32_t at;

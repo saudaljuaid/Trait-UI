@@ -53,6 +53,29 @@ void trait_shell_send_to_desktop(uint32_t slot, uint32_t desktop);
 /* The two things the bar can open.  They are shell state rather than
  * panel state because both are overlays that sit above every window, and
  * the shell is what knows there are windows to sit above. */
+/*
+ * THE ROOT WINDOW.
+ *
+ * pcmanfm's desktop IS ~/Desktop drawn on the root window, plus the two
+ * standard marks.  Drawing a fixed pair and calling it the desktop makes
+ * "Create New..." and Paste into decorations, so this reads the folder.
+ */
+/* Which folder the root window draws.  Handed in, so the shell does not
+ * have to know what ~/Desktop's node index happens to be. */
+void trait_shell_set_desktop_folder(uint32_t folder);
+void trait_shell_draw_desktop(void);
+bool trait_shell_desktop_icon_bounds(uint32_t at, struct trait_rect *out);
+uint32_t trait_shell_desktop_icon_count(void);
+
+/* The Run box: type a name, press return, and it runs or says it cannot. */
+bool trait_shell_run_open(void);
+const char *trait_shell_run_text(void);
+const char *trait_shell_run_error(void);
+
+/* Alt+Tab.  Held open while Alt is down, which is why it is state. */
+bool trait_shell_switcher_open(void);
+uint32_t trait_shell_switcher_at(void);
+
 bool trait_shell_menu_open(void);
 bool trait_shell_volume_open(void);
 uint32_t trait_shell_volume(void);

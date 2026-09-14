@@ -1048,6 +1048,184 @@ int main(int argc, char **argv)
                "it\n", trait_theme_name(was),
                trait_theme_name(trait_theme_selected()));
     }
+
+    /*
+     * THE ROOT WINDOW, THE RUN BOX AND ALT+TAB.
+     */
+    {
+        struct trait_event key;
+        uint32_t user;
+        uint32_t desktop_folder;
+        uint32_t before;
+
+        memset(&key, 0, sizeof(key));
+        key.kind = TRAIT_EVENT_KEY;
+
+        (void)trait_theme_select(0U);
+        trait_shell_reset(&screen);
+        trait_shell_set_screen(whole());
+        (void)trait_panel_initialize();
+        (void)trait_panel_set_clock("15:43");
+        user = populate_files();
+        /* ~/Desktop is the first child of ~, and putting something in it
+         * is what proves the root window reads the folder. */
+        desktop_folder = trait_files_child(user, 0U);
+        (void)trait_files_add(desktop_folder, "notes.txt", false, 812U);
+        (void)trait_files_add(desktop_folder, "Projects", true, 0U);
+        trait_shell_set_desktop_folder(desktop_folder);
+        (void)trait_files_open(user);
+
+        if (trait_shell_desktop_icon_count() != 4U) {
+            fprintf(stderr, "trait: the root window shows %u icons, not "
+                            "the two standard marks plus the two things "
+                            "in ~/Desktop\n",
+                    trait_shell_desktop_icon_count());
+            return 1;
+        }
+
+        if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
+            flat(0x212121U);
+        }
+        trait_shell_draw_desktop();
+        trait_shell_draw();
+        (void)trait_panel_draw(whole());
+        trait_shell_draw_overlays();
+        if (!emit(out, "root.png", whole())) {
+            return 1;
+        }
+
+        /* The Run box: a name it has not got, then one it has. */
+        rebuild_menu();
+        {
+            struct trait_event press;
+            struct trait_rect button;
+            struct trait_rect box;
+
+            memset(&press, 0, sizeof(press));
+            press.kind = TRAIT_EVENT_POINTER_DOWN;
+            if (trait_panel_plugin_bounds(whole(),
+                    TRAIT_PANEL_PLUGIN_MENU, &button) !=
+                    TRAIT_PANEL_STATUS_OK) {
+                return 1;
+            }
+            press.x = button.x + button.width / 2U;
+            press.y = button.y + button.height / 2U;
+            (void)trait_shell_handle(&press);
+            box = trait_menu_bounds(whole(), button);
+            /* Run... is the last row. */
+            press.x = box.x + 20U;
+            press.y = box.y + box.height - 12U;
+            if (!trait_shell_handle(&press) || !trait_shell_run_open()) {
+                fprintf(stderr, "trait: the Run row opened no box\n");
+                return 1;
+            }
+        }
+        {
+            static const char BAD[] = "frobnicate";
+            uint32_t at;
+
+            for (at = 0U; BAD[at] != '\0'; ++at) {
+                key.key = BAD[at];
+                key.special = 0U;
+                (void)trait_shell_handle(&key);
+            }
+            key.key = 0;
+            key.special = TRAIT_KEY_ENTER;
+            (void)trait_shell_handle(&key);
+            if (!trait_shell_run_open()) {
+                fprintf(stderr, "trait: the Run box closed on a name it "
+                                "could not run\n");
+                return 1;
+            }
+            if (trait_shell_run_error()[0] == '\0') {
+                fprintf(stderr, "trait: the Run box refused a name "
+                                "silently\n");
+                return 1;
+            }
+            if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
+                flat(0x212121U);
+            }
+            trait_shell_draw_desktop();
+            trait_shell_draw();
+            (void)trait_panel_draw(whole());
+            trait_shell_draw_overlays();
+            if (!emit(out, "run.png", whole())) {
+                return 1;
+            }
+        }
+        {
+            static const char GOOD[] = "lxterminal";
+            uint32_t at;
+
+            for (at = 0U; at < 10U; ++at) {
+                key.key = 0;
+                key.special = TRAIT_KEY_BACKSPACE;
+                (void)trait_shell_handle(&key);
+            }
+            for (at = 0U; GOOD[at] != '\0'; ++at) {
+                key.key = GOOD[at];
+                key.special = 0U;
+                (void)trait_shell_handle(&key);
+            }
+            before = trait_shell_window_count();
+            key.key = 0;
+            key.special = TRAIT_KEY_ENTER;
+            (void)trait_shell_handle(&key);
+            if (trait_shell_run_open()) {
+                fprintf(stderr, "trait: the Run box stayed open on a "
+                                "name it ran\n");
+                return 1;
+            }
+            if (trait_shell_window_count() != before + 1U) {
+                fprintf(stderr, "trait: Run opened no window\n");
+                return 1;
+            }
+        }
+
+        /* Alt+Tab, with two windows up. */
+        (void)trait_shell_open(TRAIT_APP_TASKMGR,
+            (struct trait_rect){ 380U, 260U, 520U, 300U });
+        key.modifiers = TRAIT_MOD_ALT;
+        key.key = 0;
+        key.special = TRAIT_KEY_TAB;
+        if (!trait_shell_handle(&key) || !trait_shell_switcher_open()) {
+            fprintf(stderr, "trait: Alt+Tab opened no switcher\n");
+            return 1;
+        }
+        if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
+            flat(0x212121U);
+        }
+        trait_shell_draw_desktop();
+        trait_shell_draw();
+        (void)trait_panel_draw(whole());
+        trait_shell_draw_overlays();
+        if (!emit(out, "switcher.png", whole())) {
+            return 1;
+        }
+        {
+            uint32_t was_focus = trait_shell_focused();
+
+            key.modifiers = 0U;
+            key.special = 0U;
+            key.key = 0;
+            (void)trait_shell_handle(&key);
+            if (trait_shell_switcher_open()) {
+                fprintf(stderr, "trait: releasing Alt left the switcher "
+                                "up\n");
+                return 1;
+            }
+            if (trait_shell_focused() == was_focus) {
+                fprintf(stderr, "trait: Alt+Tab committed to the window "
+                                "that already had focus\n");
+                return 1;
+            }
+        }
+        printf("proof: the root window draws %u icons including the two "
+               "things in ~/Desktop, the Run box refused \"frobnicate\" "
+               "out loud and then ran lxterminal, and Alt+Tab moved "
+               "focus to another window\n",
+               trait_shell_desktop_icon_count());
+    }
     printf("proof: a %u-pixel panel over a %ux%u screen, %u tasks, a "
            "%u-column cpu graph and a clock that does not move when a "
            "window opens; a task manager of %u processes sorted by a "

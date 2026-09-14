@@ -2,6 +2,7 @@
 #include <trait/shell.h>
 
 #include <trait/files.h>
+#include <trait/font.h>
 #include <trait/packages.h>
 #include <trait/menu.h>
 #include <trait/theme.h>
@@ -18,6 +19,21 @@ static bool menu_open;
 static bool volume_open;
 static uint32_t volume_level = 65U;
 static bool volume_muted;
+
+static bool run_open;
+static char run_text[48];
+static uint32_t run_length;
+static char run_error[64];
+
+static bool switcher_open;
+static uint32_t switcher_at;
+
+/* The desktop folder, and the two standard marks before it. */
+#define DESKTOP_STANDARD 2U
+#define DESKTOP_CELL_W 86U
+#define DESKTOP_CELL_H 74U
+#define DESKTOP_MARGIN 8U
+static uint32_t desktop_folder = TRAIT_FILES_MAX_NODES;
 static struct trait_window windows[TRAIT_SHELL_MAX_WINDOWS];
 static enum trait_shell_app apps[TRAIT_SHELL_MAX_WINDOWS];
 static bool used[TRAIT_SHELL_MAX_WINDOWS];
@@ -89,6 +105,11 @@ void trait_shell_reset(struct trait_surface *surface)
     shell_desktop = 0U;
     menu_open = false;
     volume_open = false;
+    run_open = false;
+    run_length = 0U;
+    run_text[0] = '\0';
+    run_error[0] = '\0';
+    switcher_open = false;
     stack_depth = 0U;
     dragging = false;
     dragging_entry = false;
@@ -144,6 +165,130 @@ void trait_shell_send_to_desktop(uint32_t slot, uint32_t desktop)
 bool trait_shell_menu_open(void)
 {
     return menu_open;
+}
+
+bool trait_shell_run_open(void)
+{
+    return run_open;
+}
+
+const char *trait_shell_run_text(void)
+{
+    return run_text;
+}
+
+const char *trait_shell_run_error(void)
+{
+    return run_error;
+}
+
+bool trait_shell_switcher_open(void)
+{
+    return switcher_open;
+}
+
+uint32_t trait_shell_switcher_at(void)
+{
+    return switcher_at;
+}
+
+/* ------------------------------------------------------ the root window */
+
+void trait_shell_set_desktop_folder(uint32_t folder)
+{
+    desktop_folder = folder;
+}
+
+uint32_t trait_shell_desktop_icon_count(void)
+{
+    if (desktop_folder >= TRAIT_FILES_MAX_NODES) {
+        return DESKTOP_STANDARD;
+    }
+    return DESKTOP_STANDARD + trait_files_child_count(desktop_folder);
+}
+
+bool trait_shell_desktop_icon_bounds(uint32_t at, struct trait_rect *out)
+{
+    uint32_t rows;
+
+    if (out == NULL || at >= trait_shell_desktop_icon_count()) {
+        return false;
+    }
+    rows = (shell_screen.height > TRAIT_PANEL_HEIGHT + DESKTOP_MARGIN) ?
+        (shell_screen.height - TRAIT_PANEL_HEIGHT - DESKTOP_MARGIN) /
+            DESKTOP_CELL_H : 1U;
+    if (rows == 0U) {
+        rows = 1U;
+    }
+    /* Down the left edge first, then a second column - which is the way
+     * every desktop fills, and the reason it is not `at % columns`. */
+    out->x = shell_screen.x + DESKTOP_MARGIN +
+        (at / rows) * DESKTOP_CELL_W;
+    out->y = shell_screen.y + DESKTOP_MARGIN +
+        (at % rows) * DESKTOP_CELL_H;
+    out->width = DESKTOP_CELL_W;
+    out->height = DESKTOP_CELL_H;
+    return true;
+}
+
+void trait_shell_draw_desktop(void)
+{
+    static const char *const STANDARD[DESKTOP_STANDARD] = {
+        "user-home", "user-trash"
+    };
+    static const char *const LABELS[DESKTOP_STANDARD] = {
+        "user", "Trash"
+    };
+    uint32_t at;
+
+    if (!trait_surface_valid(canvas)) {
+        return;
+    }
+    for (at = 0U; at < trait_shell_desktop_icon_count(); ++at) {
+        struct trait_rect cell;
+        const char *mark;
+        const char *label;
+
+        if (!trait_shell_desktop_icon_bounds(at, &cell)) {
+            continue;
+        }
+        if (at < DESKTOP_STANDARD) {
+            mark = STANDARD[at];
+            label = LABELS[at];
+        } else {
+            uint32_t node = trait_files_child(desktop_folder,
+                                              at - DESKTOP_STANDARD);
+
+            if (node >= TRAIT_FILES_MAX_NODES) {
+                continue;
+            }
+            mark = trait_files_node_mark(node);
+            label = trait_files_node_name(node);
+        }
+        trait_files_draw_icon_at(canvas, cell, mark, 48U,
+            cell.x + (cell.width - 48U) / 2U, cell.y + 4U);
+        {
+            uint32_t width = trait_font_width(label);
+
+            /*
+             * pcmanfm's LXDE profile is desktop_fg=#ffffff with
+             * desktop_shadow=#000000: white ink over a dark halo, which
+             * is what keeps a label readable over a wallpaper that is
+             * light in one place and dark in another.  The halo is drawn
+             * as the same text offset by one in each direction - cheaper
+             * than a blur and what a one-pixel shadow IS.
+             */
+            uint32_t pen = cell.x + (cell.width > width ?
+                (cell.width - width) / 2U : 0U);
+            uint32_t base = cell.y + 48U + 16U;
+
+            trait_font_draw(canvas, cell, pen + 1U, base, label,
+                            0x000000U);
+            trait_font_draw(canvas, cell, pen, base + 1U, label,
+                            0x000000U);
+            trait_font_draw(canvas, cell, pen, base, label, 0xFFFFFFU);
+        }
+    }
 }
 
 bool trait_shell_volume_open(void)
@@ -470,9 +615,93 @@ static bool shell_menu_pick(uint32_t row)
         return trait_shell_open(TRAIT_APP_FILES, where) <
             TRAIT_SHELL_MAX_WINDOWS;
     }
-    /* Run... has no box behind it yet, so it opens nothing and says so
-     * by returning false rather than opening something else. */
+    if (label[0] == 'R') {           /* Run... */
+        run_open = true;
+        run_length = 0U;
+        run_text[0] = '\0';
+        run_error[0] = '\0';
+        return true;
+    }
     return false;
+}
+
+/*
+ * What the Run box runs.  The names are the ones this desktop HAS; a name
+ * it does not have is refused out loud rather than opening something
+ * else or quietly doing nothing.
+ */
+/*
+ * ALT+TAB WALKS THE STACK, TOP FIRST - most recently used, not slot
+ * order.  That ordering IS the feature: index 0 is the window you are on
+ * and index 1 is the one you were on before it, which is why tapping
+ * Alt+Tab once takes you back to what you were just doing.  Enumerating
+ * by slot makes "one back" whatever happened to be created second, and
+ * the harness caught exactly that.
+ */
+static uint32_t switcher_list(uint32_t *out, uint32_t capacity)
+{
+    uint32_t count = 0U;
+    uint32_t at = stack_depth;
+
+    while (at != 0U && count < capacity) {
+        uint32_t slot = stack[--at];
+
+        if (used[slot] && windows[slot].desktop == shell_desktop) {
+            out[count++] = slot;
+        }
+    }
+    return count;
+}
+
+static bool shell_run_go(void)
+{
+    static const struct {
+        const char *name;
+        enum trait_shell_app app;
+    } RUNNABLE[5] = {
+        { "pcmanfm", TRAIT_APP_FILES },
+        { "lxterminal", TRAIT_APP_TERMINAL },
+        { "lxtask", TRAIT_APP_TASKMGR },
+        { "lxappearance", TRAIT_APP_SETTINGS },
+        { "synaptic", TRAIT_APP_PACKAGES }
+    };
+    struct trait_rect where = { 260U, 200U, 560U, 360U };
+    uint32_t at;
+    uint32_t byte;
+
+    for (at = 0U; at < 5U; ++at) {
+        byte = 0U;
+        while (RUNNABLE[at].name[byte] != '\0' &&
+                run_text[byte] == RUNNABLE[at].name[byte]) {
+            ++byte;
+        }
+        if (RUNNABLE[at].name[byte] == '\0' && run_text[byte] == '\0') {
+            run_open = false;
+            run_length = 0U;
+            run_text[0] = '\0';
+            run_error[0] = '\0';
+            return trait_shell_open(RUNNABLE[at].app, where) <
+                TRAIT_SHELL_MAX_WINDOWS;
+        }
+    }
+    /* Stays OPEN and says why, because closing on a name it could not
+     * run would look exactly like having run it. */
+    byte = 0U;
+    while (run_text[byte] != '\0' && byte + 20U < sizeof(run_error)) {
+        run_error[byte] = run_text[byte];
+        ++byte;
+    }
+    run_error[byte] = '\0';
+    {
+        static const char TAIL[] = ": no such program";
+        uint32_t from = 0U;
+
+        while (TAIL[from] != '\0' && byte + 1U < sizeof(run_error)) {
+            run_error[byte++] = TAIL[from++];
+        }
+        run_error[byte] = '\0';
+    }
+    return true;
 }
 
 static bool shell_panel_press(struct trait_panel_hit hit)
@@ -554,6 +783,70 @@ bool trait_shell_handle(const struct trait_event *event)
         return false;
     }
     if (event->kind == TRAIT_EVENT_KEY) {
+        /*
+         * THE RUN BOX TAKES THE KEYBOARD while it is open, which is what
+         * a modal dialog IS.  Without this, typing into it would also
+         * reach the window behind it - the bug that makes a dialog feel
+         * like a picture stuck to the screen.
+         */
+        if (run_open) {
+            if (event->special == TRAIT_KEY_ESCAPE) {
+                run_open = false;
+                return true;
+            }
+            if (event->special == TRAIT_KEY_BACKSPACE) {
+                if (run_length != 0U) {
+                    run_text[--run_length] = '\0';
+                }
+                return true;
+            }
+            if (event->special == TRAIT_KEY_ENTER) {
+                return shell_run_go();
+            }
+            if (event->key >= 32 && event->key <= 126 &&
+                    run_length + 1U < sizeof(run_text)) {
+                run_text[run_length++] = event->key;
+                run_text[run_length] = '\0';
+                run_error[0] = '\0';
+                return true;
+            }
+            return false;
+        }
+        /*
+         * ALT+TAB.  It is held open while Alt is down, so the state
+         * lives here rather than being a one-shot: releasing Alt is what
+         * commits the choice, which is how the real one works and why
+         * tabbing twice goes two windows back rather than one.
+         */
+        if (event->special == TRAIT_KEY_TAB &&
+                (event->modifiers & TRAIT_MOD_ALT) != 0U) {
+            uint32_t order[TRAIT_SHELL_MAX_WINDOWS];
+            uint32_t live = switcher_list(order, TRAIT_SHELL_MAX_WINDOWS);
+
+            if (live == 0U) {
+                return false;
+            }
+            if (!switcher_open) {
+                switcher_open = true;
+                switcher_at = live > 1U ? 1U : 0U;
+            } else {
+                switcher_at = (switcher_at + 1U) % live;
+            }
+            return true;
+        }
+        if (switcher_open && event->special == 0U && event->key == 0 &&
+                (event->modifiers & TRAIT_MOD_ALT) == 0U) {
+            /* Alt came up: commit to whatever is under the marker. */
+            uint32_t order[TRAIT_SHELL_MAX_WINDOWS];
+            uint32_t live = switcher_list(order, TRAIT_SHELL_MAX_WINDOWS);
+
+            switcher_open = false;
+            if (switcher_at < live) {
+                windows[order[switcher_at]].minimised = false;
+                trait_shell_focus(order[switcher_at]);
+            }
+            return true;
+        }
         slot = trait_shell_focused();
 
         if (slot >= TRAIT_SHELL_MAX_WINDOWS) {
@@ -895,6 +1188,101 @@ void trait_shell_draw_overlays(void)
                 fill.y = trough.y + trough.height - lit;
                 trait_surface_fill(canvas, box, fill, TRAIT_SEL_BG);
             }
+        }
+    }
+    if (run_open) {
+        struct trait_rect box;
+        struct trait_rect field;
+        uint32_t at;
+
+        box.width = 300U;
+        box.height = run_error[0] != '\0' ? 96U : 78U;
+        box.x = shell_screen.x + (shell_screen.width - box.width) / 2U;
+        box.y = shell_screen.y + shell_screen.height / 3U;
+        trait_surface_fill(canvas, box, box, TRAIT_BG);
+        for (at = 0U; at < box.width; ++at) {
+            trait_surface_plot(canvas, box, box.x + at, box.y,
+                               TRAIT_LINE);
+            trait_surface_plot(canvas, box, box.x + at,
+                               box.y + box.height - 1U, TRAIT_LINE);
+        }
+        for (at = 0U; at < box.height; ++at) {
+            trait_surface_plot(canvas, box, box.x, box.y + at,
+                               TRAIT_LINE);
+            trait_surface_plot(canvas, box, box.x + box.width - 1U,
+                               box.y + at, TRAIT_LINE);
+        }
+        trait_font_draw(canvas, box, box.x + 12U, box.y + 22U,
+                        "Run:", TRAIT_FG);
+        field.x = box.x + 12U;
+        field.y = box.y + 30U;
+        field.width = box.width - 24U;
+        field.height = 22U;
+        trait_surface_fill(canvas, box, field, TRAIT_BASE);
+        for (at = 0U; at < field.width; ++at) {
+            trait_surface_plot(canvas, box, field.x + at, field.y,
+                               TRAIT_LINE);
+        }
+        for (at = 0U; at < field.height; ++at) {
+            trait_surface_plot(canvas, box, field.x, field.y + at,
+                               TRAIT_LINE);
+        }
+        trait_font_draw(canvas, field, field.x + 5U, field.y + 15U,
+                        run_text, TRAIT_TEXT);
+        {
+            /* A caret after the text, so the box looks like it is
+             * taking the keyboard - which it is. */
+            uint32_t pen = field.x + 5U + trait_font_width(run_text);
+            struct trait_rect caret = { pen, field.y + 4U, 1U, 14U };
+
+            trait_surface_fill(canvas, field, caret, TRAIT_TEXT);
+        }
+        if (run_error[0] != '\0') {
+            trait_font_draw(canvas, box, box.x + 12U, box.y + 74U,
+                            run_error, TRAIT_TEXT);
+        }
+    }
+    if (switcher_open) {
+        struct trait_rect box;
+        uint32_t order[TRAIT_SHELL_MAX_WINDOWS];
+        uint32_t live = switcher_list(order, TRAIT_SHELL_MAX_WINDOWS);
+        uint32_t at;
+
+        if (live == 0U) {
+            return;
+        }
+        box.width = 180U;
+        box.height = 12U + live * 20U;
+        box.x = shell_screen.x + (shell_screen.width - box.width) / 2U;
+        box.y = shell_screen.y + (shell_screen.height - box.height) / 2U;
+        trait_surface_fill(canvas, box, box, TRAIT_BG);
+        for (at = 0U; at < box.width; ++at) {
+            trait_surface_plot(canvas, box, box.x + at, box.y,
+                               TRAIT_LINE);
+            trait_surface_plot(canvas, box, box.x + at,
+                               box.y + box.height - 1U, TRAIT_LINE);
+        }
+        for (at = 0U; at < box.height; ++at) {
+            trait_surface_plot(canvas, box, box.x, box.y + at,
+                               TRAIT_LINE);
+            trait_surface_plot(canvas, box, box.x + box.width - 1U,
+                               box.y + at, TRAIT_LINE);
+        }
+        /* In the same order the keys walk, so the marker is on the
+         * window Alt+Tab will actually commit to. */
+        for (at = 0U; at < live; ++at) {
+            struct trait_rect row;
+
+            row.x = box.x + 3U;
+            row.y = box.y + 6U + at * 20U;
+            row.width = box.width - 6U;
+            row.height = 20U;
+            if (at == switcher_at) {
+                trait_surface_fill(canvas, box, row, TRAIT_SEL_BG);
+            }
+            trait_font_draw(canvas, row, row.x + 6U, row.y + 14U,
+                windows[order[at]].title,
+                at == switcher_at ? TRAIT_SEL_FG : TRAIT_FG);
         }
     }
 }

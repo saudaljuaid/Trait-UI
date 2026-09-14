@@ -2,6 +2,7 @@
 #ifndef TRAIT_FONT_H_API
 #define TRAIT_FONT_H_API
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include <trait/surface.h>
@@ -13,6 +14,13 @@
  * is no font server behind a framebuffer - and drawn by tinting that
  * coverage, so one bitmap serves every colour the shell wants text in.
  */
+/* The sizes that were generated.  Settings offers these and no others,
+ * because a size nobody rasterised has no glyphs to draw. */
+uint32_t trait_font_size_count(void);
+uint32_t trait_font_size_points(uint32_t at);
+bool trait_font_select(uint32_t at);
+uint32_t trait_font_selected(void);
+
 uint32_t trait_font_width(const char *text);
 uint32_t trait_font_line_height(void);
 

@@ -79,13 +79,20 @@ def main():
             lines.append("    " + "".join(row))
         lines.append("};")
     lines.append("")
-    lines.append(f"struct {prefix}_glyph {{")
+    # ONE GLYPH TYPE FOR EVERY FACE.  The generator used to name the
+    # struct after the prefix, which meant two generated fonts had two
+    # incompatible types and could not sit in one table - the thing that
+    # is needed the moment a desktop offers a font SIZE.
+    lines.append("#ifndef TRAIT_GLYPH_DEFINED")
+    lines.append("#define TRAIT_GLYPH_DEFINED")
+    lines.append("struct trait_glyph {")
     lines.append("    const uint8_t *coverage;")
     lines.append("    uint32_t width;")
     lines.append("    uint32_t advance;")
     lines.append("};")
+    lines.append("#endif")
     lines.append("")
-    lines.append(f"static const struct {prefix}_glyph {prefix}[] = {{")
+    lines.append(f"static const struct trait_glyph {prefix}[] = {{")
     for code, ch, advance, width, _ in glyphs:
         lines.append(f"    {{ {prefix}_{code}, {width}U, {advance}U }},")
     lines.append("};")

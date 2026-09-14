@@ -7,19 +7,19 @@
  * no colour of its own.  Metrics are the font's own:
  * ascent 11, descent 3, line 14.
  */
-#ifndef TRAIT_FONT_H
-#define TRAIT_FONT_H
+#ifndef TRAIT_FONT_11_H
+#define TRAIT_FONT_11_H
 
 #include <stdint.h>
 
-#define TRAIT_FONT_FIRST 32U
-#define TRAIT_FONT_LAST 126U
-#define TRAIT_FONT_ASCENT 11U
-#define TRAIT_FONT_DESCENT 3U
-#define TRAIT_FONT_HEIGHT 14U
+#define TRAIT_FONT_11_FIRST 32U
+#define TRAIT_FONT_11_LAST 126U
+#define TRAIT_FONT_11_ASCENT 11U
+#define TRAIT_FONT_11_DESCENT 3U
+#define TRAIT_FONT_11_HEIGHT 14U
 
 /* 32 ' ' advance 4 */
-static const uint8_t trait_font_32[] = {
+static const uint8_t trait_font_11_32[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
@@ -28,7 +28,7 @@ static const uint8_t trait_font_32[] = {
        0,   0,   0,   0,
 };
 /* 33 '!' advance 4 */
-static const uint8_t trait_font_33[] = {
+static const uint8_t trait_font_11_33[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,  88, 192,   0,   0,   0,   0,  88, 192,   0,   0,   0,   0,  88,
      192,   0,   0,   0,   0,  87, 191,   0,   0,   0,   0,  80, 183,   0,   0,   0,
@@ -37,7 +37,7 @@ static const uint8_t trait_font_33[] = {
        0,   0,   0,   0,
 };
 /* 34 '"' advance 5 */
-static const uint8_t trait_font_34[] = {
+static const uint8_t trait_font_11_34[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0, 232,   0, 232,   0,   0,   0,   0, 232,   0, 232,
        0,   0,   0,   0, 232,   0, 232,   0,   0,   0,   0,   0,   0,   0,   0,   0,
@@ -47,7 +47,7 @@ static const uint8_t trait_font_34[] = {
        0,   0,
 };
 /* 35 '#' advance 9 */
-static const uint8_t trait_font_35[] = {
+static const uint8_t trait_font_11_35[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,  48, 172,   0, 192,  28,   0,   0,   0,   0,   0,   0, 117,
@@ -60,7 +60,7 @@ static const uint8_t trait_font_35[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 36 '$' advance 7 */
-static const uint8_t trait_font_36[] = {
+static const uint8_t trait_font_11_36[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, 136,   0,
        0,   0,   0,   0,   0,  85, 219, 254, 255, 152,   0,   0,   0,   6, 241,  51,
@@ -71,7 +71,7 @@ static const uint8_t trait_font_36[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 37 '%' advance 10 */
-static const uint8_t trait_font_37[] = {
+static const uint8_t trait_font_11_37[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   5, 178, 244, 161,   1,   0,  20, 193,   5,   0,   0,   0,
@@ -85,7 +85,7 @@ static const uint8_t trait_font_37[] = {
        0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 38 '&' advance 9 */
-static const uint8_t trait_font_38[] = {
+static const uint8_t trait_font_11_38[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   1, 150, 241, 196,  35,   0,   0,   0,   0,   0,   0,  70, 214,  23,
@@ -98,7 +98,7 @@ static const uint8_t trait_font_38[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 39 "'" advance 3 */
-static const uint8_t trait_font_39[] = {
+static const uint8_t trait_font_11_39[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
      232,   0,   0,   0,   0, 232,   0,   0,   0,   0, 232,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
@@ -106,7 +106,7 @@ static const uint8_t trait_font_39[] = {
        0,   0,   0,   0,   0,   0,
 };
 /* 40 '(' advance 4 */
-static const uint8_t trait_font_40[] = {
+static const uint8_t trait_font_11_40[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, 184,  42,
        0,   0,   0,  62, 179,   0,   0,   0,   0, 160,  92,   0,   0,   0,   0, 225,
       35,   0,   0,   0,   3, 254,   8,   0,   0,   0,   3, 254,   8,   0,   0,   0,
@@ -115,7 +115,7 @@ static const uint8_t trait_font_40[] = {
        0,   0,   0,   0,
 };
 /* 41 ')' advance 4 */
-static const uint8_t trait_font_41[] = {
+static const uint8_t trait_font_11_41[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   4, 203,  18,   0,
        0,   0,   0, 107, 133,   0,   0,   0,   0,  21, 229,   1,   0,   0,   0,   0,
      218,  43,   0,   0,   0,   0, 189,  77,   0,   0,   0,   0, 190,  76,   0,   0,
@@ -124,7 +124,7 @@ static const uint8_t trait_font_41[] = {
        0,   0,   0,   0,
 };
 /* 42 '*' advance 6 */
-static const uint8_t trait_font_42[] = {
+static const uint8_t trait_font_11_42[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0, 144,  16,   0,   0,   0,   0,
      112,  85, 144,  34, 169,  10,   0,   0,   3, 123, 225, 181,  43,   0,   0,   0,
@@ -134,7 +134,7 @@ static const uint8_t trait_font_42[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 43 '+' advance 9 */
-static const uint8_t trait_font_43[] = {
+static const uint8_t trait_font_11_43[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
@@ -147,7 +147,7 @@ static const uint8_t trait_font_43[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 44 ',' advance 4 */
-static const uint8_t trait_font_44[] = {
+static const uint8_t trait_font_11_44[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
@@ -156,7 +156,7 @@ static const uint8_t trait_font_44[] = {
        0,   0,   0,   0,
 };
 /* 45 '-' advance 4 */
-static const uint8_t trait_font_45[] = {
+static const uint8_t trait_font_11_45[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0, 120, 255, 255, 112,   0,   0,
@@ -165,7 +165,7 @@ static const uint8_t trait_font_45[] = {
        0,   0,   0,   0,
 };
 /* 46 '.' advance 4 */
-static const uint8_t trait_font_46[] = {
+static const uint8_t trait_font_11_46[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
@@ -174,7 +174,7 @@ static const uint8_t trait_font_46[] = {
        0,   0,   0,   0,
 };
 /* 47 '/' advance 4 */
-static const uint8_t trait_font_47[] = {
+static const uint8_t trait_font_11_47[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,  92, 139,   0,   0,   0,   0, 172,  60,   0,   0,   0,   7,
      221,   2,   0,   0,   0,  75, 157,   0,   0,   0,   0, 154,  77,   0,   0,   0,
@@ -183,7 +183,7 @@ static const uint8_t trait_font_47[] = {
        0,   0,   0,   0,
 };
 /* 48 '0' advance 7 */
-static const uint8_t trait_font_48[] = {
+static const uint8_t trait_font_11_48[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,  41, 202, 249, 201,
       37,   0,   0,   0,   0, 198, 130,  16, 130, 191,   0,   0,   0,  29, 245,   8,
@@ -194,7 +194,7 @@ static const uint8_t trait_font_48[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 49 '1' advance 7 */
-static const uint8_t trait_font_49[] = {
+static const uint8_t trait_font_11_49[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, 204, 255, 255,  56,
        0,   0,   0,   0,   0,   0,   0, 220,  56,   0,   0,   0,   0,   0,   0,   0,
@@ -205,7 +205,7 @@ static const uint8_t trait_font_49[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 50 '2' advance 7 */
-static const uint8_t trait_font_50[] = {
+static const uint8_t trait_font_11_50[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   1, 100, 217, 241, 179,
       27,   0,   0,   0,  34, 154,  38,  16, 165, 175,   0,   0,   0,   0,   0,   0,
@@ -216,7 +216,7 @@ static const uint8_t trait_font_50[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 51 '3' advance 7 */
-static const uint8_t trait_font_51[] = {
+static const uint8_t trait_font_11_51[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,  70, 205, 245, 201,
       57,   0,   0,   0,   0, 155,  45,   9, 118, 215,   0,   0,   0,   0,   0,   0,
@@ -227,7 +227,7 @@ static const uint8_t trait_font_51[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 52 '4' advance 7 */
-static const uint8_t trait_font_52[] = {
+static const uint8_t trait_font_11_52[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, 119, 255,
       60,   0,   0,   0,   0,   0,  42, 184, 217,  60,   0,   0,   0,   0,   3, 191,
@@ -238,7 +238,7 @@ static const uint8_t trait_font_52[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 53 '5' advance 7 */
-static const uint8_t trait_font_53[] = {
+static const uint8_t trait_font_11_53[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, 208, 255, 255, 255,
      116,   0,   0,   0,   0, 208,  48,   0,   0,   0,   0,   0,   0,   0, 208,  48,
@@ -249,7 +249,7 @@ static const uint8_t trait_font_53[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 54 '6' advance 7 */
-static const uint8_t trait_font_54[] = {
+static const uint8_t trait_font_11_54[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   7, 148, 237, 255,
      200,   0,   0,   0,   0, 142, 193,  35,   0,   0,   0,   0,   0,   9, 248,  40,
@@ -260,7 +260,7 @@ static const uint8_t trait_font_54[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 55 '7' advance 7 */
-static const uint8_t trait_font_55[] = {
+static const uint8_t trait_font_11_55[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,  24, 255, 255, 255, 255,
      248,   8,   0,   0,   0,   0,   0,   0, 115, 167,   0,   0,   0,   0,   0,   0,
@@ -271,7 +271,7 @@ static const uint8_t trait_font_55[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 56 '8' advance 7 */
-static const uint8_t trait_font_56[] = {
+static const uint8_t trait_font_11_56[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,  85, 217, 248, 217,
       84,   0,   0,   0,   4, 246,  77,   7,  79, 246,   4,   0,   0,   1, 220,  77,
@@ -282,7 +282,7 @@ static const uint8_t trait_font_56[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 57 '9' advance 7 */
-static const uint8_t trait_font_57[] = {
+static const uint8_t trait_font_11_57[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,  83, 217, 247, 189,
       28,   0,   0,   0,  27, 242,  68,  10, 126, 176,   0,   0,   0,  69, 210,   0,
@@ -293,7 +293,7 @@ static const uint8_t trait_font_57[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 58 ':' advance 4 */
-static const uint8_t trait_font_58[] = {
+static const uint8_t trait_font_11_58[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, 180,
      108,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
@@ -302,7 +302,7 @@ static const uint8_t trait_font_58[] = {
        0,   0,   0,   0,
 };
 /* 59 ';' advance 4 */
-static const uint8_t trait_font_59[] = {
+static const uint8_t trait_font_11_59[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, 180,
      108,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
@@ -311,7 +311,7 @@ static const uint8_t trait_font_59[] = {
        0,   0,   0,   0,
 };
 /* 60 '<' advance 9 */
-static const uint8_t trait_font_60[] = {
+static const uint8_t trait_font_11_60[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
@@ -324,7 +324,7 @@ static const uint8_t trait_font_60[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 61 '=' advance 9 */
-static const uint8_t trait_font_61[] = {
+static const uint8_t trait_font_11_61[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
@@ -337,7 +337,7 @@ static const uint8_t trait_font_61[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 62 '>' advance 9 */
-static const uint8_t trait_font_62[] = {
+static const uint8_t trait_font_11_62[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
@@ -350,7 +350,7 @@ static const uint8_t trait_font_62[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 63 '?' advance 6 */
-static const uint8_t trait_font_63[] = {
+static const uint8_t trait_font_11_63[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,  52, 255, 255, 232, 108,   0,   0,   0,
        0,   0,   2,  67, 252,   6,   0,   0,   0,   0,   0, 128, 191,   0,   0,   0,
@@ -360,7 +360,7 @@ static const uint8_t trait_font_63[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 64 '@' advance 11 */
-static const uint8_t trait_font_64[] = {
+static const uint8_t trait_font_11_64[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,  10, 125, 215, 249, 231, 160,  35,
@@ -375,7 +375,7 @@ static const uint8_t trait_font_64[] = {
        0,   0,   0,   0,   0,   0,
 };
 /* 65 'A' advance 8 */
-static const uint8_t trait_font_65[] = {
+static const uint8_t trait_font_11_65[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
       19, 249, 144,   0,   0,   0,   0,   0,   0,   0, 111, 175, 231,   6,   0,   0,
@@ -387,7 +387,7 @@ static const uint8_t trait_font_65[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 66 'B' advance 8 */
-static const uint8_t trait_font_66[] = {
+static const uint8_t trait_font_11_66[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, 236,
      255, 255, 237, 157,   6,   0,   0,   0,   0, 236,  44,   0,  28, 214,  91,   0,
@@ -399,7 +399,7 @@ static const uint8_t trait_font_66[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 67 'C' advance 8 */
-static const uint8_t trait_font_67[] = {
+static const uint8_t trait_font_11_67[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   5,
      130, 223, 247, 208,  92,   0,   0,   0,   0, 164, 201,  54,  11,  44, 162,  19,
@@ -411,7 +411,7 @@ static const uint8_t trait_font_67[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 68 'D' advance 8 */
-static const uint8_t trait_font_68[] = {
+static const uint8_t trait_font_11_68[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, 236,
      255, 252, 231, 173,  52,   0,   0,   0,   0, 236,  44,   4,  34, 131, 246,  46,
@@ -423,7 +423,7 @@ static const uint8_t trait_font_68[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 69 'E' advance 7 */
-static const uint8_t trait_font_69[] = {
+static const uint8_t trait_font_11_69[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, 236, 255, 255, 255,
      255,  40,   0,   0,   0, 236,  44,   0,   0,   0,   0,   0,   0,   0, 236,  44,
@@ -434,7 +434,7 @@ static const uint8_t trait_font_69[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 70 'F' advance 6 */
-static const uint8_t trait_font_70[] = {
+static const uint8_t trait_font_11_70[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0, 236, 255, 255, 255, 176,   0,   0,
        0, 236,  44,   0,   0,   0,   0,   0,   0, 236,  44,   0,   0,   0,   0,   0,
@@ -444,7 +444,7 @@ static const uint8_t trait_font_70[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 71 'G' advance 9 */
-static const uint8_t trait_font_71[] = {
+static const uint8_t trait_font_11_71[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   5, 128, 221, 249, 217, 133,  12,   0,   0,   0,   0, 164, 201,  56,
@@ -457,7 +457,7 @@ static const uint8_t trait_font_71[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 72 'H' advance 8 */
-static const uint8_t trait_font_72[] = {
+static const uint8_t trait_font_11_72[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, 236,
       44,   0,   0,   0, 228,  48,   0,   0,   0, 236,  44,   0,   0,   0, 228,  48,
@@ -469,7 +469,7 @@ static const uint8_t trait_font_72[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 73 'I' advance 3 */
-static const uint8_t trait_font_73[] = {
+static const uint8_t trait_font_11_73[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
      236,  44,   0,   0,   0, 236,  44,   0,   0,   0, 236,  44,   0,   0,   0, 236,
       44,   0,   0,   0, 236,  44,   0,   0,   0, 236,  44,   0,   0,   0, 236,  44,
@@ -477,7 +477,7 @@ static const uint8_t trait_font_73[] = {
        0,   0,   0,   0,   0,   0,
 };
 /* 74 'J' advance 3 */
-static const uint8_t trait_font_74[] = {
+static const uint8_t trait_font_11_74[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
      236,  44,   0,   0,   0, 236,  44,   0,   0,   0, 236,  44,   0,   0,   0, 236,
       44,   0,   0,   0, 236,  44,   0,   0,   0, 236,  44,   0,   0,   0, 236,  44,
@@ -485,7 +485,7 @@ static const uint8_t trait_font_74[] = {
        0,   0,   0,   0,   0,   0,
 };
 /* 75 'K' advance 7 */
-static const uint8_t trait_font_75[] = {
+static const uint8_t trait_font_11_75[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, 236,  44,   0,  10,
      185, 156,   2,   0,   0, 236,  44,  15, 196, 142,   1,   0,   0,   0, 236,  66,
@@ -496,7 +496,7 @@ static const uint8_t trait_font_75[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 76 'L' advance 6 */
-static const uint8_t trait_font_76[] = {
+static const uint8_t trait_font_11_76[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0, 236,  44,   0,   0,   0,   0,   0,
        0, 236,  44,   0,   0,   0,   0,   0,   0, 236,  44,   0,   0,   0,   0,   0,
@@ -506,7 +506,7 @@ static const uint8_t trait_font_76[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 77 'M' advance 9 */
-static const uint8_t trait_font_77[] = {
+static const uint8_t trait_font_11_77[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0, 236, 227,   3,   0,   0, 104, 255, 108,   0,   0,   0, 236, 194,  79,
@@ -519,7 +519,7 @@ static const uint8_t trait_font_77[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 78 'N' advance 8 */
-static const uint8_t trait_font_78[] = {
+static const uint8_t trait_font_11_78[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, 236,
      205,   1,   0,   0, 232,  40,   0,   0,   0, 236, 224,  87,   0,   0, 232,  40,
@@ -531,7 +531,7 @@ static const uint8_t trait_font_78[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 79 'O' advance 9 */
-static const uint8_t trait_font_79[] = {
+static const uint8_t trait_font_11_79[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   7, 138, 229, 249, 210,  85,   0,   0,   0,   0,   0, 166, 199,  46,
@@ -544,7 +544,7 @@ static const uint8_t trait_font_79[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 80 'P' advance 7 */
-static const uint8_t trait_font_80[] = {
+static const uint8_t trait_font_11_80[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, 236, 255, 251, 217,
       85,   0,   0,   0,   0, 236,  44,   4,  84, 247,  19,   0,   0,   0, 236,  44,
@@ -555,7 +555,7 @@ static const uint8_t trait_font_80[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 81 'Q' advance 9 */
-static const uint8_t trait_font_81[] = {
+static const uint8_t trait_font_11_81[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   7, 138, 229, 249, 211,  87,   0,   0,   0,   0,   0, 166, 199,  46,
@@ -568,7 +568,7 @@ static const uint8_t trait_font_81[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 82 'R' advance 8 */
-static const uint8_t trait_font_82[] = {
+static const uint8_t trait_font_11_82[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, 236,
      255, 252, 219,  90,   0,   0,   0,   0,   0, 236,  44,   4,  79, 249,  20,   0,
@@ -580,7 +580,7 @@ static const uint8_t trait_font_82[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 83 'S' advance 7 */
-static const uint8_t trait_font_83[] = {
+static const uint8_t trait_font_11_83[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,  90, 215, 245, 197,
       63,   0,   0,   0,  32, 246,  73,   9,  55, 163,   0,   0,   0,  56, 224,   0,
@@ -591,7 +591,7 @@ static const uint8_t trait_font_83[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 84 'T' advance 7 */
-static const uint8_t trait_font_84[] = {
+static const uint8_t trait_font_11_84[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, 255, 255, 255, 255, 255,
      255, 192,   0,   0,   0,   0,  48, 232,   0,   0,   0,   0,   0,   0,   0,  48,
@@ -602,7 +602,7 @@ static const uint8_t trait_font_84[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 85 'U' advance 8 */
-static const uint8_t trait_font_85[] = {
+static const uint8_t trait_font_11_85[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,  12, 255,
       12,   0,   0,   0, 255,  24,   0,   0,  12, 255,  12,   0,   0,   0, 255,  24,
@@ -614,7 +614,7 @@ static const uint8_t trait_font_85[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 86 'V' advance 8 */
-static const uint8_t trait_font_86[] = {
+static const uint8_t trait_font_11_86[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, 184, 103,
        0,   0,   0,   1, 223,  62,   0,   0,  86, 200,   0,   0,   0,  65, 219,   0,
@@ -626,7 +626,7 @@ static const uint8_t trait_font_86[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 87 'W' advance 11 */
-static const uint8_t trait_font_87[] = {
+static const uint8_t trait_font_11_87[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0, 132, 151,   0,   0,  76, 255,  43,   0,   0,
@@ -641,7 +641,7 @@ static const uint8_t trait_font_87[] = {
        0,   0,   0,   0,   0,   0,
 };
 /* 88 'X' advance 8 */
-static const uint8_t trait_font_88[] = {
+static const uint8_t trait_font_11_88[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,  19, 228,
       52,   0,   0, 129, 171,   0,   0,   0,   0,  80, 212,   6,  54, 226,  19,   0,
@@ -653,7 +653,7 @@ static const uint8_t trait_font_88[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 89 'Y' advance 7 */
-static const uint8_t trait_font_89[] = {
+static const uint8_t trait_font_11_89[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, 173, 125,   0,   0,   1,
      192, 101,   0,   0,  22, 229,  47,   0, 109, 184,   0,   0,   0,   0,  84, 208,
@@ -664,7 +664,7 @@ static const uint8_t trait_font_89[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 90 'Z' advance 8 */
-static const uint8_t trait_font_90[] = {
+static const uint8_t trait_font_11_90[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,  96, 255,
      255, 255, 255, 255, 232,   0,   0,   0,   0,   0,   0,   0,  10, 206,  91,   0,
@@ -676,7 +676,7 @@ static const uint8_t trait_font_90[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 91 '[' advance 4 */
-static const uint8_t trait_font_91[] = {
+static const uint8_t trait_font_11_91[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,  12, 255, 255,  56,   0,   0,  12, 240,   0,   0,   0,   0,  12, 240,
        0,   0,   0,   0,  12, 240,   0,   0,   0,   0,  12, 240,   0,   0,   0,   0,
@@ -685,7 +685,7 @@ static const uint8_t trait_font_91[] = {
        0,   0,   0,   0,
 };
 /* 92 '\\' advance 4 */
-static const uint8_t trait_font_92[] = {
+static const uint8_t trait_font_11_92[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0, 212,  19,   0,   0,   0,   0, 137,  95,   0,   0,   0,   0,  57, 174,
        0,   0,   0,   0,   1, 220,   9,   0,   0,   0,   0, 154,  77,   0,   0,   0,
@@ -694,7 +694,7 @@ static const uint8_t trait_font_92[] = {
        0,   0,   0,   0,
 };
 /* 93 ']' advance 4 */
-static const uint8_t trait_font_93[] = {
+static const uint8_t trait_font_11_93[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0, 240, 255,  88,   0,   0,   0,   0, 164,  88,   0,   0,   0,   0,
      164,  88,   0,   0,   0,   0, 164,  88,   0,   0,   0,   0, 164,  88,   0,   0,
@@ -703,7 +703,7 @@ static const uint8_t trait_font_93[] = {
        0,   0,   0,   0,
 };
 /* 94 '^' advance 9 */
-static const uint8_t trait_font_94[] = {
+static const uint8_t trait_font_11_94[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0, 105, 250, 157,   1,   0,   0,   0,   0,   0,   0,  97, 207,
@@ -716,7 +716,7 @@ static const uint8_t trait_font_94[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 95 '_' advance 6 */
-static const uint8_t trait_font_95[] = {
+static const uint8_t trait_font_11_95[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
@@ -726,7 +726,7 @@ static const uint8_t trait_font_95[] = {
        0,   0,   0,   0,   0,   0,   0,   0, 255, 255, 255, 255, 255, 156,   0,   0,
 };
 /* 96 '`' advance 6 */
-static const uint8_t trait_font_96[] = {
+static const uint8_t trait_font_11_96[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        1, 167,  88,   0,   0,   0,   0,   0,   0,   7, 180,  39,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
@@ -736,7 +736,7 @@ static const uint8_t trait_font_96[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 97 'a' advance 7 */
-static const uint8_t trait_font_97[] = {
+static const uint8_t trait_font_11_97[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, 232, 255,
@@ -747,7 +747,7 @@ static const uint8_t trait_font_97[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 98 'b' advance 7 */
-static const uint8_t trait_font_98[] = {
+static const uint8_t trait_font_11_98[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0, 255,   0,   0,   0,   0,   0,   0,   0,   0, 255,   0,   0,   0,
        0,   0,   0,   0,   0, 255,   0,   0,   0,   0,   0,   0,   0,   0, 255, 118,
@@ -758,7 +758,7 @@ static const uint8_t trait_font_98[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 99 'c' advance 6 */
-static const uint8_t trait_font_99[] = {
+static const uint8_t trait_font_11_99[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,  59, 201, 247, 255,  92,   0,   0,
@@ -768,7 +768,7 @@ static const uint8_t trait_font_99[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 100 'd' advance 7 */
-static const uint8_t trait_font_100[] = {
+static const uint8_t trait_font_11_100[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0, 252,   0,   0,   0,   0,   0,   0,   0,   0,
      252,   0,   0,   0,   0,   0,   0,   0,   0, 252,   0,   0,   0,   0,  82, 224,
@@ -779,7 +779,7 @@ static const uint8_t trait_font_100[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 101 'e' advance 7 */
-static const uint8_t trait_font_101[] = {
+static const uint8_t trait_font_11_101[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,  58, 202,
@@ -790,7 +790,7 @@ static const uint8_t trait_font_101[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 102 'f' advance 4 */
-static const uint8_t trait_font_102[] = {
+static const uint8_t trait_font_11_102[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,  56, 222, 255,
       20,   0,   0, 173,  95,   0,   0,   0,   0, 201,  48,   0,   0,   0, 192, 255,
      255, 208,   0,   0,   0, 204,  48,   0,   0,   0,   0, 204,  48,   0,   0,   0,
@@ -799,7 +799,7 @@ static const uint8_t trait_font_102[] = {
        0,   0,   0,   0,
 };
 /* 103 'g' advance 7 */
-static const uint8_t trait_font_103[] = {
+static const uint8_t trait_font_11_103[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,  85, 224,
@@ -810,7 +810,7 @@ static const uint8_t trait_font_103[] = {
      188,  34,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 104 'h' advance 7 */
-static const uint8_t trait_font_104[] = {
+static const uint8_t trait_font_11_104[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0, 255,   0,   0,   0,   0,   0,   0,   0,   0, 255,   0,   0,   0,
        0,   0,   0,   0,   0, 255,   0,   0,   0,   0,   0,   0,   0,   0, 255, 113,
@@ -821,7 +821,7 @@ static const uint8_t trait_font_104[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 105 'i' advance 3 */
-static const uint8_t trait_font_105[] = {
+static const uint8_t trait_font_11_105[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
      248,   8,   0,   0,   0,   0,   0,   0,   0,   0, 248,   8,   0,   0,   0, 248,
        8,   0,   0,   0, 248,   8,   0,   0,   0, 248,   8,   0,   0,   0, 248,   8,
@@ -829,7 +829,7 @@ static const uint8_t trait_font_105[] = {
        0,   0,   0,   0,   0,   0,
 };
 /* 106 'j' advance 3 */
-static const uint8_t trait_font_106[] = {
+static const uint8_t trait_font_11_106[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
      248,   8,   0,   0,   0,   0,   0,   0,   0,   0, 248,   8,   0,   0,   0, 248,
        8,   0,   0,   0, 248,   8,   0,   0,   0, 248,   8,   0,   0,   0, 248,   8,
@@ -837,7 +837,7 @@ static const uint8_t trait_font_106[] = {
        0,   0,   0,   0,   0,   0,
 };
 /* 107 'k' advance 6 */
-static const uint8_t trait_font_107[] = {
+static const uint8_t trait_font_11_107[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0, 255,   0,   0,   0,   0,   0,   0,   0, 255,   0,   0,   0,   0,   0,   0,
        0, 255,   0,   0,   0,   0,   0,   0,   0, 255,   0,   4, 157, 157,   4,   0,
@@ -847,7 +847,7 @@ static const uint8_t trait_font_107[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 108 'l' advance 3 */
-static const uint8_t trait_font_108[] = {
+static const uint8_t trait_font_11_108[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, 248,   8,   0,   0,   0,
      248,   8,   0,   0,   0, 248,   8,   0,   0,   0, 248,   8,   0,   0,   0, 248,
        8,   0,   0,   0, 248,   8,   0,   0,   0, 248,   8,   0,   0,   0, 248,   8,
@@ -855,7 +855,7 @@ static const uint8_t trait_font_108[] = {
        0,   0,   0,   0,   0,   0,
 };
 /* 109 'm' advance 11 */
-static const uint8_t trait_font_109[] = {
+static const uint8_t trait_font_11_109[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
@@ -870,7 +870,7 @@ static const uint8_t trait_font_109[] = {
        0,   0,   0,   0,   0,   0,
 };
 /* 110 'n' advance 7 */
-static const uint8_t trait_font_110[] = {
+static const uint8_t trait_font_11_110[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, 255, 113,
@@ -881,7 +881,7 @@ static const uint8_t trait_font_110[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 111 'o' advance 7 */
-static const uint8_t trait_font_111[] = {
+static const uint8_t trait_font_11_111[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,  75, 214,
@@ -892,7 +892,7 @@ static const uint8_t trait_font_111[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 112 'p' advance 7 */
-static const uint8_t trait_font_112[] = {
+static const uint8_t trait_font_11_112[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, 255, 118,
@@ -903,7 +903,7 @@ static const uint8_t trait_font_112[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 113 'q' advance 7 */
-static const uint8_t trait_font_113[] = {
+static const uint8_t trait_font_11_113[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,  82, 224,
@@ -914,7 +914,7 @@ static const uint8_t trait_font_113[] = {
        0, 252,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 114 'r' advance 5 */
-static const uint8_t trait_font_114[] = {
+static const uint8_t trait_font_11_114[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0, 255, 116, 228, 131,   0,   0,   0, 255, 135,  11,   0,   0,
@@ -924,7 +924,7 @@ static const uint8_t trait_font_114[] = {
        0,   0,
 };
 /* 115 's' advance 6 */
-static const uint8_t trait_font_115[] = {
+static const uint8_t trait_font_11_115[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   6, 165, 242, 255, 224,   0,   0,   0,
@@ -934,7 +934,7 @@ static const uint8_t trait_font_115[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 116 't' advance 4 */
-static const uint8_t trait_font_116[] = {
+static const uint8_t trait_font_11_116[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0, 252,   4,   0,   0,   0,   0, 252,   4,   0,   0,   0, 180, 255,
      255, 255,  12,   0,   0, 252,   4,   0,   0,   0,   0, 252,   4,   0,   0,   0,
@@ -943,7 +943,7 @@ static const uint8_t trait_font_116[] = {
        0,   0,   0,   0,
 };
 /* 117 'u' advance 7 */
-static const uint8_t trait_font_117[] = {
+static const uint8_t trait_font_11_117[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,  16, 236,   0,
@@ -954,7 +954,7 @@ static const uint8_t trait_font_117[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 118 'v' advance 7 */
-static const uint8_t trait_font_118[] = {
+static const uint8_t trait_font_11_118[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, 125, 143,   0,
@@ -965,7 +965,7 @@ static const uint8_t trait_font_118[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 119 'w' advance 9 */
-static const uint8_t trait_font_119[] = {
+static const uint8_t trait_font_11_119[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
@@ -978,7 +978,7 @@ static const uint8_t trait_font_119[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 120 'x' advance 7 */
-static const uint8_t trait_font_120[] = {
+static const uint8_t trait_font_11_120[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,  40, 227,  31,
@@ -989,7 +989,7 @@ static const uint8_t trait_font_120[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 121 'y' advance 7 */
-static const uint8_t trait_font_121[] = {
+static const uint8_t trait_font_11_121[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, 119, 146,   0,
@@ -1000,7 +1000,7 @@ static const uint8_t trait_font_121[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 122 'z' advance 6 */
-static const uint8_t trait_font_122[] = {
+static const uint8_t trait_font_11_122[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0, 100, 255, 255, 255, 255,  73,   0,   0,
@@ -1010,7 +1010,7 @@ static const uint8_t trait_font_122[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 123 '{' advance 7 */
-static const uint8_t trait_font_123[] = {
+static const uint8_t trait_font_11_123[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, 119, 236,
      158,   0,   0,   0,   0,   0,   0, 231,  51,   0,   0,   0,   0,   0,   0,   0,
@@ -1021,7 +1021,7 @@ static const uint8_t trait_font_123[] = {
      234, 158,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 124 '|' advance 4 */
-static const uint8_t trait_font_124[] = {
+static const uint8_t trait_font_11_124[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0, 156,  80,   0,   0,   0,   0, 156,  80,   0,   0,   0,   0, 156,
       80,   0,   0,   0,   0, 156,  80,   0,   0,   0,   0, 156,  80,   0,   0,   0,
@@ -1030,7 +1030,7 @@ static const uint8_t trait_font_124[] = {
       80,   0,   0,   0,
 };
 /* 125 '}' advance 7 */
-static const uint8_t trait_font_125[] = {
+static const uint8_t trait_font_11_125[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, 159, 236, 120,   0,
        0,   0,   0,   0,   0,   0,  50, 231,   0,   0,   0,   0,   0,   0,   0,  12,
@@ -1041,7 +1041,7 @@ static const uint8_t trait_font_125[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 /* 126 '~' advance 9 */
-static const uint8_t trait_font_126[] = {
+static const uint8_t trait_font_11_126[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
@@ -1054,108 +1054,111 @@ static const uint8_t trait_font_126[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 
-struct trait_font_glyph {
+#ifndef TRAIT_GLYPH_DEFINED
+#define TRAIT_GLYPH_DEFINED
+struct trait_glyph {
     const uint8_t *coverage;
     uint32_t width;
     uint32_t advance;
 };
+#endif
 
-static const struct trait_font_glyph trait_font[] = {
-    { trait_font_32, 6U, 4U },
-    { trait_font_33, 6U, 4U },
-    { trait_font_34, 7U, 5U },
-    { trait_font_35, 11U, 9U },
-    { trait_font_36, 9U, 7U },
-    { trait_font_37, 12U, 10U },
-    { trait_font_38, 11U, 9U },
-    { trait_font_39, 5U, 3U },
-    { trait_font_40, 6U, 4U },
-    { trait_font_41, 6U, 4U },
-    { trait_font_42, 8U, 6U },
-    { trait_font_43, 11U, 9U },
-    { trait_font_44, 6U, 4U },
-    { trait_font_45, 6U, 4U },
-    { trait_font_46, 6U, 4U },
-    { trait_font_47, 6U, 4U },
-    { trait_font_48, 9U, 7U },
-    { trait_font_49, 9U, 7U },
-    { trait_font_50, 9U, 7U },
-    { trait_font_51, 9U, 7U },
-    { trait_font_52, 9U, 7U },
-    { trait_font_53, 9U, 7U },
-    { trait_font_54, 9U, 7U },
-    { trait_font_55, 9U, 7U },
-    { trait_font_56, 9U, 7U },
-    { trait_font_57, 9U, 7U },
-    { trait_font_58, 6U, 4U },
-    { trait_font_59, 6U, 4U },
-    { trait_font_60, 11U, 9U },
-    { trait_font_61, 11U, 9U },
-    { trait_font_62, 11U, 9U },
-    { trait_font_63, 8U, 6U },
-    { trait_font_64, 13U, 11U },
-    { trait_font_65, 10U, 8U },
-    { trait_font_66, 10U, 8U },
-    { trait_font_67, 10U, 8U },
-    { trait_font_68, 10U, 8U },
-    { trait_font_69, 9U, 7U },
-    { trait_font_70, 8U, 6U },
-    { trait_font_71, 11U, 9U },
-    { trait_font_72, 10U, 8U },
-    { trait_font_73, 5U, 3U },
-    { trait_font_74, 5U, 3U },
-    { trait_font_75, 9U, 7U },
-    { trait_font_76, 8U, 6U },
-    { trait_font_77, 11U, 9U },
-    { trait_font_78, 10U, 8U },
-    { trait_font_79, 11U, 9U },
-    { trait_font_80, 9U, 7U },
-    { trait_font_81, 11U, 9U },
-    { trait_font_82, 10U, 8U },
-    { trait_font_83, 9U, 7U },
-    { trait_font_84, 9U, 7U },
-    { trait_font_85, 10U, 8U },
-    { trait_font_86, 10U, 8U },
-    { trait_font_87, 13U, 11U },
-    { trait_font_88, 10U, 8U },
-    { trait_font_89, 9U, 7U },
-    { trait_font_90, 10U, 8U },
-    { trait_font_91, 6U, 4U },
-    { trait_font_92, 6U, 4U },
-    { trait_font_93, 6U, 4U },
-    { trait_font_94, 11U, 9U },
-    { trait_font_95, 8U, 6U },
-    { trait_font_96, 8U, 6U },
-    { trait_font_97, 9U, 7U },
-    { trait_font_98, 9U, 7U },
-    { trait_font_99, 8U, 6U },
-    { trait_font_100, 9U, 7U },
-    { trait_font_101, 9U, 7U },
-    { trait_font_102, 6U, 4U },
-    { trait_font_103, 9U, 7U },
-    { trait_font_104, 9U, 7U },
-    { trait_font_105, 5U, 3U },
-    { trait_font_106, 5U, 3U },
-    { trait_font_107, 8U, 6U },
-    { trait_font_108, 5U, 3U },
-    { trait_font_109, 13U, 11U },
-    { trait_font_110, 9U, 7U },
-    { trait_font_111, 9U, 7U },
-    { trait_font_112, 9U, 7U },
-    { trait_font_113, 9U, 7U },
-    { trait_font_114, 7U, 5U },
-    { trait_font_115, 8U, 6U },
-    { trait_font_116, 6U, 4U },
-    { trait_font_117, 9U, 7U },
-    { trait_font_118, 9U, 7U },
-    { trait_font_119, 11U, 9U },
-    { trait_font_120, 9U, 7U },
-    { trait_font_121, 9U, 7U },
-    { trait_font_122, 8U, 6U },
-    { trait_font_123, 9U, 7U },
-    { trait_font_124, 6U, 4U },
-    { trait_font_125, 9U, 7U },
-    { trait_font_126, 11U, 9U },
+static const struct trait_glyph trait_font_11[] = {
+    { trait_font_11_32, 6U, 4U },
+    { trait_font_11_33, 6U, 4U },
+    { trait_font_11_34, 7U, 5U },
+    { trait_font_11_35, 11U, 9U },
+    { trait_font_11_36, 9U, 7U },
+    { trait_font_11_37, 12U, 10U },
+    { trait_font_11_38, 11U, 9U },
+    { trait_font_11_39, 5U, 3U },
+    { trait_font_11_40, 6U, 4U },
+    { trait_font_11_41, 6U, 4U },
+    { trait_font_11_42, 8U, 6U },
+    { trait_font_11_43, 11U, 9U },
+    { trait_font_11_44, 6U, 4U },
+    { trait_font_11_45, 6U, 4U },
+    { trait_font_11_46, 6U, 4U },
+    { trait_font_11_47, 6U, 4U },
+    { trait_font_11_48, 9U, 7U },
+    { trait_font_11_49, 9U, 7U },
+    { trait_font_11_50, 9U, 7U },
+    { trait_font_11_51, 9U, 7U },
+    { trait_font_11_52, 9U, 7U },
+    { trait_font_11_53, 9U, 7U },
+    { trait_font_11_54, 9U, 7U },
+    { trait_font_11_55, 9U, 7U },
+    { trait_font_11_56, 9U, 7U },
+    { trait_font_11_57, 9U, 7U },
+    { trait_font_11_58, 6U, 4U },
+    { trait_font_11_59, 6U, 4U },
+    { trait_font_11_60, 11U, 9U },
+    { trait_font_11_61, 11U, 9U },
+    { trait_font_11_62, 11U, 9U },
+    { trait_font_11_63, 8U, 6U },
+    { trait_font_11_64, 13U, 11U },
+    { trait_font_11_65, 10U, 8U },
+    { trait_font_11_66, 10U, 8U },
+    { trait_font_11_67, 10U, 8U },
+    { trait_font_11_68, 10U, 8U },
+    { trait_font_11_69, 9U, 7U },
+    { trait_font_11_70, 8U, 6U },
+    { trait_font_11_71, 11U, 9U },
+    { trait_font_11_72, 10U, 8U },
+    { trait_font_11_73, 5U, 3U },
+    { trait_font_11_74, 5U, 3U },
+    { trait_font_11_75, 9U, 7U },
+    { trait_font_11_76, 8U, 6U },
+    { trait_font_11_77, 11U, 9U },
+    { trait_font_11_78, 10U, 8U },
+    { trait_font_11_79, 11U, 9U },
+    { trait_font_11_80, 9U, 7U },
+    { trait_font_11_81, 11U, 9U },
+    { trait_font_11_82, 10U, 8U },
+    { trait_font_11_83, 9U, 7U },
+    { trait_font_11_84, 9U, 7U },
+    { trait_font_11_85, 10U, 8U },
+    { trait_font_11_86, 10U, 8U },
+    { trait_font_11_87, 13U, 11U },
+    { trait_font_11_88, 10U, 8U },
+    { trait_font_11_89, 9U, 7U },
+    { trait_font_11_90, 10U, 8U },
+    { trait_font_11_91, 6U, 4U },
+    { trait_font_11_92, 6U, 4U },
+    { trait_font_11_93, 6U, 4U },
+    { trait_font_11_94, 11U, 9U },
+    { trait_font_11_95, 8U, 6U },
+    { trait_font_11_96, 8U, 6U },
+    { trait_font_11_97, 9U, 7U },
+    { trait_font_11_98, 9U, 7U },
+    { trait_font_11_99, 8U, 6U },
+    { trait_font_11_100, 9U, 7U },
+    { trait_font_11_101, 9U, 7U },
+    { trait_font_11_102, 6U, 4U },
+    { trait_font_11_103, 9U, 7U },
+    { trait_font_11_104, 9U, 7U },
+    { trait_font_11_105, 5U, 3U },
+    { trait_font_11_106, 5U, 3U },
+    { trait_font_11_107, 8U, 6U },
+    { trait_font_11_108, 5U, 3U },
+    { trait_font_11_109, 13U, 11U },
+    { trait_font_11_110, 9U, 7U },
+    { trait_font_11_111, 9U, 7U },
+    { trait_font_11_112, 9U, 7U },
+    { trait_font_11_113, 9U, 7U },
+    { trait_font_11_114, 7U, 5U },
+    { trait_font_11_115, 8U, 6U },
+    { trait_font_11_116, 6U, 4U },
+    { trait_font_11_117, 9U, 7U },
+    { trait_font_11_118, 9U, 7U },
+    { trait_font_11_119, 11U, 9U },
+    { trait_font_11_120, 9U, 7U },
+    { trait_font_11_121, 9U, 7U },
+    { trait_font_11_122, 8U, 6U },
+    { trait_font_11_123, 9U, 7U },
+    { trait_font_11_124, 6U, 4U },
+    { trait_font_11_125, 9U, 7U },
+    { trait_font_11_126, 11U, 9U },
 };
 
-#endif /* TRAIT_FONT_H */
+#endif /* TRAIT_FONT_11_H */

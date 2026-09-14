@@ -183,7 +183,7 @@ void trait_terminal_run(const char *command)
     }
 }
 
-static const struct trait_mono_glyph *glyph_for(char ch)
+static const struct trait_glyph *glyph_for(char ch)
 {
     uint32_t code = (uint32_t)(unsigned char)ch;
 
@@ -201,7 +201,7 @@ static uint32_t draw_mono(struct trait_surface *surface,
     uint32_t at;
 
     for (at = 0U; text[at] != '\0'; ++at) {
-        const struct trait_mono_glyph *glyph = glyph_for(text[at]);
+        const struct trait_glyph *glyph = glyph_for(text[at]);
         uint32_t top = baseline - TRAIT_MONO_ASCENT;
         uint32_t row;
         uint32_t column;

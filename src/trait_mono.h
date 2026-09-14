@@ -1159,13 +1159,16 @@ static const uint8_t trait_mono_126[] = {
        0,   0,   0,   0,   0,   0,   0,
 };
 
-struct trait_mono_glyph {
+#ifndef TRAIT_GLYPH_DEFINED
+#define TRAIT_GLYPH_DEFINED
+struct trait_glyph {
     const uint8_t *coverage;
     uint32_t width;
     uint32_t advance;
 };
+#endif
 
-static const struct trait_mono_glyph trait_mono[] = {
+static const struct trait_glyph trait_mono[] = {
     { trait_mono_32, 9U, 7U },
     { trait_mono_33, 9U, 7U },
     { trait_mono_34, 9U, 7U },

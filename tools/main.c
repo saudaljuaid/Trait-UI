@@ -42,7 +42,7 @@ static struct trait_rect whole(void)
 }
 
 /*
- * The wallpaper, as the raw RGB24 dump tools/c/make-wallpaper.py writes.
+ * The wallpaper, as the raw RGB24 dump tools/make-wallpaper.py writes.
  * There is no image decoder here on purpose: a desktop that needs a PNG
  * decoder to put up a background needs one in the kernel.
  */

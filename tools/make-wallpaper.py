@@ -1,39 +1,42 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
-"""Render tools/wallpaper.html to assets/wallpaper/wallpaper.png.
+"""Turn the wallpaper into the raw RGB24 dump the C desktop loads.
 
-    python3 tools/make-wallpaper.py [out.png] [width] [height]
+    python3 tools/make-wallpaper.py [source.png] [out.bin] [WxH]
 
-The wallpaper is vector art plus a seeded scatter, drawn by the same
-browser the screenshots come from.  Seeded, so the PNG this writes is the
-same file every time rather than a lucky throw.
+THERE IS NO IMAGE DECODER IN THE SHELL, on purpose: a desktop that needs
+one to put up a background needs one in the kernel.  So this runs once,
+ahead of time - scale to COVER the screen, crop the overhang evenly off
+both sides, and write straight bytes, row-major, top to bottom, no
+header.  The loader reads exactly width * height * 3 and nothing else.
 """
 import sys
 from pathlib import Path
 
-from playwright.sync_api import sync_playwright
-
-ROOT = Path(__file__).resolve().parent.parent
-CHROME = Path("/opt/pw-browsers/chromium-1194/chrome-linux/chrome")
+from PIL import Image
 
 
 def main():
-    out = Path(sys.argv[1] if len(sys.argv) > 1
-               else "assets/wallpaper/wallpaper.png")
-    width = int(sys.argv[2]) if len(sys.argv) > 2 else 1920
-    height = int(sys.argv[3]) if len(sys.argv) > 3 else 1080
+    source = Path(sys.argv[1] if len(sys.argv) > 1
+                  else "assets/wallpaper/wallpaper.png")
+    out = Path(sys.argv[2] if len(sys.argv) > 2
+               else "assets/wallpaper/wallpaper.bin")
+    size = sys.argv[3] if len(sys.argv) > 3 else "1280x800"
+    width, height = (int(v) for v in size.split("x"))
+
+    image = Image.open(source).convert("RGB")
+    scale = max(width / image.width, height / image.height)
+    grown = image.resize((max(width, int(round(image.width * scale))),
+                          max(height, int(round(image.height * scale)))),
+                         Image.LANCZOS)
+    left = (grown.width - width) // 2
+    top = (grown.height - height) // 2
+    cropped = grown.crop((left, top, left + width, top + height))
 
     out.parent.mkdir(parents=True, exist_ok=True)
-    with sync_playwright() as play:
-        browser = play.chromium.launch(
-            executable_path=str(CHROME) if CHROME.exists() else None)
-        page = browser.new_page(viewport={"width": width, "height": height},
-                                device_scale_factor=1)
-        page.goto((ROOT / "tools" / "wallpaper.html").as_uri())
-        page.wait_for_timeout(500)
-        page.screenshot(path=str(out))
-        browser.close()
-    print("wrote %s (%dx%d)" % (out, width, height))
+    out.write_bytes(cropped.tobytes())
+    print(f"wrote {out}: {width}x{height} RGB24 "
+          f"({width * height * 3} bytes) from {source.name}")
 
 
 if __name__ == "__main__":

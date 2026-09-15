@@ -10,7 +10,7 @@
 /*
  * Text, as coverage.
  *
- * The glyphs are rasterised ahead of time by tools/c/make-font.py - there
+ * The glyphs are rasterised ahead of time by tools/make-font.py - there
  * is no font server behind a framebuffer - and drawn by tinting that
  * coverage, so one bitmap serves every colour the shell wants text in.
  */

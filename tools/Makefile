@@ -10,8 +10,8 @@
 # what they will be built as on the metal, and a warning that only appears
 # there is a warning nobody sees.  The harness is an ordinary host program
 # and is built as one.
-ROOT := ../..
-BUILD := $(ROOT)/build/c
+ROOT := ..
+BUILD := $(ROOT)/build
 
 SHELL_FLAGS := -std=c11 -ffreestanding -nostdlib -msoft-float \
 	-Wall -Wextra -Werror -Wpedantic -Wshadow -Wundef \
@@ -46,8 +46,18 @@ $(BUILD)/%.o: %.c | $(BUILD)
 $(BINARY): $(SHELL_OBJECTS) $(HOST_OBJECTS)
 	$(CC) $(HOST_FLAGS) $^ -o $@
 
-run: $(BINARY)
-	cd $(ROOT) && ./build/c/trait build/c
+# The wallpaper dump is GENERATED, not committed: it is three megabytes
+# of bytes that tools/make-wallpaper.py derives from the PNG beside it,
+# and a generated file in the history is a second copy that can disagree
+# with its source.
+WALLPAPER := $(ROOT)/assets/wallpaper/wallpaper.bin
+
+$(WALLPAPER): $(ROOT)/assets/wallpaper/wallpaper.png
+	cd $(ROOT) && python3 tools/make-wallpaper.py \
+		assets/wallpaper/wallpaper.png assets/wallpaper/wallpaper.bin
+
+run: $(BINARY) $(WALLPAPER)
+	cd $(ROOT) && ./build/trait build
 
 clean:
 	rm -rf $(BUILD)

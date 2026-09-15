@@ -2,12 +2,20 @@
 #include <trait/theme.h>
 
 /*
- * THREE THEMES, AND ALL THREE ARE REAL ONES.
+ * FOUR THEMES, AND EVERY COLOUR IN THEM IS TAKEN FROM SOMEWHERE.
  *
  * Clearlooks and Adwaita are the palettes Debian's own gtkrc files carry;
- * Adwaita-dark is the dark variant's.  Nothing here is a colour somebody
- * liked - inventing a fourth "theme" would make the list longer and the
- * claim that these are the installed themes false.
+ * Adwaita-dark is the dark variant's.  Those three are the GTK themes on
+ * the machine, and nothing in them is a colour somebody liked.
+ *
+ * The fourth is NOT a GTK theme and does not pretend to be one - it is
+ * this desktop's own, and it is here because the desktop has an identity
+ * that the LXDE defaults do not carry.  Its colours are not invented
+ * either: they are SAMPLED from the owner's artwork.  The selection gold
+ * is #B08020, one of the onion's own ambers; the ground is the
+ * wallpaper's #212121 charcoal, read out of the corner of the PNG.  A
+ * theme whose accent is guessed at sits next to the wallpaper and argues
+ * with it.
  */
 static const struct trait_palette PALETTES[] = {
     /* Clearlooks: gtk2-engines, usr/share/themes/Clearlooks/gtk-2.0/gtkrc */
@@ -29,16 +37,32 @@ static const struct trait_palette PALETTES[] = {
         0x3C3C3CU, 0x464646U, 0x2E2E2EU, 0x2B2B2BU, 0x353535U,
         0xEEEEECU, 0xEEEEECU, 0x215D9CU, 0xFFFFFFU, 0x1B1B1BU, 0x4A4A4AU,
         0x2F2F2FU, 0x1E1E1EU, 0x262626U, 0x1A1A1AU, 0xD8D8D6U, 0x8A8A88U
+    },
+    /*
+     * Trait.  Sampled, not chosen:
+     *   #212121  the wallpaper's ground, from the corner of the PNG
+     *   #B08020  the onion's amber, its sixth most common opaque colour
+     *   #503000  the onion's darkest amber, which the title ramp ends on
+     * The selected foreground is dark because the selection is GOLD and
+     * white on gold is the one pairing this palette could get wrong.
+     */
+    {
+        0x2B2B2BU, 0x333333U, 0x212121U, 0x232323U, 0x2A2A2AU,
+        0xE8E6E0U, 0xE0DED6U, 0xB08020U, 0x1A1400U, 0x151515U, 0x3A3A3AU,
+        0x4A3C22U, 0x2A2114U, 0x272727U, 0x1C1C1CU, 0xE8E6E0U, 0x8A8780U
     }
 };
 
 static const char *const NAMES[] = {
-    "Clearlooks", "Adwaita", "Adwaita-dark"
+    "Clearlooks", "Adwaita", "Adwaita-dark", "Trait"
 };
 
 #define THEME_COUNT (sizeof(PALETTES) / sizeof(PALETTES[0]))
 
-static uint32_t current;
+/* Trait, not Clearlooks: this is the desktop's own theme and the one it
+ * was drawn to look like.  The LXDE defaults are still in the list, one
+ * press of the Widget row away. */
+static uint32_t current = 3U;
 
 const struct trait_palette *trait_theme(void)
 {

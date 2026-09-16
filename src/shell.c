@@ -75,6 +75,7 @@ static uint32_t switcher_at;
 #define DESKTOP_CELL_H 74U
 #define DESKTOP_MARGIN 8U
 static uint32_t desktop_folder = TRAIT_FILES_MAX_NODES;
+static bool desktop_icons = true;   /* pcmanfm: show_documents/the root */
 static struct trait_window windows[TRAIT_SHELL_MAX_WINDOWS];
 static enum trait_shell_app apps[TRAIT_SHELL_MAX_WINDOWS];
 static bool used[TRAIT_SHELL_MAX_WINDOWS];
@@ -144,6 +145,11 @@ void trait_shell_reset(struct trait_surface *surface)
     shell_screen.width = surface != NULL ? surface->width : 0U;
     shell_screen.height = surface != NULL ? surface->height : 0U;
     shell_desktop = 0U;
+    /* A reset restores the DEFAULTS, not just the volatile state.  Left
+     * out, a settings press in one check leaked into the next and the
+     * desktop came up with no icons in a test that had never touched
+     * them. */
+    desktop_icons = true;
     menu_open = false;
     volume_open = false;
     run_open = false;
@@ -407,12 +413,33 @@ void trait_shell_set_desktop_folder(uint32_t folder)
     desktop_folder = folder;
 }
 
+void trait_shell_set_desktop_icons(bool show)
+{
+    desktop_icons = show;
+}
+
+bool trait_shell_desktop_icons(void)
+{
+    return desktop_icons;
+}
+
+/*
+ * ONE PLACE.  Drawing walks this count and so does hit-testing, so
+ * returning zero here both clears the desktop and stops a press landing
+ * on an icon that is no longer drawn.  Honouring the switch in the
+ * drawing code alone would have left the icons invisible and still
+ * clickable, which is the same bug as a control that does nothing, in
+ * reverse.
+ */
 uint32_t trait_shell_desktop_icon_count(void)
 {
+    if (!desktop_icons) {
+        return 0U;
+    }
     if (desktop_folder >= TRAIT_FILES_MAX_NODES) {
         return DESKTOP_STANDARD;
     }
-    return DESKTOP_STANDARD + trait_files_child_count(desktop_folder);
+    return DESKTOP_STANDARD + trait_files_visible_count(desktop_folder);
 }
 
 bool trait_shell_desktop_icon_bounds(uint32_t at, struct trait_rect *out)
@@ -746,8 +773,8 @@ static bool handle_client(uint32_t slot, const struct trait_event *event)
         }
         return false;
     case TRAIT_APP_FILES:
-        for (at = 0U; at < trait_files_child_count(trait_files_here());
-                ++at) {
+        for (at = 0U;
+                at < trait_files_visible_count(trait_files_here()); ++at) {
             struct trait_rect cell;
             uint32_t node;
 
@@ -757,7 +784,7 @@ static bool handle_client(uint32_t slot, const struct trait_event *event)
             if (!trait_rect_contains(cell, event->x, event->y)) {
                 continue;
             }
-            node = trait_files_child(trait_files_here(), at);
+            node = trait_files_visible_child(trait_files_here(), at);
             if (event->secondary) {
                 /* pcmanfm selects what you right-clicked before opening
                  * the menu, so the menu is unambiguously about it. */
@@ -770,12 +797,22 @@ static bool handle_client(uint32_t slot, const struct trait_event *event)
             }
             dragging_entry = true;
             drag_node = node;
-            if (event->double_click) {
+            if (event->double_click || trait_files_single_click()) {
                 /* Opening a FILE is not opening a folder, and pretending
                  * it is would be the file manager lying about what it
-                 * did.  Only a folder opens. */
-                (void)trait_files_open(node);
-                return true;
+                 * did.  Only a folder opens.
+                 *
+                 * Under single_click the FIRST press opens, which is the
+                 * setting doing the one thing it is named for.  The
+                 * select below is then unreachable for a folder, so a
+                 * folder cannot be selected by clicking it - which is
+                 * exactly what pcmanfm does in that mode too. */
+                if (trait_files_open(node)) {
+                    return true;
+                }
+                if (event->double_click) {
+                    return true;
+                }
             }
             trait_files_select(node,
                 (event->modifiers & TRAIT_MOD_CTRL) != 0U);
@@ -1434,7 +1471,8 @@ bool trait_shell_handle(const struct trait_event *event)
                 uint32_t at;
 
                 for (at = 0U;
-                        at < trait_files_child_count(trait_files_here());
+                        at < trait_files_visible_count(
+                                 trait_files_here());
                         ++at) {
                     struct trait_rect cell;
                     uint32_t target;

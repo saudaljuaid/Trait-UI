@@ -90,6 +90,9 @@ static struct trait_panel_task panel_tasks[TRAIT_PANEL_MAX_TASKS];
 static bool panel_task_used[TRAIT_PANEL_MAX_TASKS];
 static uint32_t panel_cpu[TRAIT_PANEL_CPU_COLUMNS];
 static char panel_clock[16];
+static char panel_clock_shown[16];
+static bool panel_clock_24h = true;      /* lxpanel: ClockFmt=%R */
+static bool panel_all_desktops;          /* lxpanel: ShowAllDesks=0 */
 static uint32_t panel_volume = 65U;
 static bool panel_muted;
 static uint32_t panel_desktop;
@@ -297,7 +300,7 @@ static uint32_t pager_width(void)
 
 static uint32_t clock_width(void)
 {
-    uint32_t text = trait_font_width(panel_clock);
+    uint32_t text = trait_font_width(trait_panel_clock_text());
 
     if (text == 0U) {
         text = TRAIT_CLOCK_MIN;
@@ -487,7 +490,8 @@ static void draw_tasks(struct trait_rect box)
         const struct trait_panel_task *task = &panel_tasks[slot];
         uint32_t text_left;
 
-        if (!panel_task_used[slot] || task->desktop != panel_desktop) {
+        if (!panel_task_used[slot] ||
+                (!panel_all_desktops && task->desktop != panel_desktop)) {
             continue;
         }
         if (!task_button(box, drawn, live, &button)) {
@@ -545,11 +549,11 @@ static void draw_cpu(struct trait_rect box)
 
 static void draw_clock(struct trait_rect box)
 {
-    uint32_t text = trait_font_width(panel_clock);
+    uint32_t text = trait_font_width(trait_panel_clock_text());
 
     trait_font_draw(canvas, box,
         box.x + (box.width > text ? (box.width - text) / 2U : 0U),
-        box.y + box.height - 8U, panel_clock, TRAIT_INK);
+        box.y + box.height - 8U, trait_panel_clock_text(), TRAIT_INK);
 }
 
 struct trait_panel_hit trait_panel_hit(struct trait_rect screen,
@@ -597,7 +601,8 @@ struct trait_panel_hit trait_panel_hit(struct trait_rect screen,
             struct trait_rect button;
 
             if (!panel_task_used[at] ||
-                    panel_tasks[at].desktop != panel_desktop) {
+                    (!panel_all_desktops &&
+                     panel_tasks[at].desktop != panel_desktop)) {
                 continue;
             }
             if (task_button(box, drawn, live, &button) &&
@@ -777,7 +782,8 @@ uint32_t trait_panel_task_count(void)
 
     for (at = 0U; at < TRAIT_PANEL_MAX_TASKS; ++at) {
         if (panel_task_used[at] &&
-                panel_tasks[at].desktop == panel_desktop) {
+                (panel_all_desktops ||
+                 panel_tasks[at].desktop == panel_desktop)) {
             ++count;
         }
     }
@@ -796,6 +802,75 @@ enum trait_panel_status trait_panel_push_cpu(uint32_t percent)
     }
     panel_cpu[TRAIT_PANEL_CPU_COLUMNS - 1U] = clamp_u32(percent, 100U);
     return TRAIT_PANEL_STATUS_OK;
+}
+
+void trait_panel_set_show_all_desktops(bool all)
+{
+    panel_all_desktops = all;
+}
+
+bool trait_panel_show_all_desktops(void)
+{
+    return panel_all_desktops;
+}
+
+void trait_panel_set_clock_24h(bool twenty_four)
+{
+    panel_clock_24h = twenty_four;
+}
+
+bool trait_panel_clock_24h(void)
+{
+    return panel_clock_24h;
+}
+
+/*
+ * %R to %I:%M %p, by hand, because there is no strftime here and no
+ * libc to hold one.  The panel is always handed 24-hour time; this is
+ * the only place that knows the other format exists, so the width
+ * calculation and the drawing cannot disagree about which is on - they
+ * both ask this.
+ *
+ * Midnight is 12 AM and noon is 12 PM.  Writing hour % 12 and stopping
+ * gives "0:15 AM", which is the classic way to get this wrong.
+ */
+const char *trait_panel_clock_text(void)
+{
+    uint32_t hour;
+    uint32_t shown;
+    uint32_t at = 0U;
+
+    if (panel_clock_24h) {
+        return panel_clock;
+    }
+    if (panel_clock[0] < '0' || panel_clock[0] > '9' ||
+            panel_clock[1] < '0' || panel_clock[1] > '9' ||
+            panel_clock[2] != ':') {
+        /* Not a time this can convert.  Hand back what it was given
+         * rather than inventing one. */
+        return panel_clock;
+    }
+    hour = (uint32_t)(panel_clock[0] - '0') * 10U +
+           (uint32_t)(panel_clock[1] - '0');
+    if (hour > 23U) {
+        return panel_clock;
+    }
+    shown = hour % 12U;
+    if (shown == 0U) {
+        shown = 12U;
+    }
+    if (shown >= 10U) {
+        panel_clock_shown[at++] = (char)('0' + shown / 10U);
+    }
+    panel_clock_shown[at++] = (char)('0' + shown % 10U);
+    panel_clock_shown[at++] = ':';
+    panel_clock_shown[at++] = panel_clock[3];
+    panel_clock_shown[at++] = panel_clock[4];
+    panel_clock_shown[at++] = ' ';
+    panel_clock_shown[at++] = hour < 12U ? 'A' : 'P';
+    panel_clock_shown[at++] = 'M';
+    panel_clock_shown[at] = '\0';
+    return panel_clock_shown;
 }
 
 enum trait_panel_status trait_panel_set_clock(const char *text)
@@ -894,7 +969,7 @@ bool trait_panel_self_test(void)
     if (clock_empty.x != clock_busy.x) {
         return false;
     }
-    if (string_length(panel_clock) == 0U) {
+    if (string_length(trait_panel_clock_text()) == 0U) {
         return false;
     }
     return true;

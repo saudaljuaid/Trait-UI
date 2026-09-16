@@ -195,52 +195,82 @@ static void populate_settings(void)
     (void)trait_settings_add_page("Panel");
     (void)trait_settings_add_page("Keyboard");
 
+    /*
+     * WHAT CHANGED HERE.  Five of these rows used to be CHOICE boxes with
+     * TRAIT_SET_NOTHING behind them - Font size, Icon theme, Position,
+     * Height, Clock format.  They were drawn exactly like the theme
+     * picker beside them, and pressing them did nothing at all, which is
+     * the failure this header warns about in the largest possible form.
+     *
+     * Each is now one of two things.  If the shell can carry it out it is
+     * a real control wired to the thing it names.  If it cannot, it is a
+     * NOTE, which is not drawn as a control and says why - the panel's
+     * height and edge are not adjustable because its background is one
+     * 26-pixel column of lxpanel's own artwork, and stretching vendored
+     * artwork to make a setting look real is the same lie in a different
+     * place.
+     */
+
+    /* ---- Widget: lxappearance ---- */
     memset(&row, 0, sizeof(row));
     row.kind = TRAIT_SETTINGS_CHOICE;
     (void)snprintf(row.label, TRAIT_SETTINGS_TEXT_BYTES, "Widget theme");
     row.setting = TRAIT_SET_WIDGET_THEME;
     (void)trait_settings_add_row(0U, &row);
-    row.setting = TRAIT_SET_NOTHING;
-    (void)snprintf(row.label, TRAIT_SETTINGS_TEXT_BYTES, "Font size");
-    (void)snprintf(row.value, TRAIT_SETTINGS_TEXT_BYTES, "Normal (11)");
-    (void)trait_settings_add_row(0U, &row);
-    (void)snprintf(row.label, TRAIT_SETTINGS_TEXT_BYTES, "Icon theme");
-    (void)snprintf(row.value, TRAIT_SETTINGS_TEXT_BYTES, "nuoveXT2");
-    (void)trait_settings_add_row(0U, &row);
+
+    memset(&row, 0, sizeof(row));
     row.kind = TRAIT_SETTINGS_NOTE;
     (void)snprintf(row.label, TRAIT_SETTINGS_TEXT_BYTES,
-                   "One theme, because one is installed.");
+                   "Icon theme: nuoveXT2, the one here.");
+    (void)trait_settings_add_row(0U, &row);
+    (void)snprintf(row.label, TRAIT_SETTINGS_TEXT_BYTES,
+                   "Font: the 11px bitmap, drawn ahead.");
     (void)trait_settings_add_row(0U, &row);
 
+    /* ---- Desktop: pcmanfm's Desktop Preferences ---- */
     memset(&row, 0, sizeof(row));
     row.kind = TRAIT_SETTINGS_CHOICE;
     (void)snprintf(row.label, TRAIT_SETTINGS_TEXT_BYTES, "File view");
     row.setting = TRAIT_SET_FILES_VIEW;
     (void)trait_settings_add_row(1U, &row);
-    row.setting = TRAIT_SET_NOTHING;
+
     row.kind = TRAIT_SETTINGS_SWITCH;
-    row.on = true;
     (void)snprintf(row.label, TRAIT_SETTINGS_TEXT_BYTES,
                    "Show icons on the desktop");
     row.setting = TRAIT_SET_DESKTOP_ICONS;
     (void)trait_settings_add_row(1U, &row);
-    row.setting = TRAIT_SET_NOTHING;
+    (void)snprintf(row.label, TRAIT_SETTINGS_TEXT_BYTES,
+                   "Show hidden files");
+    row.setting = TRAIT_SET_SHOW_HIDDEN;
+    (void)trait_settings_add_row(1U, &row);
+    (void)snprintf(row.label, TRAIT_SETTINGS_TEXT_BYTES,
+                   "Open on a single click");
+    row.setting = TRAIT_SET_SINGLE_CLICK;
+    (void)trait_settings_add_row(1U, &row);
 
+    /* ---- Panel: lxpanel's Panel Preferences ---- */
     memset(&row, 0, sizeof(row));
     row.kind = TRAIT_SETTINGS_CHOICE;
-    (void)snprintf(row.label, TRAIT_SETTINGS_TEXT_BYTES, "Position");
-    (void)snprintf(row.value, TRAIT_SETTINGS_TEXT_BYTES, "Bottom");
-    (void)trait_settings_add_row(2U, &row);
-    (void)snprintf(row.label, TRAIT_SETTINGS_TEXT_BYTES, "Height");
-    (void)snprintf(row.value, TRAIT_SETTINGS_TEXT_BYTES, "26 (default)");
-    (void)trait_settings_add_row(2U, &row);
     (void)snprintf(row.label, TRAIT_SETTINGS_TEXT_BYTES, "Clock format");
-    /* %%R, because this string goes through printf and the
-     * profile's own ClockFmt is literally "%R". */
-    (void)snprintf(row.value, TRAIT_SETTINGS_TEXT_BYTES,
-                   "%%R - 15:43");
+    row.setting = TRAIT_SET_CLOCK_24H;
     (void)trait_settings_add_row(2U, &row);
 
+    row.kind = TRAIT_SETTINGS_SWITCH;
+    (void)snprintf(row.label, TRAIT_SETTINGS_TEXT_BYTES,
+                   "Windows from all desktops");
+    row.setting = TRAIT_SET_ALL_DESKTOPS;
+    (void)trait_settings_add_row(2U, &row);
+
+    memset(&row, 0, sizeof(row));
+    row.kind = TRAIT_SETTINGS_NOTE;
+    (void)snprintf(row.label, TRAIT_SETTINGS_TEXT_BYTES,
+                   "Height 26 and bottom edge: the panel's");
+    (void)trait_settings_add_row(2U, &row);
+    (void)snprintf(row.label, TRAIT_SETTINGS_TEXT_BYTES,
+                   "ground is lxpanel's own 26px artwork.");
+    (void)trait_settings_add_row(2U, &row);
+
+    /* ---- Keyboard ---- */
     memset(&row, 0, sizeof(row));
     row.kind = TRAIT_SETTINGS_NOTE;
     (void)snprintf(row.label, TRAIT_SETTINGS_TEXT_BYTES,
@@ -1225,6 +1255,188 @@ int main(int argc, char **argv)
                "out loud and then ran lxterminal, and Alt+Tab moved "
                "focus to another window\n",
                trait_shell_desktop_icon_count());
+    }
+
+    /*
+     * SETTINGS: EVERY CONTROL ON THE WINDOW DOES THE THING IT NAMES.
+     *
+     * Two of these switches used to flip a bool inside the row and stop
+     * there, which made the Settings window the largest possible version
+     * of a control that does not do what it is drawn as.  This presses
+     * each one through trait_settings_press() - the same call the shell
+     * makes when you click it - and then asks the thing it claims to
+     * control, not the row, whether it changed.
+     */
+    {
+        uint32_t user;
+        uint32_t before;
+        uint32_t after;
+        uint32_t docs;
+
+        trait_shell_reset(&screen);
+        trait_shell_set_screen(whole());
+        (void)trait_panel_initialize();
+        (void)trait_panel_set_clock("15:43");
+        user = populate_files();
+        (void)trait_files_add(user, ".bashrc", false, 3771U);
+        (void)trait_files_open(user);
+        trait_shell_set_desktop_folder(trait_files_child(user, 0U));
+        populate_settings();
+
+        /* Show icons on the desktop - page 1, row 1. */
+        before = trait_shell_desktop_icon_count();
+        if (before == 0U || !trait_settings_press(1U, 1U) ||
+                trait_shell_desktop_icon_count() != 0U) {
+            fprintf(stderr, "trait: the desktop-icons switch did not "
+                            "clear the desktop (%u icons before)\n", before);
+            return 1;
+        }
+        if (!trait_settings_press(1U, 1U) ||
+                trait_shell_desktop_icon_count() != before) {
+            fprintf(stderr, "trait: the desktop-icons switch did not put "
+                            "them back\n");
+            return 1;
+        }
+
+        /* Show hidden files - page 1, row 2.  ~/.bashrc is the one. */
+        before = trait_files_visible_count(user);
+        if (before != trait_files_child_count(user) - 1U) {
+            fprintf(stderr, "trait: a dot file was visible with hidden "
+                            "files off (%u of %u shown)\n",
+                    before, trait_files_child_count(user));
+            return 1;
+        }
+        if (!trait_settings_press(1U, 2U) ||
+                trait_files_visible_count(user) !=
+                    trait_files_child_count(user)) {
+            fprintf(stderr, "trait: the hidden-files switch did not show "
+                            "the dot file\n");
+            return 1;
+        }
+        after = trait_files_visible_count(user);
+        (void)trait_settings_press(1U, 2U);
+
+        /* Open on a single click - page 1, row 3.  With it off, one press
+         * on a folder selects; with it on, the same press opens. */
+        docs = trait_files_child(user, 3U);
+        {
+            struct trait_event press;
+            struct trait_rect cell;
+            struct trait_window *window;
+            uint32_t slot;
+            uint32_t at;
+            uint32_t index = TRAIT_FILES_MAX_NODES;
+
+            struct trait_rect where;
+
+            where.x = 60U;
+            where.y = 60U;
+            where.width = 640U;
+            where.height = 480U;
+            slot = trait_shell_open(TRAIT_APP_FILES, where);
+            window = trait_shell_window(slot);
+            for (at = 0U; at < trait_files_visible_count(user); ++at) {
+                if (trait_files_visible_child(user, at) == docs) {
+                    index = at;
+                }
+            }
+            if (index == TRAIT_FILES_MAX_NODES ||
+                    !trait_files_entry_bounds(window, index, &cell)) {
+                fprintf(stderr, "trait: could not find Documents in the "
+                                "view\n");
+                return 1;
+            }
+            memset(&press, 0, sizeof(press));
+            press.kind = TRAIT_EVENT_POINTER_DOWN;
+            press.x = cell.x + cell.width / 2U;
+            press.y = cell.y + cell.height / 2U;
+            (void)trait_shell_handle(&press);
+            if (trait_files_here() == docs) {
+                fprintf(stderr, "trait: one click opened a folder with "
+                                "single click off\n");
+                return 1;
+            }
+            if (!trait_settings_press(1U, 3U)) {
+                fprintf(stderr, "trait: the single-click switch refused "
+                                "the press\n");
+                return 1;
+            }
+            (void)trait_shell_handle(&press);
+            if (trait_files_here() != docs) {
+                fprintf(stderr, "trait: single click was on and one click "
+                                "still did not open the folder\n");
+                return 1;
+            }
+            (void)trait_settings_press(1U, 3U);
+            (void)trait_files_open(user);
+        }
+
+        /* Windows from all desktops - page 2, row 1. */
+        {
+            struct trait_panel_task task;
+            uint32_t seen;
+
+            memset(&task, 0, sizeof(task));
+            snprintf(task.label, TRAIT_PANEL_LABEL_BYTES, "Here");
+            task.desktop = 0U;
+            (void)trait_panel_set_task(0U, &task);
+            snprintf(task.label, TRAIT_PANEL_LABEL_BYTES, "Elsewhere");
+            task.desktop = 1U;
+            (void)trait_panel_set_task(1U, &task);
+            (void)trait_panel_set_desktop(0U, 2U);
+
+            seen = trait_panel_task_count();
+            if (seen != 1U) {
+                fprintf(stderr, "trait: the bar showed %u tasks when only "
+                                "one is on this desktop\n", seen);
+                return 1;
+            }
+            if (!trait_settings_press(2U, 1U) ||
+                    trait_panel_task_count() != 2U) {
+                fprintf(stderr, "trait: ShowAllDesks did not bring the "
+                                "other desktop's window into the bar\n");
+                return 1;
+            }
+            (void)trait_settings_press(2U, 1U);
+        }
+
+        /* Clock format - page 2, row 0.  15:43 is the awkward one: it is
+         * past noon, so 12-hour has to subtract AND say PM. */
+        if (strcmp(trait_panel_clock_text(), "15:43") != 0) {
+            fprintf(stderr, "trait: the 24-hour clock read \"%s\"\n",
+                    trait_panel_clock_text());
+            return 1;
+        }
+        if (!trait_settings_press(2U, 0U) ||
+                strcmp(trait_panel_clock_text(), "3:43 PM") != 0) {
+            fprintf(stderr, "trait: 12-hour rendered \"%s\", not "
+                            "\"3:43 PM\"\n", trait_panel_clock_text());
+            return 1;
+        }
+        /* Midnight is 12 AM, not 0 AM - the classic way to get this
+         * wrong, so it is the one that gets asked. */
+        (void)trait_panel_set_clock("00:15");
+        if (strcmp(trait_panel_clock_text(), "12:15 AM") != 0) {
+            fprintf(stderr, "trait: midnight rendered \"%s\", not "
+                            "\"12:15 AM\"\n", trait_panel_clock_text());
+            return 1;
+        }
+        (void)trait_panel_set_clock("12:00");
+        if (strcmp(trait_panel_clock_text(), "12:00 PM") != 0) {
+            fprintf(stderr, "trait: noon rendered \"%s\", not "
+                            "\"12:00 PM\"\n", trait_panel_clock_text());
+            return 1;
+        }
+        (void)trait_settings_press(2U, 0U);
+        (void)trait_panel_set_clock("15:43");
+
+        printf("proof: every switch on the Settings window moves the "
+               "thing it names - the desktop went from %u icons to 0 and "
+               "back, a dot file appeared (%u of %u), one click opened a "
+               "folder only once single click was on, the bar went from "
+               "1 task to 2 across desktops, and 15:43 became 3:43 PM "
+               "with midnight 12:15 AM and noon 12:00 PM\n",
+               before, after, trait_files_child_count(user));
     }
 
     /*

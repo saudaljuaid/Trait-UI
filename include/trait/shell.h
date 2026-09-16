@@ -70,6 +70,10 @@ void trait_shell_send_to_desktop(uint32_t slot, uint32_t desktop);
 /* Which folder the root window draws.  Handed in, so the shell does not
  * have to know what ~/Desktop's node index happens to be. */
 void trait_shell_set_desktop_folder(uint32_t folder);
+/* pcmanfm draws the desktop, so turning its icons off is turning the
+ * desktop's own drawing off - the wallpaper stays. */
+void trait_shell_set_desktop_icons(bool show);
+bool trait_shell_desktop_icons(void);
 void trait_shell_draw_desktop(void);
 bool trait_shell_desktop_icon_bounds(uint32_t at, struct trait_rect *out);
 uint32_t trait_shell_desktop_icon_count(void);

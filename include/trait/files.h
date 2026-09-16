@@ -116,6 +116,30 @@ void trait_files_set_view(enum trait_files_view view);
 enum trait_files_view trait_files_view_mode(void);
 
 /* Where an entry sits, so a press can be turned into a node. */
+/*
+ * pcmanfm's show_hidden=0.  A name beginning with a dot is not shown.
+ *
+ * THE VIEWS USE THE VISIBLE LIST; THE TREE USES THE REAL ONE.  Paste,
+ * remove, move and the name-collision check all keep counting every
+ * child, because a hidden file is hidden, not absent - if they used the
+ * visible list, pasting "README.txt" into a folder that already held a
+ * hidden one would silently overwrite it.  Only what is drawn, and what
+ * a click on what is drawn resolves to, goes through these two.
+ */
+void trait_files_set_show_hidden(bool show);
+bool trait_files_show_hidden(void);
+bool trait_files_is_hidden(uint32_t node);
+uint32_t trait_files_visible_count(uint32_t folder);
+uint32_t trait_files_visible_child(uint32_t folder, uint32_t at);
+
+/*
+ * pcmanfm's single_click=0.  Off, a folder opens on the second click of a
+ * double; on, the first click opens it.  The shell asks before deciding
+ * what a press means, which is why this lives here rather than there.
+ */
+void trait_files_set_single_click(bool single);
+bool trait_files_single_click(void);
+
 bool trait_files_entry_bounds(const struct trait_window *window,
     uint32_t at, struct trait_rect *out);
 

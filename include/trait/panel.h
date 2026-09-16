@@ -98,6 +98,25 @@ uint32_t trait_panel_task_count(void);
  * ring does once a second. */
 enum trait_panel_status trait_panel_push_cpu(uint32_t percent);
 
+/*
+ * lxpanel's taskbar has ShowAllDesks, and the vendored profile sets it to
+ * 0 - task buttons are the current desktop's only.  Turning it on shows
+ * every desktop's windows in the one bar, which is the same list the
+ * pager is already showing you in miniature.
+ */
+void trait_panel_set_show_all_desktops(bool all);
+bool trait_panel_show_all_desktops(void);
+
+/*
+ * lxpanel's clock plugin: ClockFmt=%R against %I:%M %p.  The panel is
+ * handed a 24-hour string and renders it in whichever the setting asks
+ * for, so the shell above it never has to know or care which is on.
+ */
+void trait_panel_set_clock_24h(bool twenty_four);
+bool trait_panel_clock_24h(void);
+/* What the clock plugin will actually draw, given what it was handed. */
+const char *trait_panel_clock_text(void);
+
 enum trait_panel_status trait_panel_set_clock(const char *text);
 enum trait_panel_status trait_panel_set_volume(uint32_t level, bool muted);
 enum trait_panel_status trait_panel_set_desktop(uint32_t current,

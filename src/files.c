@@ -40,6 +40,8 @@ static uint32_t history_depth;
 static uint32_t selected[TRAIT_FILES_MAX_SELECTED];
 static uint32_t selected_count;
 static enum trait_files_view view_mode = TRAIT_FILES_ICONS;
+static bool show_hidden;           /* pcmanfm: show_hidden=0 */
+static bool single_click;          /* pcmanfm: single_click=0 */
 
 static uint32_t clipboard[TRAIT_FILES_MAX_SELECTED];
 static uint32_t clip_count;
@@ -275,6 +277,10 @@ void trait_files_draw_icon_at(struct trait_surface *surface,
 
 void trait_files_reset(void)
 {
+    /* Defaults, for the same reason the shell restores its own: a check
+     * that toggled a setting must not hand it to the next one. */
+    show_hidden = false;
+    single_click = false;
     uint32_t at;
 
     clip_count = 0U;
@@ -837,13 +843,86 @@ static struct trait_rect view_area(const struct trait_window *window)
     return box;
 }
 
+void trait_files_set_show_hidden(bool show)
+{
+    show_hidden = show;
+}
+
+bool trait_files_show_hidden(void)
+{
+    return show_hidden;
+}
+
+bool trait_files_is_hidden(uint32_t node)
+{
+    if (node >= node_count) {
+        return false;
+    }
+    return nodes[node].name[0] == '.';
+}
+
+uint32_t trait_files_visible_count(uint32_t folder)
+{
+    uint32_t at;
+    uint32_t seen = 0U;
+
+    if (folder >= node_count) {
+        return 0U;
+    }
+    if (show_hidden) {
+        return child_counts[folder];
+    }
+    for (at = 0U; at < child_counts[folder]; ++at) {
+        if (!trait_files_is_hidden(children[folder][at])) {
+            ++seen;
+        }
+    }
+    return seen;
+}
+
+uint32_t trait_files_visible_child(uint32_t folder, uint32_t at)
+{
+    uint32_t scan;
+    uint32_t seen = 0U;
+
+    if (folder >= node_count) {
+        return TRAIT_FILES_MAX_NODES;
+    }
+    if (show_hidden) {
+        return trait_files_child(folder, at);
+    }
+    for (scan = 0U; scan < child_counts[folder]; ++scan) {
+        uint32_t node = children[folder][scan];
+
+        if (trait_files_is_hidden(node)) {
+            continue;
+        }
+        if (seen == at) {
+            return node;
+        }
+        ++seen;
+    }
+    return TRAIT_FILES_MAX_NODES;
+}
+
+void trait_files_set_single_click(bool single)
+{
+    single_click = single;
+}
+
+bool trait_files_single_click(void)
+{
+    return single_click;
+}
+
 bool trait_files_entry_bounds(const struct trait_window *window,
     uint32_t at, struct trait_rect *out)
 {
     struct trait_rect box = view_area(window);
     uint32_t columns;
 
-    if (window == NULL || out == NULL || at >= child_counts[here]) {
+    if (window == NULL || out == NULL ||
+            at >= trait_files_visible_count(here)) {
         return false;
     }
     if (view_mode == TRAIT_FILES_LIST) {
@@ -1049,8 +1128,8 @@ static void draw_entries(struct trait_surface *surface,
         }
     }
 
-    for (at = 0U; at < child_counts[here]; ++at) {
-        uint32_t node = children[here][at];
+    for (at = 0U; at < trait_files_visible_count(here); ++at) {
+        uint32_t node = trait_files_visible_child(here, at);
         bool lit = trait_files_is_selected(node);
 
         if (!trait_files_entry_bounds(window, at, &cell)) {

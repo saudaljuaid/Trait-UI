@@ -3,6 +3,8 @@
 
 #include <trait/font.h>
 #include <trait/files.h>
+#include <trait/panel.h>
+#include <trait/shell.h>
 #include <trait/theme.h>
 
 #define TAB_HEIGHT 24U
@@ -169,6 +171,16 @@ bool trait_settings_row_bounds(const struct trait_window *window,
  * drifts from it - the page says Clearlooks while the desktop is dark -
  * and that is worse than a page that cannot change anything at all.
  */
+/*
+ * A ROW SHOWS THE LIVE STATE, IT DOES NOT REMEMBER ITS OWN.
+ *
+ * The switches used to carry their own `on` and flip it on a press, which
+ * meant the tick was a picture of a decision rather than a reading of
+ * one: anything else that changed the same state - the Files window's own
+ * view button, a second Settings window - left the tick saying the
+ * opposite of the truth.  Every switch is read back from the thing it
+ * controls on every draw, so the two cannot drift.
+ */
 static void refresh(struct trait_settings_row *row)
 {
     switch (row->setting) {
@@ -182,8 +194,23 @@ static void refresh(struct trait_settings_row *row)
                  "Detailed list" : "Icons",
              TRAIT_SETTINGS_TEXT_BYTES);
         break;
+    case TRAIT_SET_CLOCK_24H:
+        copy(row->value,
+             trait_panel_clock_24h() ? "24-hour" : "12-hour",
+             TRAIT_SETTINGS_TEXT_BYTES);
+        break;
     case TRAIT_SET_DESKTOP_ICONS:
+        row->on = trait_shell_desktop_icons();
+        break;
     case TRAIT_SET_SHOW_HIDDEN:
+        row->on = trait_files_show_hidden();
+        break;
+    case TRAIT_SET_SINGLE_CLICK:
+        row->on = trait_files_single_click();
+        break;
+    case TRAIT_SET_ALL_DESKTOPS:
+        row->on = trait_panel_show_all_desktops();
+        break;
     case TRAIT_SET_NOTHING:
     default:
         break;
@@ -218,8 +245,25 @@ bool trait_settings_press(uint32_t page, uint32_t row)
         refresh(target);
         return true;
     case TRAIT_SET_DESKTOP_ICONS:
+        trait_shell_set_desktop_icons(!trait_shell_desktop_icons());
+        refresh(target);
+        return true;
     case TRAIT_SET_SHOW_HIDDEN:
-        target->on = !target->on;
+        trait_files_set_show_hidden(!trait_files_show_hidden());
+        refresh(target);
+        return true;
+    case TRAIT_SET_SINGLE_CLICK:
+        trait_files_set_single_click(!trait_files_single_click());
+        refresh(target);
+        return true;
+    case TRAIT_SET_ALL_DESKTOPS:
+        trait_panel_set_show_all_desktops(
+            !trait_panel_show_all_desktops());
+        refresh(target);
+        return true;
+    case TRAIT_SET_CLOCK_24H:
+        trait_panel_set_clock_24h(!trait_panel_clock_24h());
+        refresh(target);
         return true;
     case TRAIT_SET_NOTHING:
     default:

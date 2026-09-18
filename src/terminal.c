@@ -338,12 +338,19 @@ static void gfetch(void)
         ++count;
     }
 
-    for (at = 0U; at < TRAIT_LOGO_ROWS; ++at) {
+    /*
+     * AS MANY ROWS AS THERE ARE OF EITHER.  Running to the mark's
+     * height alone loses a fact whenever the mark is shorter than the
+     * list - which is a fetch that silently drops a line the moment
+     * somebody resizes the logo, and it did.
+     */
+    for (at = 0U; at < TRAIT_LOGO_ROWS || at < count; ++at) {
         char line[TRAIT_TERM_LINE_BYTES];
         char ink[TRAIT_TERM_LINE_BYTES];
         uint32_t width = 0U;
 
-        copy(line, trait_logo[at], sizeof(line));
+        copy(line, at < TRAIT_LOGO_ROWS ? trait_logo[at] : "",
+             sizeof(line));
         while (line[width] != '\0') {
             ++width;
         }
@@ -355,7 +362,8 @@ static void gfetch(void)
             ++width;
             line[width] = '\0';
         }
-        copy(ink, trait_logo_ink[at], sizeof(ink));
+        copy(ink, at < TRAIT_LOGO_ROWS ? trait_logo_ink[at] : "",
+             sizeof(ink));
         if (at < count) {
             append(line, facts[at], sizeof(line));
         }

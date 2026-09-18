@@ -23,7 +23,7 @@ openrfs-logo.txt is the ASCII, and it is NOT this project's own work:
 
   Tool:     https://www.asciiart.eu/image-to-ascii
   Input:    openrfs-mark-flat.png
-  Settings: Characters 46, ASCII gradient "Black and White"
+  Settings: Characters 32, ASCII gradient "Black and White"
             (blockelement), dithering None, and every other control at
             its default - brightness/contrast/saturation 100%, hue 0,
             grayscale/sepia/invert 0, thresholding, sharpness and edge
@@ -42,6 +42,14 @@ Three of the converter's character sets were tried at this size and two
 of them read as noise in a 8x16 bitmap font: a tonal gradient needs a
 denser grid than a terminal has. The block set does not, because it
 draws a SHAPE and leaves the tone to the colour.
+
+The width is 32 rather than the 46 it was first taken at. 46 is 360
+pixels of an 80-column terminal and looks less like a fetch than like a
+poster; 26 was tried too and is too small for the mark to keep its eyes.
+32 gives twelve rows, which is also two more than the fetch has facts -
+though gfetch no longer depends on that, since running to the mark's
+height alone dropped a fact the moment the mark got shorter than the
+list.
 
 The colours are still computed in tools/make-logo.py, because the
 converter emits text and has none to give. The mark is classified on the

@@ -51,8 +51,10 @@ INK = {PAPER: 0, OUTLINE: 1, BODY: 2, TONGUE: 3, EYE: 4}
 # The floors are here because the three small things are all thinner
 # than a cell: the black line round the outside, the tongue, and the
 # whites of the eyes each lose every vote they are in and the fish comes
-# out one flat red.  The numbers are where they can be argued with.
-FLOOR = ((EYE, 0.30), (TONGUE, 0.30), (OUTLINE, 0.45))
+# out one flat red.  The numbers are where they can be argued with -
+# the tongue's is a quarter because at the size the mark is drawn at
+# the best cell it has is 0.297 of one, and a third would lose it.
+FLOOR = ((EYE, 0.30), (TONGUE, 0.25), (OUTLINE, 0.45))
 
 MAX_LINE = 64    # a fetch has to leave room for the facts beside it
 

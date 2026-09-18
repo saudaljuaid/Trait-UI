@@ -37,7 +37,7 @@ terminal's own foreground and reads as the line it is.
 
 The ASCII itself is not this project's work: it is asciiart.eu's
 converter, run over the mark with its "Black and White" character set at
-46 columns, and `assets/logo/SOURCE.txt` records every setting so it can
+32 columns, and `assets/logo/SOURCE.txt` records every setting so it can
 be redone. The reduction that used to be here classified each cell into
 one of five things, which cannot render an edge running diagonally
 through a cell — and most of a drawing's edges do.

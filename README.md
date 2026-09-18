@@ -51,6 +51,19 @@ terminal has always had: no compositor and no alpha channel, just a
 window that is drawn after what is behind it and mixes with what it
 finds. One switch on the Desktop page makes it opaque.
 
+The launcher is dmenu's. A strip across the top of the screen: a prompt,
+what you have typed, and the programs it matches laid out along the rest
+of it with one selected. Typing narrows them, the arrows move along,
+Tab copies the selection into the input, Return runs it. Every number in
+it is dmenu's own — the strip is the font's height plus two, the padding
+either side of a cell is half the font's height, the prompt is drawn in
+the selected colours and the input in the normal ones, and a `>` says
+the list did not end where the strip did.
+
+It replaces a box in the middle of the screen that asked for a name and
+could not tell you what there was, so the only way to use it was to
+already know.
+
 No panel, no dock, no tray, no clock. You reach the menu by pressing the
 root and it opens where the pointer is; you reach a window by clicking it
 or with Alt+Tab; what is running is in the Task Manager. The bar used to
@@ -112,6 +125,7 @@ file that defines it, and the table says which file.
 | --- | --- |
 | The three gears, their radii, tooth counts and view angles | Mesa demos, `src/xdemos/glxgears.c`, Brian Paul — see `assets/gears/SOURCE.txt` |
 | A flat root, an icon at the foot per iconified window, a titled menu | fvwm, which is what `startx` gives you on OpenBSD |
+| The launcher's strip, padding, colours, `>` and keys | `dmenu.c` and `dmenu.1`, suckless — `bh = drw->fonts->h + 2`, `lrpad = drw->fonts->h`, prompt in `SchemeSel` |
 | The text: Misc-Fixed 6x13, 7x14, 9x18 and 8x16 | `xfonts-cyrillic`, the KOI8-R builds of the X11 bitmap faces — see `assets/fonts/SOURCE.txt` |
 | The mark gfetch prints | the owner's own drawing — see `assets/logo/SOURCE.txt` |
 | The icons | `gentoo` 0.20.7-4, `usr/share/gentoo/icons/`, Johan Hanson 1998 — see `assets/icons/gentoo/SOURCE.txt` |

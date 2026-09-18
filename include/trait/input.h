@@ -46,5 +46,8 @@ struct trait_event {
 #define TRAIT_KEY_TAB 3U
 #define TRAIT_KEY_ESCAPE 4U
 #define TRAIT_KEY_F4 5U
+/* The launcher selects with these, the way dmenu does. */
+#define TRAIT_KEY_LEFT 6U
+#define TRAIT_KEY_RIGHT 7U
 
 #endif /* TRAIT_INPUT_H */

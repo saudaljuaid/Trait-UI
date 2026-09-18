@@ -1236,32 +1236,97 @@ int main(int argc, char **argv)
             }
         }
         {
-            static const char GOOD[] = "lxterminal";
+            static const char GOOD[] = "lx";
             uint32_t at;
+            uint32_t narrowed;
+            uint32_t all;
 
             for (at = 0U; at < 10U; ++at) {
                 key.key = 0;
                 key.special = TRAIT_KEY_BACKSPACE;
                 (void)trait_shell_handle(&key);
             }
+            /*
+             * IT SHOWS YOU WHAT THERE IS, which is the whole of why it
+             * is dmenu and not a box with a field in it.  Empty, it
+             * offers everything; "lx" narrows it; the arrow keys walk
+             * what is left; Tab fills the input from the selection.
+             */
+            all = trait_shell_run_match_count();
+            if (all < 2U) {
+                fprintf(stderr, "trait: an empty launcher offered %u "
+                                "programs\n", all);
+                return 1;
+            }
             for (at = 0U; GOOD[at] != '\0'; ++at) {
                 key.key = GOOD[at];
                 key.special = 0U;
                 (void)trait_shell_handle(&key);
             }
+            narrowed = trait_shell_run_match_count();
+            if (narrowed == 0U || narrowed >= all) {
+                fprintf(stderr, "trait: \"lx\" narrowed %u programs to "
+                                "%u\n", all, narrowed);
+                return 1;
+            }
+            /* Every match really does start with what was typed, which
+             * is the prefix bucket coming first. */
+            if (trait_shell_run_match(0U)[0] != 'l' ||
+                    trait_shell_run_match(0U)[1] != 'x') {
+                fprintf(stderr, "trait: the first match is \"%s\", which "
+                                "does not start with \"lx\"\n",
+                        trait_shell_run_match(0U));
+                return 1;
+            }
+            trait_shell_draw_root();
+            trait_shell_draw();
+            trait_shell_draw_overlays();
+            if (!emit(out, "launcher.png", whole())) {
+                return 1;
+            }
+            /* The arrow moves the selection, and Tab fills the input
+             * from it - dmenu.1's own two keys. */
+            {
+                const char *first = trait_shell_run_match(0U);
+                const char *second;
+
+                key.key = 0;
+                key.special = TRAIT_KEY_RIGHT;
+                (void)trait_shell_handle(&key);
+                if (trait_shell_run_selected() != 1U) {
+                    fprintf(stderr, "trait: the arrow did not move the "
+                                    "selection\n");
+                    return 1;
+                }
+                second = trait_shell_run_match(1U);
+                key.special = TRAIT_KEY_TAB;
+                (void)trait_shell_handle(&key);
+                if (strcmp(trait_shell_run_text(), second) != 0) {
+                    fprintf(stderr, "trait: Tab put \"%s\" in the input, "
+                                    "not \"%s\"\n",
+                            trait_shell_run_text(), second);
+                    return 1;
+                }
+                (void)first;
+            }
+
             before = trait_shell_window_count();
             key.key = 0;
             key.special = TRAIT_KEY_ENTER;
             (void)trait_shell_handle(&key);
             if (trait_shell_run_open()) {
-                fprintf(stderr, "trait: the Run box stayed open on a "
+                fprintf(stderr, "trait: the launcher stayed open on a "
                                 "name it ran\n");
                 return 1;
             }
             if (trait_shell_window_count() != before + 1U) {
-                fprintf(stderr, "trait: Run opened no window\n");
+                fprintf(stderr, "trait: the launcher opened no window\n");
                 return 1;
             }
+            printf("proof: the launcher offered %u programs, \"lx\" cut "
+                   "them to %u, the arrow moved along them and Tab "
+                   "filled the input from the one it landed on\n",
+                   all, narrowed);
         }
 
         /*

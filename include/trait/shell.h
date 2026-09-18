@@ -114,6 +114,24 @@ bool trait_shell_window_icon_bounds(uint32_t at, struct trait_rect *out);
 void trait_shell_draw_window_icons(void);
 uint32_t trait_shell_desktop_icon_count(void);
 
+/*
+ * THE LAUNCHER, which is dmenu's.
+ *
+ * A strip across the top of the screen: a prompt, what you have typed,
+ * and the programs it matches laid out along the rest of it with one of
+ * them selected.  Typing narrows the list, the arrow keys move along
+ * it, Tab copies the selected name into the input, Return runs it and
+ * Escape leaves.  The geometry is dmenu's own - see the note in
+ * src/shell.c for which lines of dmenu.c each number is from.
+ *
+ * The box it replaces asked you for a name and could not tell you what
+ * there was, so the only way to use it was to already know.
+ */
+bool trait_shell_run_bounds(struct trait_rect *out);
+uint32_t trait_shell_run_match_count(void);
+const char *trait_shell_run_match(uint32_t at);
+uint32_t trait_shell_run_selected(void);
+
 /* The Run box: type a name, press return, and it runs or says it cannot. */
 /*
  * pcmanfm's CONTEXT MENU, on a file-manager entry.  It is shell state

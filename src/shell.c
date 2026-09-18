@@ -30,10 +30,43 @@ static char rename_error[48];
 #define CONTEXT_ROW_H 20U
 #define CONTEXT_W 150U
 
+/*
+ * THE LAUNCHER IS DMENU, and the geometry below is dmenu's own.
+ *
+ * It was a box in the middle of the screen: you typed a name, pressed
+ * return, and it either ran or told you there was no such program.  It
+ * could not tell you what there WAS, so the only way to use it was to
+ * already know.
+ *
+ * dmenu answers that by showing you: a strip across the top, the
+ * matches laid out along it, and what you type narrowing them.  From
+ * dmenu.c - the bar is the font's height plus two, the padding either
+ * side of a cell is half the font's height, the prompt is drawn in the
+ * SELECTED colours and the input in the normal ones, and a '>' says
+ * there are more matches than fit.  From dmenu.1 - Tab copies the
+ * selected match into the input, Return confirms, Escape leaves.
+ */
 static bool run_open;
 static char run_text[48];
 static uint32_t run_length;
+static uint32_t run_at;          /* which match is selected */
 static char run_error[64];
+
+#define RUN_PROMPT "run:"
+
+static const struct {
+    const char *name;
+    enum trait_shell_app app;
+} RUNNABLE[6] = {
+    { "pcmanfm", TRAIT_APP_FILES },
+    { "lxterminal", TRAIT_APP_TERMINAL },
+    { "lxtask", TRAIT_APP_TASKMGR },
+    { "lxappearance", TRAIT_APP_SETTINGS },
+    { "synaptic", TRAIT_APP_PACKAGES },
+    { "glxgears", TRAIT_APP_GEARS }
+};
+
+#define RUNNABLE_COUNT (sizeof(RUNNABLE) / sizeof(RUNNABLE[0]))
 
 static struct {
     char title[TRAIT_SHELL_NOTE_BYTES];
@@ -162,6 +195,7 @@ void trait_shell_reset(struct trait_surface *surface)
     (void)trait_theme_select(TRAIT_THEME_DEFAULT);
     run_open = false;
     run_length = 0U;
+    run_at = 0U;
     run_text[0] = '\0';
     run_error[0] = '\0';
     switcher_open = false;
@@ -1078,6 +1112,7 @@ static bool shell_menu_pick(uint32_t row)
     if (label_is(label, "Run...")) {
         run_open = true;
         run_length = 0U;
+        run_at = 0U;
         run_text[0] = '\0';
         run_error[0] = '\0';
         return true;
@@ -1271,33 +1306,126 @@ static bool shell_rename_go(void)
     return true;
 }
 
+/*
+ * dmenu's match(), minus the buckets it does not need here: an item
+ * matches when the input is somewhere in its name, and the ones that
+ * match at the START come first.  Typing "lx" therefore offers
+ * lxterminal before it offers anything that merely contains those two
+ * letters, which is the ordering that makes the first match the one you
+ * meant.
+ */
+static bool run_contains(const char *name, const char *want,
+    uint32_t *at_start)
+{
+    uint32_t from = 0U;
+
+    if (want[0] == '\0') {
+        *at_start = 1U;
+        return true;
+    }
+    while (name[from] != '\0') {
+        uint32_t scan = 0U;
+
+        while (want[scan] != '\0' && name[from + scan] == want[scan]) {
+            ++scan;
+        }
+        if (want[scan] == '\0') {
+            *at_start = from == 0U ? 1U : 0U;
+            return true;
+        }
+        ++from;
+    }
+    return false;
+}
+
+/*
+ * dmenu.c: `bh = drw->fonts->h + 2` and `mh = (lines + 1) * bh`, with
+ * lines zero, so the strip is one row of the font plus two.  It sits at
+ * the TOP unless -b is passed, and this is not passing -b.
+ */
+bool trait_shell_run_bounds(struct trait_rect *out)
+{
+    if (out == NULL || !run_open) {
+        return false;
+    }
+    out->x = shell_screen.x;
+    out->y = shell_screen.y;
+    out->width = shell_screen.width;
+    out->height = trait_font_line_height() + 2U;
+    return true;
+}
+
+uint32_t trait_shell_run_match_count(void)
+{
+    uint32_t found = 0U;
+    uint32_t at;
+    uint32_t head;
+
+    for (at = 0U; at < RUNNABLE_COUNT; ++at) {
+        if (run_contains(RUNNABLE[at].name, run_text, &head)) {
+            ++found;
+        }
+    }
+    return found;
+}
+
+const char *trait_shell_run_match(uint32_t at)
+{
+    uint32_t pass;
+    uint32_t seen = 0U;
+
+    /* Two passes rather than a sort: the list is six long and a sort
+     * would need somewhere to put it. */
+    for (pass = 0U; pass < 2U; ++pass) {
+        uint32_t scan;
+
+        for (scan = 0U; scan < RUNNABLE_COUNT; ++scan) {
+            uint32_t head = 0U;
+
+            if (!run_contains(RUNNABLE[scan].name, run_text, &head)) {
+                continue;
+            }
+            if ((pass == 0U) != (head == 1U)) {
+                continue;
+            }
+            if (seen == at) {
+                return RUNNABLE[scan].name;
+            }
+            ++seen;
+        }
+    }
+    return NULL;
+}
+
+uint32_t trait_shell_run_selected(void)
+{
+    uint32_t count = trait_shell_run_match_count();
+
+    return count == 0U ? 0U : (run_at < count ? run_at : count - 1U);
+}
+
+static void run_close(void)
+{
+    run_open = false;
+    run_length = 0U;
+    run_at = 0U;
+    run_text[0] = '\0';
+    run_error[0] = '\0';
+}
+
 static bool shell_run_go(void)
 {
-    static const struct {
-        const char *name;
-        enum trait_shell_app app;
-    } RUNNABLE[5] = {
-        { "pcmanfm", TRAIT_APP_FILES },
-        { "lxterminal", TRAIT_APP_TERMINAL },
-        { "lxtask", TRAIT_APP_TASKMGR },
-        { "lxappearance", TRAIT_APP_SETTINGS },
-        { "synaptic", TRAIT_APP_PACKAGES }
-    };
     struct trait_rect where = { 260U, 200U, 560U, 360U };
+    const char *pick = trait_shell_run_match(trait_shell_run_selected());
     uint32_t at;
     uint32_t byte;
 
-    for (at = 0U; at < 5U; ++at) {
-        byte = 0U;
-        while (RUNNABLE[at].name[byte] != '\0' &&
-                run_text[byte] == RUNNABLE[at].name[byte]) {
-            ++byte;
-        }
-        if (RUNNABLE[at].name[byte] == '\0' && run_text[byte] == '\0') {
-            run_open = false;
-            run_length = 0U;
-            run_text[0] = '\0';
-            run_error[0] = '\0';
+    if (pick != NULL) {
+        for (at = 0U; at < RUNNABLE_COUNT; ++at) {
+            if (RUNNABLE[at].name != pick) {
+                continue;
+            }
+            run_close();
             return trait_shell_open(RUNNABLE[at].app, where) <
                 TRAIT_SHELL_MAX_WINDOWS;
         }
@@ -1362,23 +1490,61 @@ bool trait_shell_handle(const struct trait_event *event)
             return false;
         }
         if (run_open) {
+            uint32_t matches = trait_shell_run_match_count();
+
             if (event->special == TRAIT_KEY_ESCAPE) {
-                run_open = false;
+                run_close();
                 return true;
             }
             if (event->special == TRAIT_KEY_BACKSPACE) {
                 if (run_length != 0U) {
                     run_text[--run_length] = '\0';
                 }
+                /* Back to the first match: the list under the cursor
+                 * just changed, so the place in it has not survived. */
+                run_at = 0U;
+                run_error[0] = '\0';
                 return true;
             }
             if (event->special == TRAIT_KEY_ENTER) {
                 return shell_run_go();
             }
+            /* dmenu.1: the arrow keys select, and Tab copies the
+             * selected item into the input. */
+            if (event->special == TRAIT_KEY_RIGHT) {
+                run_at = matches == 0U ? 0U :
+                    (trait_shell_run_selected() + 1U) % matches;
+                return true;
+            }
+            if (event->special == TRAIT_KEY_LEFT) {
+                uint32_t here = trait_shell_run_selected();
+
+                run_at = matches == 0U ? 0U :
+                    (here == 0U ? matches - 1U : here - 1U);
+                return true;
+            }
+            if (event->special == TRAIT_KEY_TAB) {
+                const char *pick =
+                    trait_shell_run_match(trait_shell_run_selected());
+
+                if (pick == NULL) {
+                    return false;
+                }
+                run_length = 0U;
+                while (pick[run_length] != '\0' &&
+                        run_length + 1U < sizeof(run_text)) {
+                    run_text[run_length] = pick[run_length];
+                    ++run_length;
+                }
+                run_text[run_length] = '\0';
+                run_at = 0U;
+                return true;
+            }
             if (event->key >= 32 && event->key <= 126 &&
                     run_length + 1U < sizeof(run_text)) {
                 run_text[run_length++] = event->key;
                 run_text[run_length] = '\0';
+                run_at = 0U;
                 run_error[0] = '\0';
                 return true;
             }
@@ -1405,6 +1571,7 @@ bool trait_shell_handle(const struct trait_event *event)
                 if (event->key == 'r') {
                     run_open = true;
                     run_length = 0U;
+                    run_at = 0U;
                     run_text[0] = '\0';
                     run_error[0] = '\0';
                     return true;
@@ -1714,55 +1881,96 @@ void trait_shell_draw_overlays(void)
         trait_menu_draw(canvas, shell_screen, root_anchor);
     }
     if (run_open) {
+        /*
+         * dmenu's drawmenu(), with its own numbers:
+         *   lrpad = drw->fonts->h        the padding, halved per side
+         *   prompt in scheme[SchemeSel]  the selected colours
+         *   input  in scheme[SchemeNorm] the normal ones
+         *   each item drawn at x += its width, selected one in SchemeSel
+         *   ">" at the right edge when the rest do not fit
+         */
         struct trait_rect box;
-        struct trait_rect field;
+        uint32_t pad = trait_font_line_height();
+        uint32_t matches = trait_shell_run_match_count();
+        uint32_t picked = trait_shell_run_selected();
+        uint32_t baseline;
+        uint32_t pen;
         uint32_t at;
 
-        box.width = 300U;
-        box.height = run_error[0] != '\0' ? 96U : 78U;
-        box.x = shell_screen.x + (shell_screen.width - box.width) / 2U;
-        box.y = shell_screen.y + shell_screen.height / 3U;
+        if (!trait_shell_run_bounds(&box)) {
+            return;
+        }
+        baseline = box.y + box.height - 3U;
         trait_surface_fill(canvas, box, box, TRAIT_BG);
-        for (at = 0U; at < box.width; ++at) {
-            trait_surface_plot(canvas, box, box.x + at, box.y,
-                               TRAIT_LINE);
-            trait_surface_plot(canvas, box, box.x + at,
-                               box.y + box.height - 1U, TRAIT_LINE);
-        }
-        for (at = 0U; at < box.height; ++at) {
-            trait_surface_plot(canvas, box, box.x, box.y + at,
-                               TRAIT_LINE);
-            trait_surface_plot(canvas, box, box.x + box.width - 1U,
-                               box.y + at, TRAIT_LINE);
-        }
-        trait_font_draw(canvas, box, box.x + 12U, box.y + 22U,
-                        "Run:", TRAIT_FG);
-        field.x = box.x + 12U;
-        field.y = box.y + 30U;
-        field.width = box.width - 24U;
-        field.height = 22U;
-        trait_surface_fill(canvas, box, field, TRAIT_BASE);
-        for (at = 0U; at < field.width; ++at) {
-            trait_surface_plot(canvas, box, field.x + at, field.y,
-                               TRAIT_LINE);
-        }
-        for (at = 0U; at < field.height; ++at) {
-            trait_surface_plot(canvas, box, field.x, field.y + at,
-                               TRAIT_LINE);
-        }
-        trait_font_draw(canvas, field, field.x + 5U, field.y + 15U,
-                        run_text, TRAIT_TEXT);
-        {
-            /* A caret after the text, so the box looks like it is
-             * taking the keyboard - which it is. */
-            uint32_t pen = field.x + 5U + trait_font_width(run_text);
-            struct trait_rect caret = { pen, field.y + 4U, 1U, 14U };
 
-            trait_surface_fill(canvas, field, caret, TRAIT_TEXT);
+        {
+            struct trait_rect head = box;
+
+            head.width = trait_font_width(RUN_PROMPT) + pad;
+            trait_surface_fill(canvas, box, head, TRAIT_SEL_BG);
+            trait_font_draw(canvas, box, head.x + pad / 2U, baseline,
+                            RUN_PROMPT, TRAIT_SEL_FG);
+            pen = head.x + head.width;
+        }
+        trait_font_draw(canvas, box, pen + pad / 2U, baseline, run_text,
+                        TRAIT_TEXT);
+        {
+            /* A caret after the input, because the strip has the
+             * keyboard and ought to look like it. */
+            struct trait_rect caret;
+
+            caret.x = pen + pad / 2U + trait_font_width(run_text);
+            caret.y = box.y + 2U;
+            caret.width = 1U;
+            caret.height = box.height - 4U;
+            trait_surface_fill(canvas, box, caret, TRAIT_TEXT);
+        }
+        pen += trait_font_width(run_text) + pad * 2U;
+
+        for (at = 0U; at < matches; ++at) {
+            const char *name = trait_shell_run_match(at);
+            uint32_t width;
+
+            if (name == NULL) {
+                break;
+            }
+            width = trait_font_width(name) + pad;
+            if (pen + width > box.x + box.width - pad) {
+                /* dmenu draws ">" when the rest will not fit, so you
+                 * know the list did not end where the strip did. */
+                trait_font_draw(canvas, box,
+                    box.x + box.width - pad / 2U -
+                        trait_font_width(">"),
+                    baseline, ">", TRAIT_TEXT);
+                break;
+            }
+            if (at == picked) {
+                struct trait_rect cell;
+
+                cell.x = pen;
+                cell.y = box.y;
+                cell.width = width;
+                cell.height = box.height;
+                trait_surface_fill(canvas, box, cell, TRAIT_SEL_BG);
+                trait_font_draw(canvas, box, pen + pad / 2U, baseline,
+                                name, TRAIT_SEL_FG);
+            } else {
+                trait_font_draw(canvas, box, pen + pad / 2U, baseline,
+                                name, TRAIT_FG);
+            }
+            pen += width;
         }
         if (run_error[0] != '\0') {
-            trait_font_draw(canvas, box, box.x + 12U, box.y + 74U,
-                            run_error, TRAIT_TEXT);
+            trait_font_draw(canvas, box,
+                box.x + box.width - pad / 2U -
+                    trait_font_width(run_error),
+                baseline, run_error, TRAIT_TEXT);
+        }
+        /* A rule under it, so the strip has an edge against a window
+         * that happens to be pale. */
+        for (at = 0U; at < box.width; ++at) {
+            trait_surface_plot(canvas, box, box.x + at,
+                               box.y + box.height - 1U, TRAIT_LINE);
         }
     }
     if (switcher_open) {

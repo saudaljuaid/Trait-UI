@@ -88,7 +88,7 @@ static uint32_t resize_oy;
 #define EDGE_RIGHT 0x2U
 #define EDGE_TOP 0x4U
 #define EDGE_BOTTOM 0x8U
-#define RESIZE_GRIP 5U
+#define RESIZE_GRIP TRAIT_BORDER
 #define MIN_WINDOW 180U
 
 static bool switcher_open;
@@ -434,13 +434,47 @@ void trait_shell_draw_root(void)
     whole.width = canvas->width;
     whole.height = canvas->height;
     /*
-     * ONE COLOUR.  fvwm comes up on a flat grey root and OpenBSD ships
-     * fvwm, so that is what a bare session looks like; the reference is
-     * #3F3F3F and this is the nearest of the sixteen.  The gears ran
-     * here for a while, which was the wrong place for them - glxgears
-     * is a program, and it has a window of its own now.
+     * THE ROOT WEAVE, and it is the X server's, not a wallpaper.
+     *
+     * Before any window manager runs, before anything is started, the
+     * root window of an X display is already filled with a four-by-four
+     * tile the server builds for itself - MakeRootTile() in the X
+     * server's dix/window.c, out of
+     *
+     *     static unsigned char _back_msb[4] = { 0x11, 0x44, 0x22, 0x88 };
+     *
+     * drawn as a bitmap with the screen's white as foreground and its
+     * black as background.  Four rows, eight bits each, one white pixel
+     * every fourth: a quarter-density stipple that reads as a dark grey
+     * with a grain in it.  It is the oldest thing on an X screen and it
+     * is what OpenBSD comes up on, because nothing in a bare session
+     * paints over it.
+     *
+     * This was a flat fill of one grey for a while, which is what it
+     * LOOKS like from across a room.  A flat root is also a root that a
+     * see-through window cannot prove anything against: the terminal
+     * mixes with what is behind it, and what is behind it was one
+     * colour everywhere.  The grain is the difference between a window
+     * you can see through and a window that is merely darker.
      */
-    trait_surface_fill(canvas, whole, whole, TRAIT_BG_ACTIVE);
+    {
+        static const uint8_t WEAVE[4] = { 0x11U, 0x44U, 0x22U, 0x88U };
+        uint32_t x;
+        uint32_t y;
+
+        for (y = 0U; y < whole.height; ++y) {
+            uint8_t row = WEAVE[y & 3U];
+
+            for (x = 0U; x < whole.width; ++x) {
+                /* MSB first, which is how PutImage reads an XYBitmap on
+                 * a most-significant-bit-first screen. */
+                bool lit = ((row >> (7U - (x & 7U))) & 1U) != 0U;
+
+                trait_surface_plot(canvas, whole, x, y,
+                                   lit ? 0xFFFFFFU : 0x000000U);
+            }
+        }
+    }
 }
 
 /*

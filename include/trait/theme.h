@@ -38,12 +38,21 @@ struct trait_palette {
     uint32_t sel_fg;
     uint32_t line;
     uint32_t line_light;
-    /* The window frame: Openbox draws the title bar as a vertical ramp,
-     * so these are its two ends. */
-    uint32_t frame_active_top;
-    uint32_t frame_active_bottom;
-    uint32_t frame_idle_top;
-    uint32_t frame_idle_bottom;
+    /*
+     * The window frame, as fvwm decorates one: a flat ground and the two
+     * colours it bevels with.  It used to be a vertical ramp between a
+     * top and a bottom, which is Openbox's frame; fvwm has no gradient
+     * anywhere in it, and a 7-pixel border wants a relief rather than a
+     * fade.  The two relief colours are not chosen - they come out of
+     * src/trait_relief.h, which is fvwm's own GetHilite() and
+     * GetShadow() run over the ground.
+     */
+    uint32_t frame_active;
+    uint32_t frame_active_hi;
+    uint32_t frame_active_lo;
+    uint32_t frame_idle;
+    uint32_t frame_idle_hi;
+    uint32_t frame_idle_lo;
     uint32_t frame_ink;
     uint32_t frame_ink_dim;
 };
@@ -74,10 +83,12 @@ bool trait_theme_select_named(const char *name);
 #define TRAIT_SEL_FG (trait_theme()->sel_fg)
 #define TRAIT_LINE (trait_theme()->line)
 #define TRAIT_LINE_LIGHT (trait_theme()->line_light)
-#define TRAIT_FRAME_ACTIVE_TOP (trait_theme()->frame_active_top)
-#define TRAIT_FRAME_ACTIVE_BOTTOM (trait_theme()->frame_active_bottom)
-#define TRAIT_FRAME_IDLE_TOP (trait_theme()->frame_idle_top)
-#define TRAIT_FRAME_IDLE_BOTTOM (trait_theme()->frame_idle_bottom)
+#define TRAIT_FRAME_ACTIVE (trait_theme()->frame_active)
+#define TRAIT_FRAME_ACTIVE_HI (trait_theme()->frame_active_hi)
+#define TRAIT_FRAME_ACTIVE_LO (trait_theme()->frame_active_lo)
+#define TRAIT_FRAME_IDLE (trait_theme()->frame_idle)
+#define TRAIT_FRAME_IDLE_HI (trait_theme()->frame_idle_hi)
+#define TRAIT_FRAME_IDLE_LO (trait_theme()->frame_idle_lo)
 #define TRAIT_FRAME_INK (trait_theme()->frame_ink)
 #define TRAIT_FRAME_INK_DIM (trait_theme()->frame_ink_dim)
 

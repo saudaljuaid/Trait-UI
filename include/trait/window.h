@@ -8,8 +8,25 @@
 #include <trait/surface.h>
 
 /*
- * An Openbox frame: a title bar with the window's name and its three
- * buttons, and a one-pixel border round the client area.
+ * AN FVWM FRAME, at the sizes OpenBSD's own fvwm comes up with.
+ *
+ * It was an Openbox frame: a one-pixel border and a title bar drawn as a
+ * vertical ramp.  OpenBSD ships fvwm and fvwm is where the classic X
+ * desktop's shape comes from, so the numbers below are that shell's
+ * rather than this one's - out of xenocara's app/fvwm/sample.fvwmrc/
+ * system.fvwmrc, which is the file a fresh install reads:
+ *
+ *     Style "*"  BorderWidth 7, HandleWidth 7
+ *     Style "*"  Color #bebebe/darkred
+ *     HilightColor #bebebe blue
+ *     WindowFont -adobe-times-bold-r-*-*-14-*
+ *
+ * Seven pixels of border is the whole difference between a frame you
+ * look at and a frame you GRAB, which is why fvwm has that much and a
+ * modern one has none: there is no invisible resize region here and
+ * there was none there.  The border is what you drag, so the border is
+ * drawn at the size it can be dragged at - see RESIZE_GRIP in shell.c,
+ * which is this number.
  *
  * The frame owns nothing inside it.  trait_window_client() says where the
  * application may draw and the application draws there; that is the whole
@@ -17,11 +34,22 @@
  * written without either of them knowing what a title bar looks like.
  */
 
-/* 18, which is 14 of font and two rows either side of it.  It was 22
- * when the face was a 15px DejaVu; four rows of nothing at the top of
- * every window is four rows of nothing. */
-#define TRAIT_TITLE_HEIGHT 18U
-#define TRAIT_BORDER 1U
+/* 20: sixteen rows of Misc-Fixed and two either side.  fvwm's own is
+ * Times bold 14 and it sizes the bar to the face it is given. */
+#define TRAIT_TITLE_HEIGHT 20U
+#define TRAIT_BORDER 7U
+
+/* The bevel fvwm relieves every edge with. */
+#define TRAIT_RELIEF_WIDTH 2U
+
+/*
+ * How much of each side belongs to the CORNER rather than to the side
+ * bar.  fvwm draws a line across the border there, and it is not
+ * decoration: inside it a drag resizes both dimensions at once, outside
+ * it only one.  A line that does not mark a change in behaviour would be
+ * a line this desktop does not draw.
+ */
+#define TRAIT_CORNER 24U
 #define TRAIT_TITLE_BYTES 48U
 
 struct trait_window {

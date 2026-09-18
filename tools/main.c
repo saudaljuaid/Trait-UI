@@ -1005,7 +1005,40 @@ int main(int argc, char **argv)
                                 "where the check samples them\n");
                 return 1;
             }
-            root = trait_surface_read(&screen, 4U, 4U);
+            /*
+             * The root is a WEAVE, not a colour: one white pixel every
+             * fourth over black.  So "the root shows through" is not one
+             * pixel being some third value - it is the terminal's ground
+             * having more than one value along a run where nothing but
+             * root is behind it.  A window that mixes with a flat fill
+             * of its own has exactly one.
+             */
+            {
+                uint32_t seen = 0U;
+                uint32_t values[4];
+                uint32_t step;
+
+                for (step = 0U; step < 16U; ++step) {
+                    uint32_t pixel = trait_surface_read(&screen,
+                        sample_x + step, sample_y);
+                    uint32_t known = 0U;
+
+                    while (known < seen && values[known] != pixel) {
+                        ++known;
+                    }
+                    if (known == seen && seen < 4U) {
+                        values[seen++] = pixel;
+                    }
+                }
+                if (seen < 2U) {
+                    fprintf(stderr, "trait: sixteen pixels of the "
+                                    "terminal's ground over the root are "
+                                    "all #%06X - the weave behind it is "
+                                    "not showing through\n", values[0]);
+                    return 1;
+                }
+                root = seen;
+            }
             sheer = trait_surface_read(&screen, sample_x, sample_y);
             over = trait_surface_read(&screen, over_x, sample_y);
             if (sheer == over) {
@@ -1013,12 +1046,6 @@ int main(int argc, char **argv)
                                 "#%06X over the root and #%06X over a "
                                 "window - one flat tint is not "
                                 "transparency\n", sheer, over);
-                return 1;
-            }
-            if (sheer == 0x000000U || sheer == root) {
-                fprintf(stderr, "trait: the terminal's ground is #%06X - "
-                                "neither mixed with the root #%06X nor "
-                                "anything else\n", sheer, root);
                 return 1;
             }
             /* Off, and it is the terminal's black exactly - in both
@@ -1065,12 +1092,12 @@ int main(int argc, char **argv)
             trait_shell_draw_root();
             trait_shell_draw();
             printf("proof: gfetch printed the mark and its facts, and "
-                   "the terminal's ground reads #%06X where the #%06X "
-                   "root is behind it and #%06X where a window is - it "
-                   "is what is behind it that shows, not a tint - and "
-                   "the switch makes both black again and takes the ink "
-                   "back down to lxterminal's grey\n",
-                   sheer, root, over);
+                   "the terminal's ground carries %u values of the X "
+                   "root weave where the root is behind it and #%06X "
+                   "where a window is - it is what is behind it that "
+                   "shows, not a tint - and the switch makes both black "
+                   "again and takes the ink back down to lxterminal's "
+                   "grey\n", root, over);
         }
 
         printf("proof: %u keystrokes went through the shell to the "

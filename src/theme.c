@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 #include <trait/theme.h>
 
+#include "trait_relief.h"
+
 /*
  * FIVE THEMES, AND EVERY COLOUR IN THEM IS TAKEN FROM SOMEWHERE.
  *
@@ -22,21 +24,24 @@ static const struct trait_palette PALETTES[] = {
     {
         0xEDECEBU, 0xF2F1F0U, 0xD5D4D3U, 0xFFFFFFU, 0xE1E0DFU,
         0x000000U, 0x1A1A1AU, 0x86ABD9U, 0xFFFFFFU, 0xB6B3AFU, 0xFAFAF9U,
-        0x5B6472U, 0x38404CU, 0x3B3F46U, 0x2B2F35U, 0xD9DDE3U, 0x9AA0A8U
+        TRAIT_RELIEF_CLEARLOOKS_ACTIVE,
+        TRAIT_RELIEF_CLEARLOOKS_IDLE, 0xD9DDE3U, 0x9AA0A8U
     },
     /* Adwaita's GTK2 palette, from the gtkrc gnome-themes-extra-data
      * ships beside Clearlooks', with the same shade() factors applied. */
     {
         0xEDEDEDU, 0xF2F2F2U, 0xD5D5D5U, 0xFFFFFFU, 0xE1E1E1U,
         0x2E3436U, 0x2E3436U, 0x4A90D9U, 0xFFFFFFU, 0xC3C3C3U, 0xFBFBFBU,
-        0x5C616CU, 0x393F45U, 0x3C4048U, 0x2D3036U, 0xDEDEDEU, 0x93999FU
+        TRAIT_RELIEF_ADWAITA_ACTIVE,
+        TRAIT_RELIEF_ADWAITA_IDLE, 0xDEDEDEU, 0x93999FU
     },
     /* Adwaita-dark. The frame goes darker with it - a dark theme with a
      * light title bar is two themes at once. */
     {
         0x3C3C3CU, 0x464646U, 0x2E2E2EU, 0x2B2B2BU, 0x353535U,
         0xEEEEECU, 0xEEEEECU, 0x215D9CU, 0xFFFFFFU, 0x1B1B1BU, 0x4A4A4AU,
-        0x2F2F2FU, 0x1E1E1EU, 0x262626U, 0x1A1A1AU, 0xD8D8D6U, 0x8A8A88U
+        TRAIT_RELIEF_ADWAITA_DARK_ACTIVE,
+        TRAIT_RELIEF_ADWAITA_DARK_IDLE, 0xD8D8D6U, 0x8A8A88U
     },
     /*
      * Trait.  Sampled, not chosen:
@@ -49,7 +54,8 @@ static const struct trait_palette PALETTES[] = {
     {
         0x2B2B2BU, 0x333333U, 0x212121U, 0x232323U, 0x2A2A2AU,
         0xE8E6E0U, 0xE0DED6U, 0xB08020U, 0x1A1400U, 0x151515U, 0x3A3A3AU,
-        0x4A3C22U, 0x2A2114U, 0x272727U, 0x1C1C1CU, 0xE8E6E0U, 0x8A8780U
+        TRAIT_RELIEF_TRAIT_ACTIVE,
+        TRAIT_RELIEF_TRAIT_IDLE, 0xE8E6E0U, 0x8A8780U
     },
     /*
      * OpenRFS.  Sixteen colours and nothing between them.
@@ -77,10 +83,20 @@ static const struct trait_palette PALETTES[] = {
         0xFFFFFFU,   /* sel fg      white */
         0x000000U,   /* line        black */
         0xFFFFFFU,   /* line light  white, for the lit side of a bevel */
-        0x9E1B1BU, 0x9E1B1BU,   /* active frame, flat */
-        0xAAAAAAU, 0xAAAAAAU,   /* idle frame, flat */
-        0xFFFFFFU,   /* frame ink       white on the red */
-        0x000000U    /* frame ink dim   black on the grey */
+        /*
+         * The frame is fvwm's, not this project's.  OpenBSD's
+         * system.fvwmrc says HilightColor #bebebe blue for the focused
+         * window and Color #bebebe/darkred for every other one, and
+         * that is what these two lines are - ground, lit side, shadow
+         * side, the last two computed by fvwm's own GetHilite() and
+         * GetShadow().  The brand red is not here: a title bar in
+         * #9E1B1B is this desktop wearing fvwm's shape in its own
+         * colours, which is the thing it was asked not to be.
+         */
+        TRAIT_RELIEF_OPENRFS_ACTIVE,
+        TRAIT_RELIEF_OPENRFS_IDLE,
+        0xBEBEBEU,   /* frame ink       fvwm's #bebebe, both states */
+        0xBEBEBEU    /* frame ink dim   the same: fvwm dims the GROUND */
     }
 };
 

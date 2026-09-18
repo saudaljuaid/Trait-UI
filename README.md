@@ -12,9 +12,40 @@ X11, the way fvwm and twm leave it, drawn in sixteen colours.
 
 ![a session](build/session.png)
 
-The root is one flat colour, which is what fvwm comes up on and what
-OpenBSD therefore comes up on. There is no wallpaper image and nothing
-here decodes one.
+The root is the X root **weave**. Before any window manager runs, the X
+server fills its own root window with a four-by-four tile it builds in
+`MakeRootTile()` — `_back_msb[4] = { 0x11, 0x44, 0x22, 0x88 }`, one white
+pixel every fourth over black. It is the oldest thing on an X screen, it
+is what a bare OpenBSD session comes up on because nothing paints over
+it, and it is not a wallpaper: there is no image here and nothing decodes
+one. It was a flat grey for a while, which is what the weave looks like
+from across a room — and which a see-through window cannot prove anything
+against, since a flat colour mixed with black is a flat colour.
+
+The frames are fvwm's, at fvwm's own sizes, out of the file a fresh
+OpenBSD install reads — `xenocara/app/fvwm/sample.fvwmrc/system.fvwmrc`:
+
+```
+Style "*"  BorderWidth 7, HandleWidth 7
+Style "*"  Color #bebebe/darkred
+HilightColor #bebebe blue
+MenuStyle #4d4d4d #bebebe #e7e7e7 -adobe-times-bold-r-*-*-12-* fvwm
+```
+
+Seven pixels of border, a focused window in blue and every other one in
+dark red, a centred title, square buttons flush at the end of the bar,
+and a line across each corner where a drag stops changing one dimension
+and starts changing two. The border is the resize grip — `RESIZE_GRIP` in
+`shell.c` **is** `TRAIT_BORDER`, so what you drag is what you see; a
+modern frame hides that region and fvwm never did.
+
+Every bevel is two colours computed from its ground, and they are not
+chosen: `tools/make-relief.py` is fvwm's `GetHilite()` and `GetShadow()`
+from `libs/ColorUtils.c`, transcribed and run over each ground at build
+time. It runs in Python rather than in C because the medium-brightness
+branch converts to HLS in double precision and this desktop is built
+`-msoft-float`: a fixed-point re-derivation would be this project's
+arithmetic rather than fvwm's.
 
 glxgears runs in a window, because glxgears is a program. Not a
 screenshot of one: `tools/make-gears.py` takes the radii, tooth counts
@@ -172,7 +203,10 @@ file that defines it, and the table says which file.
 | What | Where it came from |
 | --- | --- |
 | The three gears, their radii, tooth counts and view angles | Mesa demos, `src/xdemos/glxgears.c`, Brian Paul — see `assets/gears/SOURCE.txt` |
-| A flat root, an icon at the foot per iconified window, a titled menu | fvwm, which is what `startx` gives you on OpenBSD |
+| The frame: `BorderWidth 7`, `#bebebe/darkred`, `HilightColor #bebebe blue`, the menu's `#4d4d4d #bebebe #e7e7e7` | `xenocara/app/fvwm/sample.fvwmrc/system.fvwmrc`, which is what `startx` reads on OpenBSD |
+| Every bevel's two relief colours | fvwm `libs/ColorUtils.c`, `GetHilite()` and `GetShadow()` — see `tools/make-relief.py` |
+| The root weave | the X server itself, `dix/window.c`, `MakeRootTile()` |
+| An icon at the foot per iconified window, a titled menu | fvwm |
 | The launcher's strip, padding, colours, `>` and keys | `dmenu.c` and `dmenu.1`, suckless — `bh = drw->fonts->h + 2`, `lrpad = drw->fonts->h`, prompt in `SchemeSel` |
 | The text: Misc-Fixed 6x13, 7x14, 9x18 and 8x16 | `xfonts-cyrillic`, the KOI8-R builds of the X11 bitmap faces — see `assets/fonts/SOURCE.txt` |
 | The mark gfetch prints | the owner's own drawing — see `assets/logo/SOURCE.txt` |
@@ -188,7 +222,7 @@ include/trait/surface.h    a 32-bit surface and a clipped plot
 include/trait/theme.h      the palette, as runtime state
 include/trait/font.h       text as coverage — three sizes and a mono face
 include/trait/input.h      pointer and key events
-include/trait/window.h     Openbox's frame
+include/trait/window.h     fvwm's frame
 include/trait/gears.h      glxgears, in a window
 include/trait/menu.h       the root menu
 include/trait/files.h      pcmanfm

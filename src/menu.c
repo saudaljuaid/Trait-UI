@@ -93,6 +93,53 @@ struct trait_rect trait_menu_bounds(struct trait_rect screen,
     return box;
 }
 
+/*
+ * The same two-colour bevel the window frame is built out of, at the one
+ * depth a menu uses.  See src/window.c: the colours are fvwm's, computed
+ * by its own GetHilite() and GetShadow().
+ */
+static void relieve(struct trait_surface *surface, struct trait_rect clip,
+    struct trait_rect box, uint32_t lit, uint32_t shade)
+{
+    uint32_t ring;
+
+    for (ring = 0U; ring < 2U; ++ring) {
+        uint32_t x;
+        uint32_t y;
+
+        if (box.width <= ring * 2U || box.height <= ring * 2U) {
+            return;
+        }
+        for (x = box.x + ring; x < box.x + box.width - ring; ++x) {
+            trait_surface_plot(surface, clip, x, box.y + ring, lit);
+            trait_surface_plot(surface, clip, x,
+                box.y + box.height - 1U - ring, shade);
+        }
+        for (y = box.y + ring; y < box.y + box.height - ring; ++y) {
+            trait_surface_plot(surface, clip, box.x + ring, y, lit);
+            trait_surface_plot(surface, clip,
+                box.x + box.width - 1U - ring, y, shade);
+        }
+    }
+}
+
+/*
+ * A GROOVE, not a rule.  fvwm separates a menu with two lines - the dark
+ * one above the light one - so the gap reads as cut into the slab rather
+ * than drawn on it.  One black line across is a list's idiom; this is a
+ * panel's, and an fvwm menu is a panel.
+ */
+static void groove(struct trait_surface *surface, struct trait_rect clip,
+    uint32_t from, uint32_t to, uint32_t y)
+{
+    uint32_t x;
+
+    for (x = from; x < to; ++x) {
+        trait_surface_plot(surface, clip, x, y, TRAIT_BG_ACTIVE);
+        trait_surface_plot(surface, clip, x, y + 1U, TRAIT_LINE_LIGHT);
+    }
+}
+
 void trait_menu_draw(struct trait_surface *surface,
     struct trait_rect screen, struct trait_rect button)
 {
@@ -104,35 +151,43 @@ void trait_menu_draw(struct trait_surface *surface,
     if (!trait_surface_valid(surface) || row_count == 0U) {
         return;
     }
+    /*
+     * AN FVWM MENU, which is a raised slab and nothing else.
+     *
+     * OpenBSD's system.fvwmrc sets it in one line:
+     *
+     *     MenuStyle #4d4d4d #bebebe #e7e7e7 <times bold 12> fvwm
+     *
+     * - a dark grey ink on a light grey ground, and the word `fvwm` at
+     * the end choosing the look.  There is no coloured title bar on it;
+     * the title is the same grey as everything else with a groove under
+     * it.  This menu had the window frame's own colour across the top,
+     * which is a panel menu's arrangement and not this one's.
+     *
+     * #bebebe is not among the sixteen colours this theme has, so the
+     * ground is TRAIT_BG - #AAAAAA, the palette's light grey.  What
+     * relieves it is white and the dark grey, and that is not a
+     * substitution either: fvwm's own GetShadow(#bebebe) comes out
+     * #5F5F5F, which is the palette's #555555 to within a rounding.
+     */
     trait_surface_fill(surface, box, box, TRAIT_BG);
+    relieve(surface, box, box, TRAIT_LINE_LIGHT, TRAIT_BG_ACTIVE);
     {
         struct trait_rect head = box;
-        uint32_t width;
+        uint32_t width = trait_font_width(TRAIT_MENU_TITLE);
 
         head.height = TRAIT_MENU_TITLE_HEIGHT;
-        trait_surface_fill(surface, box, head, TRAIT_FRAME_ACTIVE_TOP);
-        width = trait_font_width(TRAIT_MENU_TITLE);
         trait_font_draw(surface, head,
             head.x + (head.width > width ?
                 (head.width - width) / 2U : 0U),
-            head.y + 13U, TRAIT_MENU_TITLE, TRAIT_FRAME_INK);
-    }
-    for (edge = 0U; edge < box.width; ++edge) {
-        trait_surface_plot(surface, box, box.x + edge, box.y, TRAIT_LINE);
-        trait_surface_plot(surface, box, box.x + edge,
-                           box.y + box.height - 1U, TRAIT_LINE);
-    }
-    for (edge = 0U; edge < box.height; ++edge) {
-        trait_surface_plot(surface, box, box.x, box.y + edge, TRAIT_LINE);
-        trait_surface_plot(surface, box, box.x + box.width - 1U,
-                           box.y + edge, TRAIT_LINE);
+            head.y + 15U, TRAIT_MENU_TITLE, TRAIT_FG);
+        groove(surface, box, box.x + MENU_PAD,
+               box.x + box.width - MENU_PAD, head.y + head.height);
     }
     for (at = 0U; at < row_count; ++at) {
         if (rows[at].rule) {
-            for (edge = MENU_PAD; edge + MENU_PAD < box.width; ++edge) {
-                trait_surface_plot(surface, box, box.x + edge,
-                                   top + MENU_RULE / 2U, TRAIT_LINE);
-            }
+            groove(surface, box, box.x + MENU_PAD,
+                   box.x + box.width - MENU_PAD, top + MENU_RULE / 2U);
             top += MENU_RULE;
             continue;
         }

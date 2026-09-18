@@ -38,14 +38,6 @@
 #define TRAIT_RELIEF_ADWAITA_DARK_IDLE \
     0x262626U, 0x929292U, 0x676767U
 
-/* the onion's amber, darkened for a frame */
-#define TRAIT_RELIEF_TRAIT_ACTIVE \
-    0x4A3C22U, 0x725724U, 0x201C16U
-
-/* the wallpaper's charcoal */
-#define TRAIT_RELIEF_TRAIT_IDLE \
-    0x272727U, 0x363636U, 0x131313U
-
 /* fvwm's HilightColor #bebebe blue - the focused window */
 #define TRAIT_RELIEF_OPENRFS_ACTIVE \
     0x0000FFU, 0x6666FFU, 0x1F1F5FU

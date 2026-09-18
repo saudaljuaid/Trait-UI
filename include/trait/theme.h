@@ -57,8 +57,9 @@ struct trait_palette {
     uint32_t frame_ink_dim;
 };
 
-/* The one a fresh session comes up in. */
-#define TRAIT_THEME_DEFAULT 4U
+/* The one a fresh session comes up in.  It was 4 while there were
+ * five themes; the Trait one went and OpenRFS moved up. */
+#define TRAIT_THEME_DEFAULT 3U
 
 const struct trait_palette *trait_theme(void);
 

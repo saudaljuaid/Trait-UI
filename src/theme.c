@@ -4,11 +4,19 @@
 #include "trait_relief.h"
 
 /*
- * FIVE THEMES, AND EVERY COLOUR IN THEM IS TAKEN FROM SOMEWHERE.
+ * FOUR THEMES, AND EVERY COLOUR IN THEM IS TAKEN FROM SOMEWHERE.
  *
  * Clearlooks and Adwaita are the palettes Debian's own gtkrc files carry;
  * Adwaita-dark is the dark variant's.  Those three are the GTK themes on
  * the machine, and nothing in them is a colour somebody liked.
+ *
+ * There were five.  The fourth was called Trait - this project's name
+ * two names ago - and its two colours were sampled from the onion mark
+ * and from the wallpaper, both of which were deleted along with the rest
+ * of the artwork the project has outgrown.  A theme named after a
+ * retired project, drawn from files that are not in the tree, listed in
+ * Settings where somebody could pick it: that is three reasons and any
+ * one of them would have done.
  *
  * The fourth is NOT a GTK theme and does not pretend to be one - it is
  * this desktop's own, and it is here because the desktop had an identity
@@ -46,21 +54,6 @@ static const struct trait_palette PALETTES[] = {
         0xEEEEECU, 0xEEEEECU, 0x215D9CU, 0xFFFFFFU, 0x1B1B1BU, 0x4A4A4AU,
         TRAIT_RELIEF_ADWAITA_DARK_ACTIVE,
         TRAIT_RELIEF_ADWAITA_DARK_IDLE, 0xD8D8D6U, 0x8A8A88U
-    },
-    /*
-     * Trait.  Sampled, not chosen:
-     *   #212121  the wallpaper's ground, from the corner of the PNG
-     *   #B08020  the onion's amber, its sixth most common opaque colour
-     *   #503000  the onion's darkest amber, which the title ramp ended on
-     * (both files are gone from the tree - see above)
-     * The selected foreground is dark because the selection is GOLD and
-     * white on gold is the one pairing this palette could get wrong.
-     */
-    {
-        0x2B2B2BU, 0x333333U, 0x212121U, 0x232323U, 0x2A2A2AU,
-        0xE8E6E0U, 0xE0DED6U, 0xB08020U, 0x1A1400U, 0x151515U, 0x3A3A3AU,
-        TRAIT_RELIEF_TRAIT_ACTIVE,
-        TRAIT_RELIEF_TRAIT_IDLE, 0xE8E6E0U, 0x8A8780U
     },
     /*
      * OpenRFS.  Sixteen colours and nothing between them.
@@ -106,7 +99,7 @@ static const struct trait_palette PALETTES[] = {
 };
 
 static const char *const NAMES[] = {
-    "Clearlooks", "Adwaita", "Adwaita-dark", "Trait", "OpenRFS"
+    "Clearlooks", "Adwaita", "Adwaita-dark", "OpenRFS"
 };
 
 #define THEME_COUNT (sizeof(PALETTES) / sizeof(PALETTES[0]))

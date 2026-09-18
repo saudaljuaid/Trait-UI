@@ -137,8 +137,6 @@ GROUNDS = (
     ("ADWAITA_IDLE", 0x3C4048, "Adwaita's unfocused title bar"),
     ("ADWAITA_DARK_ACTIVE", 0x2F2F2F, "Adwaita-dark's own title bar"),
     ("ADWAITA_DARK_IDLE", 0x262626, "Adwaita-dark's unfocused title bar"),
-    ("TRAIT_ACTIVE", 0x4A3C22, "the onion's amber, darkened for a frame"),
-    ("TRAIT_IDLE", 0x272727, "the wallpaper's charcoal"),
     ("OPENRFS_ACTIVE", 0x0000FF,
      "fvwm's HilightColor #bebebe blue - the focused window"),
     ("OPENRFS_IDLE", 0x8B0000,

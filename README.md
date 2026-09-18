@@ -72,6 +72,15 @@ terminal has always had: no compositor and no alpha channel, just a
 window that is drawn after what is behind it and mixes with what it
 finds. One switch on the Desktop page makes it opaque.
 
+Its foreground follows its ground. There is no compositor to hold the
+text opaque while the ground goes clear, so the ground rises towards the
+ink and a light grey on a mid grey is the first thing to become
+uncomfortable — which is why a sheer terminal writes in white and an
+opaque one in lxterminal's own `#D3D7CF`. The contrast the transparency
+spends is bought back by the foreground rather than paid for by keeping
+the ground dark, and that is what lets it sit at 140 of 255 rather than
+208.
+
 The launcher is dmenu's. A strip across the top of the screen: a prompt,
 what you have typed, and the programs it matches laid out along the rest
 of it with one selected. Typing narrows them, the arrows move along,

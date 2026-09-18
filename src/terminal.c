@@ -20,21 +20,30 @@
  * through, which is what `xterm -tr` has done since before there was a
  * compositor to do it properly.
  *
- * 170.  It was 208, which is see-through on paper and not on a screen:
- * over a flat root you cannot tell.  140 and 110 were tried as well and
- * both are past the point where light grey text on a mid grey ground
- * stops being comfortable - which is a real limit of this and not a
- * number picked for looks, because there is no compositor to keep the
- * text opaque while the ground goes clear.  At 170 the file manager
- * behind the terminal is plainly visible through it and the prompt is
- * still easy to read.
+ * 140.  It was 208, which is see-through on paper and not on a screen -
+ * over a flat root you cannot tell - and then 170, which is.  140 was
+ * too far while the ink was lxterminal's light grey, and is not now
+ * that a sheer terminal writes in white: the contrast the transparency
+ * spends is bought back by the foreground rather than paid for by
+ * keeping the ground dark.  See TERM_INK_SHEER.
  */
 #define TERM_OPAQUE 255U
-#define TERM_SHEER 170U
+#define TERM_SHEER 140U
 
 static uint32_t term_opacity = TERM_SHEER;
-#define TERM_INK 0xD3D7CFU
-#define TERM_PROMPT_INK 0xD3D7CFU
+/*
+ * TWO FOREGROUNDS, AND WHICH ONE IS IN USE DEPENDS ON THE GROUND.
+ *
+ * #D3D7CF is lxterminal's own, and it is right on a black terminal.
+ * It is not right on a see-through one: pseudo-transparency has no
+ * compositor to hold the text opaque while the ground goes clear, so
+ * the ground rises towards the ink and a light grey on a mid grey is
+ * the first thing to become uncomfortable.  White buys back the
+ * contrast the transparency spends, which is what everybody who runs
+ * xterm -tr hard ends up doing.
+ */
+#define TERM_INK_OPAQUE 0xD3D7CFU
+#define TERM_INK_SHEER 0xFFFFFFU
 #define TERM_PAD 4U
 
 /* ONE STRING.  uname -a prints it and gfetch prints it, and two copies
@@ -61,13 +70,32 @@ static const char PROMPT[] = "user@openrfs:~$ ";
  */
 #define TERM_INKS 5U
 
-static const uint32_t TERM_INK_TABLE[TERM_INKS] = {
-    TERM_INK,               /* 0: everything printed the ordinary way */
-    0x000000U,              /* 1: a pupil, and nothing else */
-    TRAIT_LOGO_BODY,        /* 2: the fish */
-    TRAIT_LOGO_TONGUE,      /* 3: its tongue */
-    TRAIT_LOGO_EYE          /* 4: the white of an eye */
-};
+uint32_t trait_terminal_ink(void)
+{
+    return term_opacity < TERM_OPAQUE ? TERM_INK_SHEER : TERM_INK_OPAQUE;
+}
+
+static uint32_t term_ink(void)
+{
+    return trait_terminal_ink();
+}
+
+static uint32_t ink_of(uint8_t code)
+{
+    switch (code) {
+    case 1U:
+        return 0x000000U;       /* a pupil, and nothing else */
+    case 2U:
+        return TRAIT_LOGO_BODY;
+    case 3U:
+        return TRAIT_LOGO_TONGUE;
+    case 4U:
+        return TRAIT_LOGO_EYE;
+    case 0U:
+    default:
+        return term_ink();      /* everything printed the ordinary way */
+    }
+}
 
 static char lines[TRAIT_TERM_HISTORY][TRAIT_TERM_LINE_BYTES];
 static uint8_t inks[TRAIT_TERM_HISTORY][TRAIT_TERM_LINE_BYTES];
@@ -561,8 +589,7 @@ void trait_terminal_draw(struct trait_surface *surface,
                 }
                 run[length] = '\0';
                 pen = draw_mono(surface, client, pen, baseline, run,
-                    TERM_INK_TABLE[ink[from] < TERM_INKS ?
-                                   ink[from] : 0U]);
+                    ink_of(ink[from] < TERM_INKS ? ink[from] : 0U));
                 from = to;
             }
         }
@@ -580,14 +607,14 @@ void trait_terminal_draw(struct trait_surface *surface,
 
         if (baseline + TRAIT_MONO_DESCENT <= client.y + client.height) {
             pen = draw_mono(surface, client, client.x + TERM_PAD, baseline,
-                            PROMPT, TERM_PROMPT_INK);
+                            PROMPT, term_ink());
             pen = draw_mono(surface, client, pen, baseline, input,
-                            TERM_INK);
+                            term_ink());
             cursor.x = pen;
             cursor.y = baseline - TRAIT_MONO_ASCENT + 2U;
             cursor.width = advance;
             cursor.height = TRAIT_MONO_HEIGHT - 3U;
-            trait_surface_fill(surface, client, cursor, TERM_INK);
+            trait_surface_fill(surface, client, cursor, term_ink());
         }
     }
 }

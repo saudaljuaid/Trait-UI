@@ -976,13 +976,35 @@ int main(int argc, char **argv)
                                 "not black\n", solid);
                 return 1;
             }
+            /*
+             * AND THE INK FOLLOWS THE GROUND.  Transparency has no
+             * compositor to hold the text opaque while the ground goes
+             * clear, so the contrast it spends has to be bought back by
+             * the foreground: a sheer terminal writes in white and an
+             * opaque one in lxterminal's own light grey.  A switch that
+             * moved one without the other would be the reason the text
+             * got hard to read.
+             */
+            {
+                uint32_t was = trait_terminal_ink();
+
+                trait_terminal_set_transparent(true);
+                if (trait_terminal_ink() == was ||
+                        trait_terminal_ink() != 0xFFFFFFU) {
+                    fprintf(stderr, "trait: a see-through terminal "
+                                    "writes in #%06X, not white\n",
+                            trait_terminal_ink());
+                    return 1;
+                }
+            }
             trait_terminal_set_transparent(true);
             trait_shell_draw_root();
             trait_shell_draw();
             printf("proof: gfetch printed the mark and its facts, and the "
                    "terminal's ground over a #%06X root reads #%06X "
                    "rather than #000000 - it is mixed with what is "
-                   "behind it, and the switch makes it black again\n",
+                   "behind it - and the switch makes it black again and "
+                   "takes the ink back down to lxterminal's grey\n",
                    root, sheer);
         }
 

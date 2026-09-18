@@ -56,6 +56,11 @@ void trait_terminal_set_opacity(uint32_t alpha);
 uint32_t trait_terminal_opacity(void);
 bool trait_terminal_transparent(void);
 void trait_terminal_set_transparent(bool sheer);
+/* The foreground in use, which follows the ground: white while the
+ * terminal is see-through, lxterminal's own light grey while it is not.
+ * There is no compositor to hold the ink opaque as the ground clears,
+ * so the contrast the transparency spends is bought back here. */
+uint32_t trait_terminal_ink(void);
 uint32_t trait_terminal_row_count(void);
 const char *trait_terminal_row(uint32_t at);
 

@@ -27,6 +27,7 @@
 
 #include "png.h"
 #include "trait_gears_art.h"
+#include "trait_logo.h"
 
 #define SCREEN_WIDTH 1280U
 #define SCREEN_HEIGHT 800U
@@ -895,6 +896,46 @@ int main(int argc, char **argv)
                                 "checked facts\n", seen);
                 return 1;
             }
+        }
+        trait_shell_draw_root();
+        trait_shell_draw();
+        /*
+         * AND THE FISH IS THE FISH'S COLOUR.  The face is a bitmap
+         * font, so a lit pixel is the ink exactly rather than a blend
+         * of it - which means the mark's own red has to be ON SCREEN,
+         * not merely in a table.
+         */
+        {
+            struct trait_rect client =
+                trait_window_client(trait_shell_window(term));
+            uint32_t body = 0U;
+            uint32_t tongue = 0U;
+            uint32_t x;
+            uint32_t y;
+
+            for (y = client.y; y < client.y + client.height; ++y) {
+                for (x = client.x; x < client.x + client.width; ++x) {
+                    uint32_t pixel = trait_surface_read(&screen, x, y);
+
+                    if (pixel == TRAIT_LOGO_BODY) {
+                        ++body;
+                    } else if (pixel == TRAIT_LOGO_TONGUE) {
+                        ++tongue;
+                    }
+                }
+            }
+            if (body == 0U || tongue == 0U) {
+                fprintf(stderr, "trait: gfetch drew %u pixels of #%06X "
+                                "and %u of #%06X - the mark is not in "
+                                "its own colours\n",
+                        body, TRAIT_LOGO_BODY, tongue,
+                        TRAIT_LOGO_TONGUE);
+                return 1;
+            }
+            printf("proof: the mark came out in the drawing's own reds - "
+                   "%u pixels of #%06X and %u of #%06X, both averaged "
+                   "out of the PNG rather than chosen\n",
+                   body, TRAIT_LOGO_BODY, tongue, TRAIT_LOGO_TONGUE);
         }
         trait_shell_draw_root();
         trait_shell_draw();

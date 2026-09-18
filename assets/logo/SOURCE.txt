@@ -1,20 +1,26 @@
-openrfs-mark-512.png is the OpenRFS mark.
+openrfs-logo-source.jpeg is the OpenRFS mark: Saud Aljuaid's own
+drawing of the fish, 1600 x 1049, sha256
 
-  512 x 512 RGBA, sha256
-  11b2b75982dc550277bed8eef32f2b701a076384f49d99bf6aeeff94888599fb
+  0b0338127f35c5655376a9d18b16e9398558032679fd8b5ff7c6bf79d88302b3
 
-Saud Aljuaid's own drawing of the OpenRFS fish. It is copied here from
-the website repository, where it is produced from the original
-assets/img/logo-source.jpeg (1600 x 1049, the drawing itself) by that
-repository's tools/make-mark.py, which trims the image to its ink and
-lifts the white ground to transparency. Nothing is recoloured,
-outlined, rotated or composited.
+copied untouched from the website repository, where the same file is
+the source of every mark-*.png and the favicon.
 
-tools/make-logo.py reduces this file to the characters gfetch prints,
-and src/trait_logo.h is the result. Four things in the drawing become
-four characters - the paper, the black outline, the red body and the
-pink tongue - because a luminance ramp turns a flat red fish into a
-featureless blob.
+openrfs-mark-512.png is that repository's 512-pixel build of it, kept
+here for reference. gfetch does NOT use it, and the reason is worth
+writing down: the build lifts the drawing's white to transparency, and
+the fish's eyes are white, so in the trimmed mark the eyes are holes.
+A reduction of it comes out with a blank-faced fish. That is invisible
+on a white page and it is not invisible anywhere else.
+
+tools/make-logo.py therefore reads the drawing. Five things in it
+become five characters - the paper, the black outline, the red body,
+the pink tongue and the white of an eye - because a luminance ramp
+turns a flat red fish into a featureless blob. Which white is paper and
+which is an eye is answered by a flood fill from the border: paper is
+the white you can reach from the edge. src/trait_logo.h is the result,
+and the colours in it are the mean of every pixel that fell into each
+class rather than values anybody picked.
 
 ---
 

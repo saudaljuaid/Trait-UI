@@ -26,10 +26,25 @@ when the shades run out.
 
 `gfetch` prints the mark and the facts, the way every fetch has since
 screenfetch. The mark is the OpenRFS fish reduced to characters from the
-owner's own drawing; the facts are read from the things they name - the
-theme from the theme, the font from the generated face's metrics, the
-package count from the package manager - so there is no figure in it
-that cannot be traced.
+owner's own drawing, and inked in that drawing's own two reds — they are
+the mean of every pixel that came out body and every pixel that came out
+tongue, so they are sampled rather than picked. They are the only two
+colours on this desktop outside the sixteen, and that is the reason.
+
+The fish's black outline is not among them. It is black in the drawing,
+and black on a black terminal is a line you cannot see, so it takes the
+terminal's own foreground and reads as the line it is.
+
+The reduction reads the DRAWING, not the trimmed mark the website
+builds from it. That build lifts the white to transparency and the
+fish's eyes are white, so in the mark they are holes and the fish comes
+out blank-faced. Which white is paper and which is an eye is answered
+by a flood fill from the border: paper is the white you can reach from
+the edge.
+
+The facts are read from the things they name — the theme from the theme,
+the font from the generated face's metrics, the package count from the
+package manager — so there is no figure in it that cannot be traced.
 
 The terminal is see-through, which is the pseudo-transparency an X
 terminal has always had: no compositor and no alpha channel, just a
@@ -152,7 +167,7 @@ happen ahead of time:
 ```sh
 python3 tools/make-font.py <font.pcf.gz> src/trait_font_<WxH>.h trait_font_<WxH>
 python3 tools/make-gears.py src/trait_gears_art.h
-python3 tools/make-logo.py assets/logo/openrfs-mark-512.png src/trait_logo.h 32 15
+python3 tools/make-logo.py assets/logo/openrfs-logo-source.jpeg src/trait_logo.h 36 17
 python3 tools/make-icons.py assets/icons/gentoo src/trait_files_art.h
 ```
 

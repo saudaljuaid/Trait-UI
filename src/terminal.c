@@ -37,7 +37,33 @@ static const char KERNEL[] = "OpenRFS 2.4 amd64";
 
 static const char PROMPT[] = "user@openrfs:~$ ";
 
+/*
+ * ONE INK CODE PER CHARACTER, beside the characters.
+ *
+ * A terminal prints what the program emits and gfetch emits a picture,
+ * so this is the smallest thing that can carry one: a parallel plane of
+ * indexes into the short table below, where 0 is the terminal's own
+ * foreground and everything printed the ordinary way is 0.
+ *
+ * The two reds are the MARK'S OWN, averaged out of the drawing by
+ * tools/make-logo.py rather than picked to look about right - which is
+ * why they are the only two colours on this desktop that are not one of
+ * the sixteen.  The outline is not among them: it is black in the
+ * drawing and black on a black terminal is a line you cannot see, so it
+ * takes the terminal's foreground and reads as the line it is.
+ */
+#define TERM_INKS 5U
+
+static const uint32_t TERM_INK_TABLE[TERM_INKS] = {
+    TERM_INK,               /* 0: everything printed the ordinary way */
+    TERM_INK,               /* 1: the outline, in the same ink */
+    TRAIT_LOGO_BODY,        /* 2: the fish */
+    TRAIT_LOGO_TONGUE,      /* 3: its tongue */
+    TRAIT_LOGO_EYE          /* 4: the white of an eye */
+};
+
 static char lines[TRAIT_TERM_HISTORY][TRAIT_TERM_LINE_BYTES];
+static uint8_t inks[TRAIT_TERM_HISTORY][TRAIT_TERM_LINE_BYTES];
 static uint32_t line_count;
 static uint32_t scrolled;
 static char input[TRAIT_TERM_LINE_BYTES];
@@ -132,13 +158,17 @@ const char *trait_terminal_input(void)
 
 /* The scrollback is a window, not a buffer: once it is full the oldest
  * line goes, which is what a terminal of this size does. */
-void trait_terminal_print(const char *line)
+static void print_inked(const char *line, const char *ink)
 {
     uint32_t at;
+    uint32_t column;
 
     if (line_count >= TRAIT_TERM_HISTORY) {
         for (at = 1U; at < TRAIT_TERM_HISTORY; ++at) {
             copy(lines[at - 1U], lines[at], TRAIT_TERM_LINE_BYTES);
+            for (column = 0U; column < TRAIT_TERM_LINE_BYTES; ++column) {
+                inks[at - 1U][column] = inks[at][column];
+            }
         }
         line_count = TRAIT_TERM_HISTORY - 1U;
     }
@@ -146,8 +176,33 @@ void trait_terminal_print(const char *line)
      * a terminal does: output you scrolled away from is not output you
      * want to miss. */
     scrolled = 0U;
-    copy(lines[line_count++], line == NULL ? "" : line,
+    copy(lines[line_count], line == NULL ? "" : line,
          TRAIT_TERM_LINE_BYTES);
+    for (column = 0U; column < TRAIT_TERM_LINE_BYTES; ++column) {
+        uint8_t code = 0U;
+
+        /* An ink string shorter than the line inks the rest of it in the
+         * terminal's own foreground, which is what the facts beside the
+         * mark want. */
+        if (ink != NULL && column < TRAIT_TERM_LINE_BYTES) {
+            uint32_t scan = 0U;
+
+            while (scan < column && ink[scan] != '\0') {
+                ++scan;
+            }
+            if (scan == column && ink[column] >= '0' &&
+                    ink[column] < (char)('0' + (char)TERM_INKS)) {
+                code = (uint8_t)(ink[column] - '0');
+            }
+        }
+        inks[line_count][column] = code;
+    }
+    ++line_count;
+}
+
+void trait_terminal_print(const char *line)
+{
+    print_inked(line, NULL);
 }
 
 uint32_t trait_terminal_row_count(void)
@@ -283,6 +338,7 @@ static void gfetch(void)
 
     for (at = 0U; at < TRAIT_LOGO_ROWS; ++at) {
         char line[TRAIT_TERM_LINE_BYTES];
+        char ink[TRAIT_TERM_LINE_BYTES];
         uint32_t width = 0U;
 
         copy(line, trait_logo[at], sizeof(line));
@@ -297,6 +353,7 @@ static void gfetch(void)
             ++width;
             line[width] = '\0';
         }
+        copy(ink, trait_logo_ink[at], sizeof(ink));
         if (at < count) {
             append(line, facts[at], sizeof(line));
         }
@@ -315,7 +372,7 @@ static void gfetch(void)
             }
             line[last] = '\0';
         }
-        trait_terminal_print(line);
+        print_inked(line, ink);
     }
 }
 
@@ -468,8 +525,32 @@ void trait_terminal_draw(struct trait_surface *surface,
         if (baseline + TRAIT_MONO_DESCENT > client.y + client.height) {
             break;
         }
-        (void)draw_mono(surface, client, client.x + TERM_PAD, baseline,
-                        lines[first + at], TERM_INK);
+        {
+            /* One run per ink rather than one call per line: a row of
+             * the mark is mostly one colour, so this is a handful of
+             * calls and not one per character. */
+            const char *text = lines[first + at];
+            const uint8_t *ink = inks[first + at];
+            uint32_t pen = client.x + TERM_PAD;
+            uint32_t from = 0U;
+
+            while (text[from] != '\0') {
+                char run[TRAIT_TERM_LINE_BYTES];
+                uint32_t to = from;
+                uint32_t length = 0U;
+
+                while (text[to] != '\0' && ink[to] == ink[from] &&
+                        length + 1U < sizeof(run)) {
+                    run[length++] = text[to];
+                    ++to;
+                }
+                run[length] = '\0';
+                pen = draw_mono(surface, client, pen, baseline, run,
+                    TERM_INK_TABLE[ink[from] < TERM_INKS ?
+                                   ink[from] : 0U]);
+                from = to;
+            }
+        }
     }
     /* The live prompt, and a BLOCK cursor after it - the old terminal's
      * cursor, not a thin bar. */

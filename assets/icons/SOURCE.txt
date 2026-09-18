@@ -1,31 +1,17 @@
-Where every icon here came from, and under what licence.
+Where the icons come from, and under what licence.
 
-nuoveXT2/  -- Debian package lxde-icon-theme 0.5.1-2.1, from
-   https://deb.debian.org/debian/pool/main/l/lxde-icon-theme/
-   Upstream: LXDE-Icon-Theme, http://sourceforge.net/projects/lxde/files/
-   Copyright 2007 Alexandre Moore (saki) <http://sa-ki.deviantart.com/>
-             2008-2009 Hong Jen Yee (PCMan) <pcman.tw@gmail.com>
-   Licence: LGPL-3 or later.
-   The 24x24 cells are taken unaltered:
-     browser.png, web-browser.png   the panel's web-browser launcher
-     file-manager.png               the panel's file-manager launcher
-     gnome-logout.png               } the red power mark at the panel's
-     system-log-out.png             } right end
-     system-lock-screen.png         the screen lock beside it
-     terminal.png                   } the black terminal with a >_ prompt,
-     gnome-terminal.png             } which is the era's own mark and not
-     utilities-terminal.png         } a modern flat one
+gentoo/  -- the gentoo file manager's icon set, Johan Hanson 1998,
+   GPL-2 or later, copied byte for byte.  See gentoo/SOURCE.txt for the
+   package, the paths, the checksums and what each one is used as.
 
-lxpanel/   -- Debian packages lxde-common 0.99.2-4 and lxpanel-data
-   0.11.1-2, from https://deb.debian.org/debian/pool/main/l/
-   Upstream: LXDE, http://lxde.org/
-   Licence: GPL-2 or later (lxde-common), GPL-2 or later (lxpanel-data).
-     lxde-icon.png      the menu button's mark at the panel's left end
-     window-manager.png the "iconify everything" button (wincmd)
-     background.png     the panel's own background gradient
-     file-manager.png, stock_volume.png
+That is the whole of it now.  Two sets that used to be here are gone:
 
-NOTHING HERE WAS REDRAWN.  Each file is the byte-for-byte original from
-the package named above; where this project needed a mark that no
-package ships, it is stated as this project's own in the SOURCE.txt
-beside it.
+   nuoveXT2/ and lxpanel/ were Debian's, vendored while this desktop was
+   a copy of Debian's LXDE.  They went out with the panel: the launchers
+   and the tray were the only things drawing them, and a desktop with no
+   bar has no launcher bar to fill.
+
+   drawn/ was this project's own, nine icons laid out from geometry in
+   the sixteen colours.  They were flat and consistent and they looked
+   like a style rather than like icons.  Drawing a thing that already
+   exists, badly, is not the same as having it.

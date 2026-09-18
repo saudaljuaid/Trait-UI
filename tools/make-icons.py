@@ -1,173 +1,145 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
-"""Draw the file manager's icons, in the palette, at the sizes it uses.
+"""Unpack the vendored XPMs into the table the file manager draws from.
 
-    python3 tools/make-icons.py [out_dir] [header]
+    python3 tools/make-icons.py [dir] [out.h]
 
-These were Debian's - the nuoveXT2 set that LXDE ships, vendored under
-assets/icons and recorded in its SOURCE.md. They are shaded, rounded and
-antialiased, which was right while the desktop was LXDE and is wrong now
-that everything else on the screen is one of sixteen flat colours: the
-icons were the last thing left that was not.
+NOTHING IS DRAWN HERE.  An earlier version of this file drew the icons
+from geometry - flat boxes in the sixteen colours - and they came out
+looking like a style rather than like icons.  These are Johan Hanson's,
+shipped with the gentoo file manager in 1998, copied byte for byte into
+assets/icons/gentoo and read back out here.  See the SOURCE.txt beside
+them.
 
-Drawn, not scaled down from one master. A folder at 16 pixels is not a
-folder at 48 with the detail removed; it is a different drawing of the
-same idea, and the 16 here is laid out on its own grid so its edges land
-on whole pixels.
+There is ONE SIZE, because there is one size: 16 by 15, drawn a pixel at
+a time for a 1998 screen.  Scaling it up to 48 for an icon view would be
+a picture of an icon rather than an icon, so the icon view draws the 16
+as well and the list view - which is what gentoo itself was - is what a
+Files window opens in.
 
-Every colour is an index into the same sixteen tools/render.c paints
-the console with.
+The cell is padded to 16 by 16 so the table is square.  The pad is a row
+of transparent pixels at the foot; not one pixel of the drawing moves.
 """
+import gzip
+import re
 import sys
 from pathlib import Path
 
-from PIL import Image, ImageDraw
+from PIL import Image
 
-BLACK, BLUE, GREEN, CYAN = 0x000000, 0x0000AA, 0x00AA00, 0x00AAAA
-RED, MAGENTA, BROWN, GREY = 0x9E1B1B, 0xAA00AA, 0xAA5500, 0xAAAAAA
-DARK, HIBLUE, HIGREEN, HICYAN = 0x555555, 0x5555FF, 0x55FF55, 0x55FFFF
-HIRED, HIMAG, YELLOW, WHITE = 0xE8564B, 0xFF55FF, 0xFFFF55, 0xFFFFFF
+SIZE = 16
 
-SIZES = (16, 48)
+# What the file manager asks for, and which of the vendored files
+# answers.  Two names can share a file: a home folder IS a folder, and
+# gentoo drew two of them rather than a special one.
+NAMES = {
+    "folder": "Directory",
+    "user-home": "Directory2",
+    "user-desktop": "Directory",
+    "drive-harddisk": "Harddrive",
+    "text-x-generic": "txt",
+    "image-x-generic": "Image",
+    "audio-x-generic": "Speaker",
+    "application-x-executable": "Executable",
+}
 
-
-def rgba(colour, alpha=255):
-    return ((colour >> 16) & 0xFF, (colour >> 8) & 0xFF, colour & 0xFF,
-            alpha)
-
-
-class Pen:
-    """Draws on a unit square, so one routine serves both sizes."""
-
-    def __init__(self, size):
-        self.size = size
-        self.im = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-        self.d = ImageDraw.Draw(self.im)
-        # One pixel at 16, three at 48: an outline that scales with the
-        # icon stops being an outline and becomes a border.
-        self.line = 1 if size <= 24 else 2
-
-    def px(self, u):
-        return int(round(u * self.size))
-
-    def box(self, x0, y0, x1, y1, fill, outline=BLACK):
-        self.d.rectangle([self.px(x0), self.px(y0),
-                          self.px(x1) - 1, self.px(y1) - 1],
-                         fill=rgba(fill),
-                         outline=rgba(outline) if outline is not None
-                         else None,
-                         width=self.line)
-
-    def poly(self, points, fill, outline=BLACK):
-        self.d.polygon([(self.px(x), self.px(y)) for x, y in points],
-                       fill=rgba(fill),
-                       outline=rgba(outline) if outline is not None
-                       else None,
-                       width=self.line)
-
-    def line_h(self, x0, x1, y, colour):
-        thickness = max(1, self.size // 16)
-        self.d.rectangle([self.px(x0), self.px(y),
-                          self.px(x1) - 1, self.px(y) + thickness - 1],
-                         fill=rgba(colour))
-
-
-def folder(p):
-    """A tab and a body. The tab is what makes it a folder at 16px."""
-    p.box(0.06, 0.24, 0.44, 0.36, YELLOW)
-    p.box(0.06, 0.32, 0.94, 0.82, YELLOW)
-
-
-def page(p, mark=None):
-    p.poly([(0.20, 0.10), (0.66, 0.10), (0.80, 0.26),
-            (0.80, 0.90), (0.20, 0.90)], WHITE)
-    # The folded corner, which is the whole reason a page reads as a page.
-    p.poly([(0.66, 0.10), (0.80, 0.26), (0.66, 0.26)], GREY)
-    if mark is not None:
-        mark(p)
-
-
-def text_lines(p):
-    for y in (0.40, 0.52, 0.64, 0.76):
-        p.line_h(0.30, 0.70, y, DARK)
-
-
-def image(p):
-    p.box(0.10, 0.20, 0.90, 0.80, HICYAN)
-    p.poly([(0.18, 0.72), (0.40, 0.42), (0.56, 0.62),
-            (0.66, 0.50), (0.82, 0.72)], GREEN, outline=None)
-    p.box(0.66, 0.28, 0.78, 0.40, YELLOW)
-
-
-def audio(p):
-    p.box(0.22, 0.62, 0.44, 0.84, HIMAG)
-    p.box(0.58, 0.54, 0.80, 0.76, HIMAG)
-    p.box(0.40, 0.14, 0.46, 0.68, HIMAG)
-    p.box(0.76, 0.14, 0.82, 0.60, HIMAG)
-    p.box(0.40, 0.14, 0.82, 0.24, HIMAG)
-
-
-def executable(p):
-    """A gear, because that is what an executable has always been."""
-    p.box(0.16, 0.16, 0.84, 0.84, HIGREEN)
-    p.box(0.38, 0.38, 0.62, 0.62, BLACK, outline=None)
-
-
-def drive(p):
-    p.box(0.08, 0.30, 0.92, 0.70, DARK)
-    p.box(0.68, 0.44, 0.80, 0.56, HIGREEN)
-
-
-def home(p):
-    p.poly([(0.50, 0.10), (0.94, 0.48), (0.06, 0.48)], RED)
-    p.box(0.18, 0.46, 0.82, 0.90, RED)
-    p.box(0.40, 0.62, 0.60, 0.90, BLACK)
-
-
-def desktop(p):
-    p.box(0.08, 0.20, 0.92, 0.68, BLUE)
-    p.box(0.18, 0.28, 0.82, 0.60, HIBLUE, outline=None)
-    p.box(0.38, 0.70, 0.62, 0.80, DARK)
-    p.box(0.24, 0.80, 0.76, 0.88, DARK)
-
-
-def trash(p):
-    p.box(0.20, 0.24, 0.80, 0.90, GREY)
-    p.box(0.12, 0.14, 0.88, 0.26, DARK)
-    p.box(0.40, 0.06, 0.60, 0.16, DARK)
-
-
-ICONS = {
-    "folder": folder,
-    "text-x-generic": lambda p: page(p, text_lines),
-    "application-x-executable": executable,
-    "image-x-generic": image,
-    "audio-x-generic": audio,
-    "drive-harddisk": drive,
-    "user-home": home,
-    "user-desktop": desktop,
-    "user-trash": trash,
+# The X11 colour names these files actually use, and nothing else: a
+# table of every name X ships would be a table mostly of guesses.
+X11 = {
+    "black": (0, 0, 0), "white": (255, 255, 255),
+    "red": (255, 0, 0), "green": (0, 255, 0), "blue": (0, 0, 255),
+    "yellow": (255, 255, 0), "cyan": (0, 255, 255),
+    "magenta": (255, 0, 255),
+    "gray": (190, 190, 190), "grey": (190, 190, 190),
+    "none": None,
 }
 
 
-def emit(header, art):
-    """The same table shape make-app-icons.py wrote, filled differently.
+def colour(text):
+    text = text.strip()
+    low = text.lower()
+    if low in X11:
+        return X11[low]
+    if text.startswith("#"):
+        digits = text[1:]
+        if len(digits) == 12:            # #RRRRGGGGBBBB
+            digits = digits[0:2] + digits[4:6] + digits[8:10]
+        elif len(digits) == 3:
+            digits = "".join(c * 2 for c in digits)
+        elif len(digits) != 6:
+            raise ValueError("cannot read colour %r" % text)
+        return tuple(int(digits[at:at + 2], 16) for at in (0, 2, 4))
+    match = re.match(r"^(?:gray|grey)(\d+)$", low)
+    if match:
+        level = int(int(match.group(1)) * 255 / 100)
+        return (level, level, level)
+    raise ValueError("cannot read colour %r" % text)
 
-    The 16 is not the 48 resampled. Both are drawn, so neither is the
-    other one blurred - which is the whole reason there are two.
-    """
-    names = sorted(ICONS)
-    out = [
+
+def read_xpm(path):
+    """XPM3 is a C array of strings, so this reads the strings."""
+    raw = path.read_bytes()
+    if raw[:2] == b"\x1f\x8b":
+        raw = gzip.decompress(raw)
+    rows = re.findall(r'"((?:[^"\\]|\\.)*)"', raw.decode("latin-1"))
+    if not rows:
+        raise ValueError("%s carries no XPM strings" % path.name)
+    width, height, count, per = (int(v) for v in rows[0].split()[:4])
+    table = {}
+    for line in rows[1:1 + count]:
+        key, rest = line[:per], line[per:].split()
+        value = None
+        for at, token in enumerate(rest):
+            # `c` is the colour visual; `m`, `g` and `s` are the mono,
+            # greyscale and symbolic ones, and a file may give any of
+            # them.  Colour wins where it is there.
+            if token == "c" and at + 1 < len(rest):
+                value = " ".join(rest[at + 1:])
+                break
+            if token in ("m", "g", "g4", "s") and at + 1 < len(rest) \
+                    and value is None:
+                value = rest[at + 1]
+        table[key] = colour(value if value else "none")
+    image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    pixels = image.load()
+    for y, line in enumerate(rows[1 + count:1 + count + height]):
+        for x in range(width):
+            found = table.get(line[x * per:(x + 1) * per])
+            if found is not None:
+                pixels[x, y] = (found[0], found[1], found[2], 255)
+    return image
+
+
+def main():
+    art = Path(sys.argv[1] if len(sys.argv) > 1 else "assets/icons/gentoo")
+    out = Path(sys.argv[2] if len(sys.argv) > 2
+               else "src/trait_files_art.h")
+
+    icons = {}
+    for name, source in sorted(NAMES.items()):
+        image = read_xpm(art / (source + ".xpm"))
+        if image.width > SIZE or image.height > SIZE:
+            sys.exit("REFUSED: %s is %ux%u, larger than the %u cell"
+                     % (source, image.width, image.height, SIZE))
+        cell = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
+        cell.paste(image, (0, 0))
+        if cell.getchannel("A").getbbox() is None:
+            sys.exit("REFUSED: %s drew nothing" % source)
+        icons[name] = (source, image.size, list(cell.get_flattened_data()))
+
+    lines = [
         "/* SPDX-License-Identifier: GPL-3.0-only */",
         "/*",
         " * GENERATED by tools/make-icons.py - do not edit.",
         " *",
-        " * Drawn rather than vendored. Every pixel is transparent or one",
-        " * of the sixteen colours tools/render.c paints with, and each",
-        " * size is its own drawing rather than a resample of a bigger",
-        " * one.",
+        " * The gentoo file manager's icons, Johan Hanson 1998, unpacked",
+        " * from the XPMs vendored under assets/icons/gentoo.  Nothing",
+        " * here was redrawn and nothing was resampled: each is the",
+        " * file's own 16x15, padded with a transparent row to square",
+        " * the cell.  See assets/icons/gentoo/SOURCE.txt.",
         " *",
-        " * Channels are packed 0x00RRGGBB.",
+        " * Channels are packed 0x00RRGGBB with a separate alpha plane,",
+        " * because a framebuffer has no alpha channel to composite in.",
         " */",
         "#ifndef TRAIT_FILES_ART_H",
         "#define TRAIT_FILES_ART_H",
@@ -175,41 +147,36 @@ def emit(header, art):
         "#include <stddef.h>",
         "#include <stdint.h>",
         "",
-        f"#define TRAIT_FILES_ART_SIZES {len(SIZES)}U",
+        "#define TRAIT_FILES_ART_SIZES 1U",
         "",
-        f"static const uint32_t trait_files_art_size"
-        f"[TRAIT_FILES_ART_SIZES] = {{",
-        "    " + ", ".join(f"{s}U" for s in SIZES),
+        "static const uint32_t trait_files_art_size"
+        "[TRAIT_FILES_ART_SIZES] = {",
+        "    %uU" % SIZE,
         "};",
         "",
     ]
-    for name in names:
+    for name, (source, size, data) in icons.items():
         ident = name.replace("-", "_")
-        for size in SIZES:
-            im = Image.open(art / f"{name}-{size}.png").convert("RGBA")
-            pixels = list(im.get_flattened_data())
-            out.append(f"/* {name} at {size}, drawn */")
-            for plane, width in (("pixels", 8), ("alpha", 16)):
-                out.append(
-                    f"static const "
-                    f"{'uint32_t' if plane == 'pixels' else 'uint8_t'} "
-                    f"trait_files_art_{ident}_{size}_{plane}"
-                    f"[{size} * {size}] = {{")
-                row = []
-                for r, g, b, a in pixels:
-                    if plane == "pixels":
-                        row.append(f"0x00{r:02X}{g:02X}{b:02X}U,")
-                    else:
-                        row.append(f"{a:4d},")
-                    if len(row) == width:
-                        out.append("    " + " ".join(row))
-                        row = []
-                if row:
-                    out.append("    " + " ".join(row))
-                out.append("};")
-            out.append("")
+        lines.append("/* %s: %s.xpm, %ux%u */"
+                     % (name, source, size[0], size[1]))
+        for plane, kind, width in (("pixels", "uint32_t", 8),
+                                   ("alpha", "uint8_t", 16)):
+            lines.append("static const %s trait_files_art_%s_%u_%s"
+                         "[%u * %u] = {"
+                         % (kind, ident, SIZE, plane, SIZE, SIZE))
+            row = []
+            for r, g, b, a in data:
+                row.append("0x00%02X%02X%02XU," % (r, g, b)
+                           if plane == "pixels" else "%4d," % a)
+                if len(row) == width:
+                    lines.append("    " + " ".join(row))
+                    row = []
+            if row:
+                lines.append("    " + " ".join(row))
+            lines.append("};")
+        lines.append("")
 
-    out += [
+    lines += [
         "struct trait_files_art_entry {",
         "    const char *name;",
         "    const uint32_t *pixels[TRAIT_FILES_ART_SIZES];",
@@ -218,13 +185,12 @@ def emit(header, art):
         "",
         "static const struct trait_files_art_entry trait_files_art[] = {",
     ]
-    for name in names:
+    for name in icons:
         ident = name.replace("-", "_")
-        px = ", ".join(f"trait_files_art_{ident}_{s}_pixels"
-                       for s in SIZES)
-        al = ", ".join(f"trait_files_art_{ident}_{s}_alpha" for s in SIZES)
-        out.append(f'    {{ "{name}", {{ {px} }}, {{ {al} }} }},')
-    out += [
+        lines.append('    { "%s", { trait_files_art_%s_%u_pixels }, '
+                     "{ trait_files_art_%s_%u_alpha } },"
+                     % (name, ident, SIZE, ident, SIZE))
+    lines += [
         "};",
         "",
         "#define TRAIT_FILES_ART_COUNT "
@@ -232,54 +198,10 @@ def emit(header, art):
         "",
         "#endif",
     ]
-    header.write_text("\n".join(out) + "\n")
-
-
-def main():
-    out = Path(sys.argv[1] if len(sys.argv) > 1 else "assets/icons/drawn")
-    out.mkdir(parents=True, exist_ok=True)
-    palette = {rgba(c) for c in (BLACK, BLUE, GREEN, CYAN, RED, MAGENTA,
-                                 BROWN, GREY, DARK, HIBLUE, HIGREEN,
-                                 HICYAN, HIRED, HIMAG, YELLOW, WHITE)}
-    problems = []
-
-    for name, draw in ICONS.items():
-        for size in SIZES:
-            pen = Pen(size)
-            draw(pen)
-            # Every pixel is either transparent or one of the sixteen.
-            # Pillow's outline width can leave a blended corner, and one
-            # blended corner is the icon not being flat any more.
-            flat = pen.im.copy()
-            pixels = flat.load()
-            for y in range(size):
-                for x in range(size):
-                    r, g, b, a = pixels[x, y]
-                    if a < 128:
-                        pixels[x, y] = (0, 0, 0, 0)
-                        continue
-                    if (r, g, b, 255) not in palette:
-                        near = min(palette,
-                                   key=lambda c: (c[0] - r) ** 2
-                                   + (c[1] - g) ** 2 + (c[2] - b) ** 2)
-                        pixels[x, y] = near
-            flat.save(out / f"{name}-{size}.png")
-        ink = flat.getchannel("A").getbbox()
-        if ink is None:
-            problems.append(f"{name} drew nothing")
-
-    if problems:
-        for problem in problems:
-            print("REFUSED: " + problem)
-        return 1
-
-    header = Path(sys.argv[2] if len(sys.argv) > 2
-                  else "src/trait_files_art.h")
-    emit(header, out)
-    print(f"wrote {len(ICONS) * len(SIZES)} icons to {out} and "
-          f"{header}, {len(palette)} colours, no blending")
-    return 0
+    out.write_text("\n".join(lines) + "\n")
+    print("wrote %s: %u icons from %u files in %s"
+          % (out, len(icons), len({s for s, _, _ in icons.values()}), art))
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

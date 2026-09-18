@@ -14,9 +14,11 @@ sixteen colours, the face the light reaches and the sides it does not,
 because flat shading is what is left when the shades run out. There is
 no wallpaper image, and nothing here decodes one.
 
-No panel. You reach the menu by pressing the root, and it opens where
-the pointer is. The panel still works and is one press of the Settings
-row away - it is off, not gone.
+No panel, no dock, no tray, no clock. You reach the menu by pressing the
+root and it opens where the pointer is; you reach a window by clicking it
+or with Alt+Tab; what is running is in the Task Manager. The bar used to
+be here and be switched off, which meant a thousand lines that nothing
+reached. It is gone, and the Debian artwork that dressed it went with it.
 
 The palette is the IBM sixteen, which is what `tools/render.c` paints
 the console and the installer with. Red is the brand's `#9E1B1B` rather
@@ -25,17 +27,21 @@ computed from another: the title bar is one flat colour because a
 gradient needs colours that are not in the palette to get from one end
 to the other.
 
-The font is thresholded at 128, so a glyph is one bit deep. A letter
-with forty shades along its edge would be the only thing on the screen
-not made of those sixteen.
+The font is Misc-Fixed — 6x13, 7x14 and 9x18, with 8x16 in the terminal —
+which is a bitmap font, so a glyph is one bit deep by construction.
+
+The icons are the gentoo file manager's, drawn by Johan Hanson in 1998 and
+copied byte for byte. They are 16 by 15 and there is no larger version,
+so the file manager opens in a list, which is what gentoo was.
 
 
 A desktop shell in freestanding C, drawing on a linear framebuffer.
 
-It is a copy of the Debian LXDE desktop — lxpanel's bar, pcmanfm, lxtask,
-lxterminal, synaptic and Openbox's window frame — and every number in it
-carries the Debian file it was read out of. Nothing here is measured off a
-screenshot.
+It started as a copy of the Debian LXDE desktop and the windows are still
+that copy — pcmanfm, lxtask, lxterminal, synaptic and Openbox's frame —
+with every number carrying the Debian file it was read out of. What sits
+around them is not: the root is glxgears, the menu is twm's, and there is
+no bar at all.
 
 ```sh
 make -C tools run        # build, render frames into build/
@@ -45,36 +51,17 @@ No libc, no toolkit, no dependency but a pointer to some pixels.
 
 ## What it is a copy of
 
-The panel is not drawn from a picture. It is laid out from LXDE's own
-default panel profile, `/etc/xdg/lxpanel/LXDE/panels/panel`, shipped in
-Debian's `lxde-common` 0.99.2-4:
-
-```
-Global { edge=bottom  height=26  fontcolor=#ffffff  background=1 }
-space 2 | menu | launchbar | space 4 | wincmd | space 4 | pager |
-space 4 | taskbar(expand=1) | cpu | volume | tray | dclock(%R) | launchbar
-```
-
-Every number on that line is honoured rather than approximated, and the
-plugins appear in that order. The bar lays out from **both ends**, because
-the profile does: left-packed up to the taskbar, right-packed back from
-the clock, and `taskbar(expand=1)` takes the gap. That is why the clock
-does not move when a window opens, and the panel's self-test asks exactly
-that question.
+Nothing here is measured off a screenshot. Every value is read out of the
+file that defines it, and the table says which file.
 
 | What | Where it came from |
 | --- | --- |
-| The bar's 26 background rows | `lxpanel-data` 0.11.1-2, `images/background.png` (1×26, tiled) |
-| CPU widget 40×26, border 2, `#00FF00` | `lxpanel` 0.11.1, `plugins/cpu/cpu.c` — `gdk_color_parse("green")` is X11 green, so that value exactly |
+| The three gears, their radii, tooth counts and view angles | Mesa demos, `src/xdemos/glxgears.c`, Brian Paul — see `assets/gears/SOURCE.txt` |
+| The text: Misc-Fixed 6x13, 7x14, 9x18 and 8x16 | `xfonts-cyrillic`, the KOI8-R builds of the X11 bitmap faces — see `assets/fonts/SOURCE.txt` |
+| The icons | `gentoo` 0.20.7-4, `usr/share/gentoo/icons/`, Johan Hanson 1998 — see `assets/icons/gentoo/SOURCE.txt` |
 | The Clearlooks palette | `gtk2-engines`, `Clearlooks/gtk-2.0/gtkrc` |
-| File manager 640×480, icon view, `sort=name;ascending` | `lxde-common`, `/etc/xdg/pcmanfm/LXDE/pcmanfm.conf` |
+| File manager 640×480, `sort=name;ascending` | `lxde-common`, `/etc/xdg/pcmanfm/LXDE/pcmanfm.conf` |
 | Desktop label ink and halo | the same profile — `desktop_fg=#ffffff`, `desktop_shadow=#000000` |
-| Task list shows one desktop | the profile's `ShowAllDesks=0` |
-
-The background strip's twenty-six bytes are in the source rather than a
-hand-written ramp. The bright line at row 1, the step at row 12 and the
-lift at row 25 are what make the bar read as lxpanel's, and a ramp is a
-near-miss of something twenty-six pixels tall.
 
 ## Layout
 
@@ -84,8 +71,8 @@ include/trait/theme.h      the palette, as runtime state
 include/trait/font.h       text as coverage — three sizes and a mono face
 include/trait/input.h      pointer and key events
 include/trait/window.h     Openbox's frame
-include/trait/panel.h      lxpanel's bar
-include/trait/menu.h       the applications menu
+include/trait/gears.h      the root window
+include/trait/menu.h       the root menu
 include/trait/files.h      pcmanfm
 include/trait/taskmgr.h    lxtask
 include/trait/settings.h   the GTK notebook
@@ -124,8 +111,7 @@ happen ahead of time:
 ```sh
 python3 tools/make-font.py <font.pcf.gz> src/trait_font_<WxH>.h trait_font_<WxH>
 python3 tools/make-gears.py src/trait_gears_art.h
-python3 tools/make-icons.py assets/icons/drawn src/trait_files_art.h
-python3 tools/make-app-icons.py <dir> <out.h> --prefix <p> --sizes 16,48
+python3 tools/make-icons.py assets/icons/gentoo src/trait_files_art.h
 ```
 
 A glyph the font does not carry draws nothing rather than a box, because a
@@ -166,9 +152,8 @@ with the code is a second copy of the code.
 Every file under `assets/` names its origin and licence in a `SOURCE.txt`
 beside it.
 
-- `assets/c-panel/`, `assets/c-files/`, `assets/icons/` — the real Debian
-  icons, vendored byte for byte: `lxde-icon-theme` 0.5.1-2.1 (nuoveXT2,
-  LGPL-3+) and `lxpanel-data` 0.11.1-2 (GPL-2+).
+- `assets/icons/gentoo/` — the gentoo file manager's icons, vendored byte
+  for byte: `gentoo` 0.20.7-4, Johan Hanson 1998, GPL-2+.
 - `assets/logo/onion.png` and `assets/wallpaper/wallpaper.png` — the
   project owner's own artwork.
 

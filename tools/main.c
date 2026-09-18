@@ -19,7 +19,6 @@
 #include <trait/shell.h>
 #include <trait/packages.h>
 #include <trait/terminal.h>
-#include <trait/panel.h>
 #include <trait/settings.h>
 #include <trait/taskmgr.h>
 #include <trait/theme.h>
@@ -194,38 +193,12 @@ static int root_is_gears(struct trait_surface *surface)
 
 static void populate(void)
 {
-    static const char *const NAMES[4] = {
-        "user", "user@trait: ~", "Task Manager", "Settings"
-    };
-    static const char *const ICONS[4] = {
-        "file-manager", "terminal", "gtk-preferences", "gtk-preferences"
-    };
-    /* A shape rather than a flat load, so the graph reads as a graph. */
-    static const uint32_t LOAD[TRAIT_PANEL_CPU_COLUMNS] = {
-        4U, 6U, 5U, 7U, 6U, 8U, 7U, 9U, 12U, 18U, 26U, 35U,
-        44U, 52U, 61U, 70U, 78U, 85U, 91U, 94U, 96U, 92U, 84U, 73U,
-        61U, 50U, 41U, 33U, 27U, 22U, 18U, 15U, 12U, 10U, 8U, 7U
-    };
-    struct trait_panel_task task;
-
-    for (uint32_t at = 0U; at < TRAIT_PANEL_CPU_COLUMNS; ++at) {
-        (void)trait_panel_push_cpu(LOAD[at]);
-    }
-    for (uint32_t at = 0U; at < 4U; ++at) {
-        memset(&task, 0, sizeof(task));
-        task.icon = ICONS[at];
-        task.active = at == 1U;
-        task.minimised = at == 3U;
-        task.desktop = 0U;
-        (void)snprintf(task.label, TRAIT_PANEL_LABEL_BYTES, "%s",
-                       NAMES[at]);
-        (void)trait_panel_set_task(at, &task);
-    }
-    (void)trait_panel_set_clock("15:43");
-    (void)trait_panel_set_desktop(0U, 2U);
-    (void)trait_panel_set_volume(65U, false);
+    /* NOTHING TO POPULATE.  This used to load the bar: four task
+     * buttons, a clock and thirty-six columns of cpu history.  With no
+     * bar there is no list of open windows to keep in step with the
+     * windows, which was the only thing here that could go stale. */
+    return;
 }
-
 
 /* The Task Manager's rows.  They are the desktop's own processes, which
  * is what lxtask lists - a COMMAND, not a window title. */
@@ -322,28 +295,6 @@ static void populate_settings(void)
                    "Open on a single click");
     row.setting = TRAIT_SET_SINGLE_CLICK;
     (void)trait_settings_add_row(1U, &row);
-
-    /* ---- Panel: lxpanel's Panel Preferences ---- */
-    memset(&row, 0, sizeof(row));
-    row.kind = TRAIT_SETTINGS_CHOICE;
-    (void)snprintf(row.label, TRAIT_SETTINGS_TEXT_BYTES, "Clock format");
-    row.setting = TRAIT_SET_CLOCK_24H;
-    (void)trait_settings_add_row(2U, &row);
-
-    row.kind = TRAIT_SETTINGS_SWITCH;
-    (void)snprintf(row.label, TRAIT_SETTINGS_TEXT_BYTES,
-                   "Windows from all desktops");
-    row.setting = TRAIT_SET_ALL_DESKTOPS;
-    (void)trait_settings_add_row(2U, &row);
-
-    memset(&row, 0, sizeof(row));
-    row.kind = TRAIT_SETTINGS_NOTE;
-    (void)snprintf(row.label, TRAIT_SETTINGS_TEXT_BYTES,
-                   "Height 26 and bottom edge: the panel's");
-    (void)trait_settings_add_row(2U, &row);
-    (void)snprintf(row.label, TRAIT_SETTINGS_TEXT_BYTES,
-                   "ground is lxpanel's own 26px artwork.");
-    (void)trait_settings_add_row(2U, &row);
 
     /* ---- Keyboard ---- */
     memset(&row, 0, sizeof(row));
@@ -493,24 +444,9 @@ static struct trait_event special_key(uint32_t which)
 int main(int argc, char **argv)
 {
     const char *out = argc > 1 ? argv[1] : "build/c";
-    struct trait_rect bar;
 
-    if (!trait_panel_self_test()) {
-        fprintf(stderr, "trait: panel self-test failed\n");
-        return 1;
-    }
-    if (trait_panel_attach(&screen) != TRAIT_PANEL_STATUS_OK ||
-            trait_panel_initialize() != TRAIT_PANEL_STATUS_OK) {
-        fprintf(stderr, "trait: panel refused to start\n");
-        return 1;
-    }
     populate();
 
-    /*
-     * No panel on the session shot. The panel still draws and is still
-     * checked below - it is off by default rather than gone, which is a
-     * choice this desktop makes and not a feature it lacks.
-     */
     /* The shell has to be attached before it can draw: the wallpaper
      * this replaced was loaded straight into the surface and never went
      * through the shell at all. */
@@ -520,7 +456,6 @@ int main(int argc, char **argv)
     if (!root_is_gears(&screen)) {
         return 1;
     }
-    bar = trait_panel_bounds(whole());
     if (!emit(out, "desktop.png", whole())) {
         return 1;
     }
@@ -535,18 +470,19 @@ int main(int argc, char **argv)
     (void)trait_shell_open(TRAIT_APP_FILES,
         (struct trait_rect){ 470U, 330U, 620U, 400U });
     /*
-     * twm's root menu: what you can start, and the two ways out. The
-     * panel's menu is built from the installed packages; this one is
-     * the window manager's own, so it is written here.
+     * twm's root menu: what you can start, and nothing else.  There is
+     * no Restart or Exit on it, which twm has, because this shell does
+     * not own an X session to restart or leave - a row that cannot do
+     * what it says is the one thing this desktop does not draw.
      */
     trait_menu_reset();
     (void)trait_menu_add("xterm", false, false);
     (void)trait_menu_add("Files", false, false);
+    (void)trait_menu_add("Packages", false, false);
     (void)trait_menu_add("Task Manager", false, false);
     (void)trait_menu_add("Settings", false, false);
     (void)trait_menu_add("", false, true);
-    (void)trait_menu_add("Restart", false, false);
-    (void)trait_menu_add("Exit", false, false);
+    (void)trait_menu_add("Run...", false, false);
 
     trait_shell_draw_root();
     trait_shell_draw();
@@ -573,18 +509,6 @@ int main(int argc, char **argv)
         printf("proof: no panel and a root menu at %ux%u - where the "
                "press was, not where a button is\n", menu.x, menu.y);
     }
-    trait_shell_reset(&screen);
-    trait_shell_set_screen(whole());
-    populate();
-    trait_shell_draw_root();
-    if (trait_panel_draw(whole()) != TRAIT_PANEL_STATUS_OK) {
-        fprintf(stderr, "trait: panel refused to draw\n");
-        return 1;
-    }
-    if (!emit(out, "panel.png", bar)) {
-        return 1;
-    }
-
     /* The two windows, over the same desktop, so they are seen sitting on
      * something rather than on a flat grey. */
     if (!trait_taskmgr_self_test()) {
@@ -633,9 +557,6 @@ int main(int argc, char **argv)
         if (!emit(out, "settings.png", settings.frame)) {
             return 1;
         }
-        if (trait_panel_draw(whole()) != TRAIT_PANEL_STATUS_OK) {
-            return 1;
-        }
         if (!emit(out, "windows.png", whole())) {
             return 1;
         }
@@ -675,9 +596,6 @@ int main(int argc, char **argv)
         if (!emit(out, "files-list.png", files.frame)) {
             return 1;
         }
-        if (trait_panel_draw(whole()) != TRAIT_PANEL_STATUS_OK) {
-            return 1;
-        }
         if (!emit(out, "files-desktop.png", whole())) {
             return 1;
         }
@@ -699,7 +617,6 @@ int main(int argc, char **argv)
     {
         struct trait_window term;
         struct trait_window synaptic;
-        struct trait_rect button;
         uint32_t before;
         uint32_t after;
 
@@ -753,14 +670,12 @@ int main(int argc, char **argv)
             return 1;
         }
 
-        if (trait_panel_draw(whole()) != TRAIT_PANEL_STATUS_OK) {
+        trait_shell_draw_root();
+        if (!trait_shell_root_press(320U, 520U)) {
+            fprintf(stderr, "trait: the root refused the press\n");
             return 1;
         }
-        if (trait_panel_plugin_bounds(whole(), TRAIT_PANEL_PLUGIN_MENU,
-                &button) != TRAIT_PANEL_STATUS_OK) {
-            return 1;
-        }
-        trait_menu_draw(&screen, whole(), button);
+        trait_shell_draw_overlays();
         if (!emit(out, "menu.png", whole())) {
             return 1;
         }
@@ -799,7 +714,6 @@ int main(int argc, char **argv)
 
         trait_shell_draw_root();
         trait_shell_draw();
-        (void)trait_panel_draw(whole());
         if (!emit(out, "live-before.png", whole())) {
             return 1;
         }
@@ -865,7 +779,6 @@ int main(int argc, char **argv)
 
         trait_shell_draw_root();
         trait_shell_draw();
-        (void)trait_panel_draw(whole());
         if (!emit(out, "live-after.png", whole())) {
             return 1;
         }
@@ -935,10 +848,15 @@ int main(int argc, char **argv)
     }
 
     /*
-     * THE BAR, PRESSED FOR REAL.  Every one of these went through
-     * trait_panel_hit() from a screen coordinate - nothing here asks the
-     * panel where its buttons are and then calls a function directly,
-     * because that would prove the function works and not the button.
+     * THE ROOT MENU, PRESSED FOR REAL.  Every press here goes in as a
+     * screen coordinate through trait_shell_handle() - nothing asks
+     * where the menu is and then calls a function directly, because
+     * that would prove the function works and not the menu.
+     *
+     * This replaces the bar's proofs.  There is no launcher to press,
+     * no task button to put a window down with and no pager, because
+     * there is no bar: the menu IS the way in, so it is the thing that
+     * has to answer.
      */
     {
         struct trait_event press;
@@ -951,179 +869,64 @@ int main(int argc, char **argv)
 
         trait_shell_reset(&screen);
         trait_shell_set_screen(whole());
-        (void)trait_panel_initialize();
-        (void)trait_panel_set_clock("15:43");
         populate_files();
         (void)trait_files_open(populate_files());
+        trait_menu_reset();
+        (void)trait_menu_add("xterm", false, false);
+        (void)trait_menu_add("Files", false, false);
+        (void)trait_menu_add("Packages", false, false);
+        (void)trait_menu_add("Task Manager", false, false);
+        (void)trait_menu_add("Settings", false, false);
+        (void)trait_menu_add("", false, true);
+        (void)trait_menu_add("Run...", false, false);
 
-        /* Press the first launcher on the bar. */
-        if (trait_panel_plugin_bounds(whole(),
-                TRAIT_PANEL_PLUGIN_LAUNCHBAR, &box) !=
-                TRAIT_PANEL_STATUS_OK) {
+        trait_shell_draw_root();
+        if (!trait_shell_root_press(300U, 470U)) {
+            fprintf(stderr, "trait: the root refused a press\n");
             return 1;
         }
+        if (!trait_shell_root_menu_bounds(&box)) {
+            fprintf(stderr, "trait: the open menu has no bounds\n");
+            return 1;
+        }
+        trait_shell_draw();
+        trait_shell_draw_overlays();
+        if (!emit(out, "root-menu.png", whole())) {
+            return 1;
+        }
+
+        /* The second row is Files, so pressing it has to open Files -
+         * and the menu has to be gone afterwards. */
         before = trait_shell_window_count();
-        press.x = box.x + 8U;
-        press.y = box.y + box.height / 2U;
+        press.x = box.x + 20U;
+        press.y = box.y + 4U + 20U + 10U;
         if (!trait_shell_handle(&press)) {
-            fprintf(stderr, "trait: a press on a launcher did nothing\n");
+            fprintf(stderr, "trait: a press on a menu row did nothing\n");
             return 1;
         }
         if (trait_shell_window_count() != before + 1U) {
-            fprintf(stderr, "trait: the launcher opened no window\n");
+            fprintf(stderr, "trait: the menu row opened no window\n");
             return 1;
         }
         opened = trait_shell_focused();
-
-        trait_shell_draw_root();
-        trait_shell_draw();
-        (void)trait_panel_draw(whole());
-        if (!emit(out, "bar-opened.png", whole())) {
+        if (trait_shell_app_of(opened) != TRAIT_APP_FILES) {
+            fprintf(stderr, "trait: the Files row opened something "
+                            "else\n");
             return 1;
         }
-
-        /*
-         * Now press that window's own button on the task bar.  It is the
-         * focused window, so the bar must put it DOWN - and the frame
-         * after this is the proof, because the window is gone from the
-         * screen and its button is still on the bar.
-         */
-        if (trait_panel_plugin_bounds(whole(), TRAIT_PANEL_PLUGIN_TASKBAR,
-                &box) != TRAIT_PANEL_STATUS_OK) {
-            return 1;
-        }
-        press.x = box.x + 20U;
-        press.y = box.y + box.height / 2U;
-        if (!trait_shell_handle(&press)) {
-            fprintf(stderr, "trait: a press on a task button did "
-                            "nothing\n");
-            return 1;
-        }
-        if (trait_shell_at(trait_shell_window(opened)->frame.x + 5U,
-                trait_shell_window(opened)->frame.y + 5U) <
-                TRAIT_SHELL_MAX_WINDOWS) {
-            fprintf(stderr, "trait: the minimised window is still "
-                            "under the pointer\n");
+        if (trait_shell_root_menu_open()) {
+            fprintf(stderr, "trait: the menu stayed open after it was "
+                            "used\n");
             return 1;
         }
         trait_shell_draw_root();
         trait_shell_draw();
-        (void)trait_panel_draw(whole());
-        if (!emit(out, "bar-minimised.png", whole())) {
+        if (!emit(out, "root-opened.png", whole())) {
             return 1;
         }
-        printf("proof: a press at (%u,%u) on the bar opened a window and "
-               "a press on its task button put it away, both through "
-               "trait_panel_hit() from screen coordinates\n",
-               box.x + 20U, box.y + box.height / 2U);
-
-        /*
-         * THE LAST THREE: the menu button opens the menu, the volume
-         * icon opens the slider, and the pager really switches - a
-         * window on desktop 2 is not on the screen when you are looking
-         * at desktop 1.
-         */
-        rebuild_menu();
-        if (trait_panel_plugin_bounds(whole(), TRAIT_PANEL_PLUGIN_MENU,
-                &box) != TRAIT_PANEL_STATUS_OK) {
-            return 1;
-        }
-        press.x = box.x + box.width / 2U;
-        press.y = box.y + box.height / 2U;
-        if (!trait_shell_handle(&press) || !trait_shell_menu_open()) {
-            fprintf(stderr, "trait: the menu button opened nothing\n");
-            return 1;
-        }
-        trait_shell_draw_root();
-        trait_shell_draw();
-        (void)trait_panel_draw(whole());
-        trait_shell_draw_overlays();
-        if (!emit(out, "bar-menu.png", whole())) {
-            return 1;
-        }
-        /* Pressing it again shuts it, which a menu that can only be
-         * dismissed by clicking away does not do. */
-        if (!trait_shell_handle(&press) || trait_shell_menu_open()) {
-            fprintf(stderr, "trait: the menu button did not close it\n");
-            return 1;
-        }
-
-        if (trait_panel_plugin_bounds(whole(), TRAIT_PANEL_PLUGIN_VOLUME,
-                &box) != TRAIT_PANEL_STATUS_OK) {
-            return 1;
-        }
-        press.x = box.x + box.width / 2U;
-        press.y = box.y + box.height / 2U;
-        if (!trait_shell_handle(&press) || !trait_shell_volume_open()) {
-            fprintf(stderr, "trait: the volume icon opened nothing\n");
-            return 1;
-        }
-        /* Press near the foot of the slider: quiet, and the bar's icon
-         * must follow it down to the muted mark. */
-        {
-            uint32_t was = trait_shell_volume();
-
-            press.x = box.x + box.width / 2U;
-            press.y = box.y - 6U;
-            if (!trait_shell_handle(&press)) {
-                return 1;
-            }
-            if (trait_shell_volume() >= was) {
-                fprintf(stderr, "trait: pressing the foot of the slider "
-                                "did not turn it down (%u -> %u)\n",
-                        was, trait_shell_volume());
-                return 1;
-            }
-        }
-        trait_shell_draw_root();
-        trait_shell_draw();
-        (void)trait_panel_draw(whole());
-        trait_shell_draw_overlays();
-        if (!emit(out, "bar-volume.png", whole())) {
-            return 1;
-        }
-
-        /* And the pager. Put a window on desktop 2 and switch to it. */
-        {
-            uint32_t here = trait_shell_open(TRAIT_APP_TASKMGR,
-                (struct trait_rect){ 300U, 220U, 520U, 320U });
-
-            if (here >= TRAIT_SHELL_MAX_WINDOWS) {
-                return 1;
-            }
-            trait_shell_send_to_desktop(here, 1U);
-            /* It is on the other desktop, so it is not on this screen. */
-            if (trait_shell_at(320U, 240U) < TRAIT_SHELL_MAX_WINDOWS) {
-                fprintf(stderr, "trait: a window on another desktop is "
-                                "still on this one\n");
-                return 1;
-            }
-            if (trait_panel_plugin_bounds(whole(),
-                    TRAIT_PANEL_PLUGIN_PAGER, &box) !=
-                    TRAIT_PANEL_STATUS_OK) {
-                return 1;
-            }
-            press.x = box.x + box.width - 6U;
-            press.y = box.y + box.height / 2U;
-            (void)trait_shell_handle(&press);
-            trait_shell_set_desktop(1U);
-            if (trait_shell_at(320U, 240U) != here) {
-                fprintf(stderr, "trait: switching desktop did not bring "
-                                "its window\n");
-                return 1;
-            }
-            trait_shell_draw_root();
-            trait_shell_draw();
-            (void)trait_panel_draw(whole());
-            trait_shell_draw_overlays();
-            if (!emit(out, "bar-desktop2.png", whole())) {
-                return 1;
-            }
-        }
-        printf("proof: the menu button opens and closes the menu, the "
-               "volume icon opens a slider that really moves the level "
-               "to %u, and a window on desktop 2 is on the screen only "
-               "when desktop 2 is\n", trait_shell_volume());
+        printf("proof: a press at (300,470) on bare root opened the menu "
+               "at %ux%u and its Files row opened a Files window; the "
+               "menu shut itself afterwards\n", box.x, box.y);
     }
 
     /*
@@ -1143,8 +946,6 @@ int main(int argc, char **argv)
 
         trait_shell_reset(&screen);
         trait_shell_set_screen(whole());
-        (void)trait_panel_initialize();
-        (void)trait_panel_set_clock("15:43");
         (void)trait_theme_select(0U);
         populate_taskmgr();
         populate_settings();
@@ -1155,7 +956,6 @@ int main(int argc, char **argv)
 
         trait_shell_draw_root();
         trait_shell_draw();
-        (void)trait_panel_draw(whole());
         if (!emit(out, "theme-before.png", whole())) {
             return 1;
         }
@@ -1182,7 +982,6 @@ int main(int argc, char **argv)
 
         trait_shell_draw_root();
         trait_shell_draw();
-        (void)trait_panel_draw(whole());
         if (!emit(out, "theme-after.png", whole())) {
             return 1;
         }
@@ -1207,8 +1006,6 @@ int main(int argc, char **argv)
         (void)trait_theme_select(0U);
         trait_shell_reset(&screen);
         trait_shell_set_screen(whole());
-        (void)trait_panel_initialize();
-        (void)trait_panel_set_clock("15:43");
         user = populate_files();
         /* ~/Desktop is the first child of ~, and putting something in it
          * is what proves the root window reads the folder. */
@@ -1218,10 +1015,10 @@ int main(int argc, char **argv)
         trait_shell_set_desktop_folder(desktop_folder);
         (void)trait_files_open(user);
 
-        if (trait_shell_desktop_icon_count() != 4U) {
+        if (trait_shell_desktop_icon_count() != 3U) {
             fprintf(stderr, "trait: the root window shows %u icons, not "
-                            "the two standard marks plus the two things "
-                            "in ~/Desktop\n",
+                            "the home mark plus the two things in "
+                            "~/Desktop\n",
                     trait_shell_desktop_icon_count());
             return 1;
         }
@@ -1229,7 +1026,6 @@ int main(int argc, char **argv)
         trait_shell_draw_root();
         trait_shell_draw_desktop();
         trait_shell_draw();
-        (void)trait_panel_draw(whole());
         trait_shell_draw_overlays();
         if (!emit(out, "root.png", whole())) {
             return 1;
@@ -1239,20 +1035,15 @@ int main(int argc, char **argv)
         rebuild_menu();
         {
             struct trait_event press;
-            struct trait_rect button;
             struct trait_rect box;
 
             memset(&press, 0, sizeof(press));
             press.kind = TRAIT_EVENT_POINTER_DOWN;
-            if (trait_panel_plugin_bounds(whole(),
-                    TRAIT_PANEL_PLUGIN_MENU, &button) !=
-                    TRAIT_PANEL_STATUS_OK) {
+            if (!trait_shell_root_press(300U, 470U) ||
+                    !trait_shell_root_menu_bounds(&box)) {
+                fprintf(stderr, "trait: the root menu did not open\n");
                 return 1;
             }
-            press.x = button.x + button.width / 2U;
-            press.y = button.y + button.height / 2U;
-            (void)trait_shell_handle(&press);
-            box = trait_menu_bounds(whole(), button);
             /* Run... is the last row. */
             press.x = box.x + 20U;
             press.y = box.y + box.height - 12U;
@@ -1286,7 +1077,6 @@ int main(int argc, char **argv)
             trait_shell_draw_root();
             trait_shell_draw_desktop();
             trait_shell_draw();
-            (void)trait_panel_draw(whole());
             trait_shell_draw_overlays();
             if (!emit(out, "run.png", whole())) {
                 return 1;
@@ -1334,7 +1124,6 @@ int main(int argc, char **argv)
         trait_shell_draw_root();
         trait_shell_draw_desktop();
         trait_shell_draw();
-        (void)trait_panel_draw(whole());
         trait_shell_draw_overlays();
         if (!emit(out, "switcher.png", whole())) {
             return 1;
@@ -1382,8 +1171,6 @@ int main(int argc, char **argv)
 
         trait_shell_reset(&screen);
         trait_shell_set_screen(whole());
-        (void)trait_panel_initialize();
-        (void)trait_panel_set_clock("15:43");
         user = populate_files();
         (void)trait_files_add(user, ".bashrc", false, 3771U);
         (void)trait_files_open(user);
@@ -1478,80 +1265,18 @@ int main(int argc, char **argv)
             (void)trait_files_open(user);
         }
 
-        /* Windows from all desktops - page 2, row 1. */
-        {
-            struct trait_panel_task task;
-            uint32_t seen;
-
-            memset(&task, 0, sizeof(task));
-            snprintf(task.label, TRAIT_PANEL_LABEL_BYTES, "Here");
-            task.desktop = 0U;
-            (void)trait_panel_set_task(0U, &task);
-            snprintf(task.label, TRAIT_PANEL_LABEL_BYTES, "Elsewhere");
-            task.desktop = 1U;
-            (void)trait_panel_set_task(1U, &task);
-            (void)trait_panel_set_desktop(0U, 2U);
-
-            seen = trait_panel_task_count();
-            if (seen != 1U) {
-                fprintf(stderr, "trait: the bar showed %u tasks when only "
-                                "one is on this desktop\n", seen);
-                return 1;
-            }
-            if (!trait_settings_press(2U, 1U) ||
-                    trait_panel_task_count() != 2U) {
-                fprintf(stderr, "trait: ShowAllDesks did not bring the "
-                                "other desktop's window into the bar\n");
-                return 1;
-            }
-            (void)trait_settings_press(2U, 1U);
-        }
-
-        /* Clock format - page 2, row 0.  15:43 is the awkward one: it is
-         * past noon, so 12-hour has to subtract AND say PM. */
-        if (strcmp(trait_panel_clock_text(), "15:43") != 0) {
-            fprintf(stderr, "trait: the 24-hour clock read \"%s\"\n",
-                    trait_panel_clock_text());
-            return 1;
-        }
-        if (!trait_settings_press(2U, 0U) ||
-                strcmp(trait_panel_clock_text(), "3:43 PM") != 0) {
-            fprintf(stderr, "trait: 12-hour rendered \"%s\", not "
-                            "\"3:43 PM\"\n", trait_panel_clock_text());
-            return 1;
-        }
-        /* Midnight is 12 AM, not 0 AM - the classic way to get this
-         * wrong, so it is the one that gets asked. */
-        (void)trait_panel_set_clock("00:15");
-        if (strcmp(trait_panel_clock_text(), "12:15 AM") != 0) {
-            fprintf(stderr, "trait: midnight rendered \"%s\", not "
-                            "\"12:15 AM\"\n", trait_panel_clock_text());
-            return 1;
-        }
-        (void)trait_panel_set_clock("12:00");
-        if (strcmp(trait_panel_clock_text(), "12:00 PM") != 0) {
-            fprintf(stderr, "trait: noon rendered \"%s\", not "
-                            "\"12:00 PM\"\n", trait_panel_clock_text());
-            return 1;
-        }
-        (void)trait_settings_press(2U, 0U);
-        (void)trait_panel_set_clock("15:43");
-
         printf("proof: every switch on the Settings window moves the "
                "thing it names - the desktop went from %u icons to 0 and "
-               "back, a dot file appeared (%u of %u), one click opened a "
-               "folder only once single click was on, the bar went from "
-               "1 task to 2 across desktops, and 15:43 became 3:43 PM "
-               "with midnight 12:15 AM and noon 12:00 PM\n",
+               "back, a dot file appeared (%u of %u), and one click "
+               "opened a folder only once single click was on\n",
                before, after, trait_files_child_count(user));
     }
 
     /*
-     * NOTIFICATIONS, TOOLTIPS AND RESIZING.
+     * NOTIFICATIONS AND RESIZING.
      */
     {
         struct trait_event event;
-        struct trait_rect box;
         struct trait_window *window;
         uint32_t slot;
         uint32_t at;
@@ -1560,8 +1285,6 @@ int main(int argc, char **argv)
         memset(&event, 0, sizeof(event));
         trait_shell_reset(&screen);
         trait_shell_set_screen(whole());
-        (void)trait_panel_initialize();
-        (void)trait_panel_set_clock("15:43");
         populate_taskmgr();
         slot = trait_shell_open(TRAIT_APP_TASKMGR,
             (struct trait_rect){ 200U, 160U, 520U, 300U });
@@ -1578,44 +1301,11 @@ int main(int argc, char **argv)
             return 1;
         }
 
-        /* Rest the pointer on the volume icon.  It must NOT show a tip
-         * at once - the delay is the whole of what makes it a tip. */
-        if (trait_panel_plugin_bounds(whole(), TRAIT_PANEL_PLUGIN_VOLUME,
-                &box) != TRAIT_PANEL_STATUS_OK) {
-            return 1;
-        }
-        event.kind = TRAIT_EVENT_POINTER_MOVE;
-        event.x = box.x + box.width / 2U;
-        event.y = box.y + box.height / 2U;
-        (void)trait_shell_handle(&event);
-        if (trait_shell_tip_visible()) {
-            fprintf(stderr, "trait: the tip appeared with no delay\n");
-            return 1;
-        }
-        for (at = 0U; at < TRAIT_SHELL_TIP_TICKS; ++at) {
-            trait_shell_tick();
-        }
-        if (!trait_shell_tip_visible()) {
-            fprintf(stderr, "trait: the tip never appeared\n");
-            return 1;
-        }
-
         trait_shell_draw_root();
         trait_shell_draw_desktop();
         trait_shell_draw();
-        (void)trait_panel_draw(whole());
         trait_shell_draw_overlays();
         if (!emit(out, "notes.png", whole())) {
-            return 1;
-        }
-
-        /* Moving away resets it. */
-        event.x = 400U;
-        event.y = 400U;
-        (void)trait_shell_handle(&event);
-        if (trait_shell_tip_visible()) {
-            fprintf(stderr, "trait: the tip survived the pointer "
-                            "leaving\n");
             return 1;
         }
 
@@ -1720,7 +1410,6 @@ int main(int argc, char **argv)
             trait_shell_draw_root();
             trait_shell_draw_desktop();
             trait_shell_draw();
-            (void)trait_panel_draw(whole());
             trait_shell_draw_overlays();
             if (!emit(out, "context.png", whole())) {
                 return 1;
@@ -1817,7 +1506,6 @@ int main(int argc, char **argv)
             trait_shell_draw_root();
             trait_shell_draw_desktop();
             trait_shell_draw();
-            (void)trait_panel_draw(whole());
             trait_shell_draw_overlays();
             if (!emit(out, "renamed.png", whole())) {
                 return 1;
@@ -1836,7 +1524,6 @@ int main(int argc, char **argv)
 
             trait_shell_reset(&screen);
             trait_shell_set_screen(whole());
-            (void)trait_panel_initialize();
             victim = trait_shell_open(TRAIT_APP_TERMINAL,
                 (struct trait_rect){ 260U, 180U, 520U, 280U });
             slot = trait_shell_open(TRAIT_APP_TASKMGR,
@@ -1971,21 +1658,18 @@ int main(int argc, char **argv)
                    trait_files_node_name(
                        trait_files_child(docs, before + 1U)));
         }
-        printf("proof: two notices queued and aged out, a tip appeared "
-               "only after %u ticks of rest and went when the pointer "
-               "left, and a corner drag resized both dimensions and came "
-               "back to %ux%u exactly after hitting the minimum\n",
-               TRAIT_SHELL_TIP_TICKS, was.width, was.height);
+        printf("proof: two notices queued and aged out, and a corner "
+               "drag resized both dimensions and came back to %ux%u "
+               "exactly after hitting the minimum\n",
+               was.width, was.height);
     }
-    printf("proof: a %u-pixel panel over a %ux%u screen, %u tasks, a "
-           "%u-column cpu graph and a clock that does not move when a "
-           "window opens; a task manager of %u processes sorted by a "
-           "column that really reorders and reverses; a notebook of %u "
-           "pages where picking a tab changes the page; and a file "
-           "manager over %u nodes whose folder sizes are counted rather "
-           "than stored\n",
-           TRAIT_PANEL_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT,
-           trait_panel_task_count(), TRAIT_PANEL_CPU_COLUMNS,
+    printf("proof: a %ux%u screen with nothing on it but the root and "
+           "what you start from its menu - no bar, no dock, no tray; a "
+           "task manager of %u processes sorted by a column that really "
+           "reorders and reverses; a notebook of %u pages where picking "
+           "a tab changes the page; and a file manager over %u nodes "
+           "whose folder sizes are counted rather than stored\n",
+           SCREEN_WIDTH, SCREEN_HEIGHT,
            trait_taskmgr_count(), trait_settings_page_count(),
            trait_files_child_count(trait_files_here()));
     return 0;

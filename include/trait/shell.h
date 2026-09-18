@@ -57,9 +57,6 @@ void trait_shell_set_desktop(uint32_t desktop);
 uint32_t trait_shell_desktop(void);
 void trait_shell_send_to_desktop(uint32_t slot, uint32_t desktop);
 
-/* The two things the bar can open.  They are shell state rather than
- * panel state because both are overlays that sit above every window, and
- * the shell is what knows there are windows to sit above. */
 /*
  * THE ROOT WINDOW.
  *
@@ -83,19 +80,14 @@ void trait_shell_set_desktop_folder(uint32_t folder);
 void trait_shell_draw_root(void);
 
 /*
- * The panel, which is off.
+ * THE ROOT MENU, at the point that was pressed, and there is no other.
  *
- * A window manager of this kind does not have one: you reach the menu by
- * pressing the root, and you reach a window by clicking it. The panel is
- * still here and still works, one press of the Settings row away, rather
- * than deleted - it is a choice this desktop makes, not a feature it
- * lacks.
+ * There is no bar, no dock and no tray: a window manager of this kind
+ * has none, and every one of them was a place where a control could sit
+ * and do nothing.  You start something from the root menu, you reach a
+ * window by clicking it or with Alt+Tab, and what is running is in the
+ * Task Manager.  Returns false if the press was not on the root.
  */
-void trait_shell_set_panel(bool shown);
-bool trait_shell_panel(void);
-
-/* The root menu, at the point that was pressed. Returns false if the
- * press was not on the root. */
 bool trait_shell_root_press(uint32_t x, uint32_t y);
 bool trait_shell_root_menu_open(void);
 bool trait_shell_root_menu_bounds(struct trait_rect *out);
@@ -149,20 +141,6 @@ const char *trait_shell_note_body(uint32_t at);
 /* One tick of the clock: notices age out on their own. */
 void trait_shell_tick(void);
 
-/*
- * TOOLTIPS.  A pointer resting on a bar button says what it is.  The
- * DELAY is the whole of what makes a tip helpful rather than a thing that
- * flashes at you while you move the mouse across the screen - GTK's own
- * is 500ms, and this counts ticks rather than guessing.
- */
-#define TRAIT_SHELL_TIP_TICKS 5U
-bool trait_shell_tip_visible(void);
-const char *trait_shell_tip_text(void);
-struct trait_rect trait_shell_tip_bounds(void);
-
-bool trait_shell_menu_open(void);
-bool trait_shell_volume_open(void);
-uint32_t trait_shell_volume(void);
 struct trait_rect trait_shell_screen(void);
 
 /* Returns the slot, or TRAIT_SHELL_MAX_WINDOWS if there is no room. */
@@ -182,8 +160,8 @@ void trait_shell_focus(uint32_t slot);
 bool trait_shell_handle(const struct trait_event *event);
 
 void trait_shell_draw(void);
-/* Call AFTER the panel: an open menu or slider sits above everything,
- * including the bar that opened it. */
+/* Call AFTER trait_shell_draw(): the root menu sits above every
+ * window, so it cannot be drawn with the stack. */
 void trait_shell_draw_overlays(void);
 
 /*

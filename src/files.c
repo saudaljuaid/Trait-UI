@@ -16,9 +16,14 @@
 #define FILES_PLACES 130U
 #define FILES_PAD 6U
 
-#define FILES_CELL_WIDTH 86U        /* the icon view's grid */
-#define FILES_CELL_HEIGHT 72U
-#define FILES_ICON 48U
+#define FILES_CELL_WIDTH 96U        /* the icon view's grid */
+#define FILES_CELL_HEIGHT 40U
+/* ONE SIZE, AND IT IS SIXTEEN.  The icons are gentoo's 16x15 and there
+ * is no bigger version of them; blowing one up to 48 would be a picture
+ * of an icon.  So the icon view draws the same mark the list does and
+ * gives it a wider cell, which is the brief view every file manager of
+ * that decade had. */
+#define FILES_ICON 16U
 #define FILES_SMALL 16U
 
 #define FILES_ROW 18U               /* the detailed list */
@@ -39,7 +44,9 @@ static uint32_t history_depth;
 
 static uint32_t selected[TRAIT_FILES_MAX_SELECTED];
 static uint32_t selected_count;
-static enum trait_files_view view_mode = TRAIT_FILES_ICONS;
+/* The list, because that is what gentoo was and what the icons were
+ * drawn for: a row high, a name beside it. */
+static enum trait_files_view view_mode = TRAIT_FILES_LIST;
 static bool show_hidden;           /* pcmanfm: show_hidden=0 */
 static bool single_click;          /* pcmanfm: single_click=0 */
 
@@ -959,11 +966,13 @@ static void frame_line(struct trait_surface *surface, struct trait_rect clip,
 static void draw_places(struct trait_surface *surface,
     struct trait_rect client)
 {
-    static const char *const PLACES[4] = {
-        "user", "Desktop", "Trash", "Filesystem"
+    /* Three, not four.  Trash was here and it went with the trash can:
+     * a place you cannot put anything into is a row of decoration. */
+    static const char *const PLACES[3] = {
+        "user", "Desktop", "Filesystem"
     };
-    static const char *const MARKS[4] = {
-        "user-home", "user-desktop", "user-trash", "drive-harddisk"
+    static const char *const MARKS[3] = {
+        "user-home", "user-desktop", "drive-harddisk"
     };
     struct trait_rect pane;
     uint32_t at;
@@ -977,7 +986,7 @@ static void draw_places(struct trait_surface *surface,
     trait_surface_fill(surface, client, pane, TRAIT_BG);
     frame_line(surface, client, pane.x + pane.width - 1U, pane.y,
                pane.height, true, TRAIT_LINE);
-    for (at = 0U; at < 4U; ++at) {
+    for (at = 0U; at < 3U; ++at) {
         uint32_t top = pane.y + 4U + at * 22U;
 
         draw_icon(surface, pane, MARKS[at], FILES_SMALL,

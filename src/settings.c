@@ -3,7 +3,6 @@
 
 #include <trait/font.h>
 #include <trait/files.h>
-#include <trait/panel.h>
 #include <trait/shell.h>
 #include <trait/theme.h>
 
@@ -194,11 +193,6 @@ static void refresh(struct trait_settings_row *row)
                  "Detailed list" : "Icons",
              TRAIT_SETTINGS_TEXT_BYTES);
         break;
-    case TRAIT_SET_CLOCK_24H:
-        copy(row->value,
-             trait_panel_clock_24h() ? "24-hour" : "12-hour",
-             TRAIT_SETTINGS_TEXT_BYTES);
-        break;
     case TRAIT_SET_DESKTOP_ICONS:
         row->on = trait_shell_desktop_icons();
         break;
@@ -207,9 +201,6 @@ static void refresh(struct trait_settings_row *row)
         break;
     case TRAIT_SET_SINGLE_CLICK:
         row->on = trait_files_single_click();
-        break;
-    case TRAIT_SET_ALL_DESKTOPS:
-        row->on = trait_panel_show_all_desktops();
         break;
     case TRAIT_SET_NOTHING:
     default:
@@ -254,15 +245,6 @@ bool trait_settings_press(uint32_t page, uint32_t row)
         return true;
     case TRAIT_SET_SINGLE_CLICK:
         trait_files_set_single_click(!trait_files_single_click());
-        refresh(target);
-        return true;
-    case TRAIT_SET_ALL_DESKTOPS:
-        trait_panel_set_show_all_desktops(
-            !trait_panel_show_all_desktops());
-        refresh(target);
-        return true;
-    case TRAIT_SET_CLOCK_24H:
-        trait_panel_set_clock_24h(!trait_panel_clock_24h());
         refresh(target);
         return true;
     case TRAIT_SET_NOTHING:

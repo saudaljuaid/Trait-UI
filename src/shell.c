@@ -7,7 +7,6 @@
 #include <trait/packages.h>
 #include <trait/menu.h>
 #include <trait/theme.h>
-#include <trait/panel.h>
 #include <trait/window.h>
 #include <trait/settings.h>
 #include <trait/taskmgr.h>
@@ -16,10 +15,6 @@
 static struct trait_surface *canvas;
 static struct trait_rect shell_screen;
 static uint32_t shell_desktop;
-static bool menu_open;
-static bool volume_open;
-static uint32_t volume_level = 65U;
-static bool volume_muted;
 
 static bool context_open;
 static uint32_t context_x;
@@ -47,10 +42,6 @@ static struct {
 } notes[TRAIT_SHELL_MAX_NOTES];
 static uint32_t note_count;
 
-static char tip_text[48];
-static uint32_t tip_rested;
-static uint32_t tip_x;
-static uint32_t tip_y;
 
 /* Resizing: which edge is being dragged, and the frame it started from. */
 static bool resizing;
@@ -71,13 +62,18 @@ static bool switcher_open;
 static uint32_t switcher_at;
 
 /* The desktop folder, and the two standard marks before it. */
-#define DESKTOP_STANDARD 2U
+/* The home folder, and that is all.  There was a Trash beside it and
+ * nothing in this desktop moves a file to a trash or takes one back
+ * out, so it was a picture of a control. */
+#define DESKTOP_STANDARD 1U
 #define DESKTOP_CELL_W 86U
-#define DESKTOP_CELL_H 74U
+#define DESKTOP_CELL_H 40U
+/* The icons are 16 and there is no larger one of them; see
+ * assets/icons/gentoo/SOURCE.txt. */
+#define DESKTOP_MARK 16U
 #define DESKTOP_MARGIN 8U
 static uint32_t desktop_folder = TRAIT_FILES_MAX_NODES;
 static bool desktop_icons = true;   /* pcmanfm: show_documents/the root */
-static bool panel_shown;            /* off: see trait_shell_set_panel */
 static bool root_menu;              /* the menu the root press opened */
 static struct trait_rect root_anchor;
 static struct trait_window windows[TRAIT_SHELL_MAX_WINDOWS];
@@ -154,22 +150,17 @@ void trait_shell_reset(struct trait_surface *surface)
      * desktop came up with no icons in a test that had never touched
      * them. */
     desktop_icons = true;
-    panel_shown = false;
     root_menu = false;
     /* The theme too. It is static state like the rest, and a check that
      * switched it left every screenshot after it in the wrong palette -
      * which is the same leak the comment above is about, one line up. */
     (void)trait_theme_select(TRAIT_THEME_DEFAULT);
-    menu_open = false;
-    volume_open = false;
     run_open = false;
     run_length = 0U;
     run_text[0] = '\0';
     run_error[0] = '\0';
     switcher_open = false;
     note_count = 0U;
-    tip_rested = 0U;
-    tip_text[0] = '\0';
     resizing = false;
     context_open = false;
     rename_open = false;
@@ -194,7 +185,6 @@ void trait_shell_set_desktop(uint32_t desktop)
     uint32_t at;
 
     shell_desktop = desktop;
-    (void)trait_panel_set_desktop(desktop, 2U);
     /*
      * Focus has to land on this desktop.  Leaving it on a window you
      * can no longer see means the next keystroke goes somewhere
@@ -292,43 +282,6 @@ void trait_shell_tick(void)
         }
         ++at;
     }
-    if (tip_text[0] != '\0' && tip_rested < TRAIT_SHELL_TIP_TICKS) {
-        ++tip_rested;
-    }
-}
-
-bool trait_shell_tip_visible(void)
-{
-    return tip_text[0] != '\0' && tip_rested >= TRAIT_SHELL_TIP_TICKS;
-}
-
-const char *trait_shell_tip_text(void)
-{
-    return tip_text;
-}
-
-struct trait_rect trait_shell_tip_bounds(void)
-{
-    struct trait_rect box = { 0U, 0U, 0U, 0U };
-
-    if (!trait_shell_tip_visible()) {
-        return box;
-    }
-    box.width = trait_font_width(tip_text) + 14U;
-    box.height = 20U;
-    box.x = tip_x > box.width / 2U ? tip_x - box.width / 2U : 0U;
-    if (box.x + box.width > shell_screen.x + shell_screen.width) {
-        box.x = shell_screen.x + shell_screen.width - box.width;
-    }
-    /* ABOVE the pointer, because the bar is at the foot of the screen and
-     * a tip below it would be off the display. */
-    box.y = tip_y > box.height + 6U ? tip_y - box.height - 6U : 0U;
-    return box;
-}
-
-bool trait_shell_menu_open(void)
-{
-    return menu_open;
 }
 
 static const char *const CONTEXT_LABELS[CONTEXT_ROWS] = {
@@ -359,14 +312,12 @@ struct trait_rect trait_shell_context_bounds(void)
     box.x = context_x;
     box.y = context_y;
     /* Kept on the screen: a menu opened near the right edge would run
-     * off it, and near the foot would run under the panel. */
+     * off it, and near the foot would hang below the display. */
     if (box.x + box.width > shell_screen.x + shell_screen.width) {
         box.x = shell_screen.x + shell_screen.width - box.width;
     }
-    if (box.y + box.height >
-            shell_screen.y + shell_screen.height - TRAIT_PANEL_HEIGHT) {
-        box.y = shell_screen.y + shell_screen.height -
-            TRAIT_PANEL_HEIGHT - box.height;
+    if (box.y + box.height > shell_screen.y + shell_screen.height) {
+        box.y = shell_screen.y + shell_screen.height - box.height;
     }
     return box;
 }
@@ -444,16 +395,6 @@ void trait_shell_draw_root(void)
     whole.width = canvas->width;
     whole.height = canvas->height;
     trait_gears_draw(canvas, whole);
-}
-
-void trait_shell_set_panel(bool shown)
-{
-    panel_shown = shown;
-}
-
-bool trait_shell_panel(void)
-{
-    return panel_shown;
 }
 
 /*
@@ -540,9 +481,8 @@ bool trait_shell_desktop_icon_bounds(uint32_t at, struct trait_rect *out)
     if (out == NULL || at >= trait_shell_desktop_icon_count()) {
         return false;
     }
-    rows = (shell_screen.height > TRAIT_PANEL_HEIGHT + DESKTOP_MARGIN) ?
-        (shell_screen.height - TRAIT_PANEL_HEIGHT - DESKTOP_MARGIN) /
-            DESKTOP_CELL_H : 1U;
+    rows = (shell_screen.height > DESKTOP_MARGIN) ?
+        (shell_screen.height - DESKTOP_MARGIN) / DESKTOP_CELL_H : 1U;
     if (rows == 0U) {
         rows = 1U;
     }
@@ -560,10 +500,10 @@ bool trait_shell_desktop_icon_bounds(uint32_t at, struct trait_rect *out)
 void trait_shell_draw_desktop(void)
 {
     static const char *const STANDARD[DESKTOP_STANDARD] = {
-        "user-home", "user-trash"
+        "user-home"
     };
     static const char *const LABELS[DESKTOP_STANDARD] = {
-        "user", "Trash"
+        "user"
     };
     uint32_t at;
 
@@ -591,8 +531,8 @@ void trait_shell_draw_desktop(void)
             mark = trait_files_node_mark(node);
             label = trait_files_node_name(node);
         }
-        trait_files_draw_icon_at(canvas, cell, mark, 48U,
-            cell.x + (cell.width - 48U) / 2U, cell.y + 4U);
+        trait_files_draw_icon_at(canvas, cell, mark, DESKTOP_MARK,
+            cell.x + (cell.width - DESKTOP_MARK) / 2U, cell.y + 4U);
         {
             uint32_t width = trait_font_width(label);
 
@@ -606,7 +546,7 @@ void trait_shell_draw_desktop(void)
              */
             uint32_t pen = cell.x + (cell.width > width ?
                 (cell.width - width) / 2U : 0U);
-            uint32_t base = cell.y + 48U + 16U;
+            uint32_t base = cell.y + DESKTOP_MARK + 16U;
 
             trait_font_draw(canvas, cell, pen + 1U, base, label,
                             0x000000U);
@@ -615,16 +555,6 @@ void trait_shell_draw_desktop(void)
             trait_font_draw(canvas, cell, pen, base, label, 0xFFFFFFU);
         }
     }
-}
-
-bool trait_shell_volume_open(void)
-{
-    return volume_open;
-}
-
-uint32_t trait_shell_volume(void)
-{
-    return volume_muted ? 0U : volume_level;
 }
 
 struct trait_rect trait_shell_screen(void)
@@ -766,8 +696,8 @@ static void toggle_maximise(uint32_t slot, struct trait_rect screen)
     window->frame.x = screen.x;
     window->frame.y = screen.y;
     window->frame.width = screen.width;
-    window->frame.height = screen.height > TRAIT_PANEL_HEIGHT ?
-        screen.height - TRAIT_PANEL_HEIGHT : screen.height;
+    /* THE WHOLE SCREEN.  There is no bar to leave room for. */
+    window->frame.height = screen.height;
     window->maximised = true;
 }
 
@@ -940,27 +870,6 @@ static bool handle_client(uint32_t slot, const struct trait_event *event)
  * button belongs to a window, because it is the only place that knows
  * windows exist.
  */
-static const enum trait_shell_app LAUNCHER_APPS[3] = {
-    TRAIT_APP_FILES, TRAIT_APP_PACKAGES, TRAIT_APP_TERMINAL
-};
-
-/* Where the volume slider sits: above the icon, the way lxpanel's does. */
-static struct trait_rect shell_volume_bounds(void)
-{
-    struct trait_rect box = { 0U, 0U, 0U, 0U };
-    struct trait_rect icon;
-
-    if (trait_panel_plugin_bounds(shell_screen, TRAIT_PANEL_PLUGIN_VOLUME,
-            &icon) != TRAIT_PANEL_STATUS_OK) {
-        return box;
-    }
-    box.width = 26U;
-    box.height = 120U;
-    box.x = icon.x + (icon.width > box.width ?
-        (icon.width - box.width) / 2U : 0U);
-    box.y = icon.y > box.height ? icon.y - box.height : 0U;
-    return box;
-}
 
 /* Which row of the open menu a y coordinate is on.  Rules are shorter
  * than rows, so this walks them rather than dividing. */
@@ -980,6 +889,19 @@ static uint32_t shell_menu_row(struct trait_rect box, uint32_t y)
     return trait_menu_row_count();
 }
 
+static bool label_is(const char *label, const char *name)
+{
+    uint32_t at = 0U;
+
+    while (label[at] == name[at]) {
+        if (label[at] == '\0') {
+            return true;
+        }
+        ++at;
+    }
+    return false;
+}
+
 static bool shell_menu_pick(uint32_t row)
 {
     struct trait_rect where = { 240U, 180U, 560U, 360U };
@@ -988,26 +910,34 @@ static bool shell_menu_pick(uint32_t row)
     if (label == NULL) {
         return false;
     }
-    /* The menu carries names, not slots: matching on the name means a
-     * menu built from what is installed cannot pick the wrong thing when
-     * its rows move. */
-    if (label[0] == 'L') {           /* Leafpad */
-        return trait_shell_open(TRAIT_APP_SETTINGS, where) <
+    /*
+     * THE WHOLE LABEL, not its first letter.  This used to match on
+     * label[0] because the panel's menu was built from packages and no
+     * two categories began alike; a root menu has Settings next to
+     * System Tools and Run next to Restart, and the first letter picks
+     * the wrong one.
+     */
+    if (label_is(label, "xterm")) {
+        return trait_shell_open(TRAIT_APP_TERMINAL, where) <
             TRAIT_SHELL_MAX_WINDOWS;
     }
-    if (label[0] == 'G') {           /* Galculator */
-        return trait_shell_open(TRAIT_APP_TASKMGR, where) <
-            TRAIT_SHELL_MAX_WINDOWS;
-    }
-    if (label[0] == 'S') {           /* System Tools */
-        return trait_shell_open(TRAIT_APP_PACKAGES, where) <
-            TRAIT_SHELL_MAX_WINDOWS;
-    }
-    if (label[0] == 'A') {           /* Accessories / Archiver */
+    if (label_is(label, "Files")) {
         return trait_shell_open(TRAIT_APP_FILES, where) <
             TRAIT_SHELL_MAX_WINDOWS;
     }
-    if (label[0] == 'R') {           /* Run... */
+    if (label_is(label, "Packages")) {
+        return trait_shell_open(TRAIT_APP_PACKAGES, where) <
+            TRAIT_SHELL_MAX_WINDOWS;
+    }
+    if (label_is(label, "Task Manager")) {
+        return trait_shell_open(TRAIT_APP_TASKMGR, where) <
+            TRAIT_SHELL_MAX_WINDOWS;
+    }
+    if (label_is(label, "Settings")) {
+        return trait_shell_open(TRAIT_APP_SETTINGS, where) <
+            TRAIT_SHELL_MAX_WINDOWS;
+    }
+    if (label_is(label, "Run...")) {
         run_open = true;
         run_length = 0U;
         run_text[0] = '\0';
@@ -1254,75 +1184,6 @@ static bool shell_run_go(void)
     return true;
 }
 
-static bool shell_panel_press(struct trait_panel_hit hit)
-{
-    struct trait_rect where = { 220U, 160U, 560U, 360U };
-
-    switch (hit.kind) {
-    case TRAIT_PANEL_HIT_LAUNCHER:
-        if (hit.index >= 3U) {
-            return false;
-        }
-        return trait_shell_open(LAUNCHER_APPS[hit.index], where) <
-            TRAIT_SHELL_MAX_WINDOWS;
-    case TRAIT_PANEL_HIT_TASK:
-        if (hit.index >= TRAIT_SHELL_MAX_WINDOWS || !used[hit.index]) {
-            return false;
-        }
-        /* Pressing the button of the window that already has focus
-         * MINIMISES it, which is what a taskbar does - otherwise the
-         * button has nothing to say for the focused window. */
-        if (trait_shell_focused() == hit.index &&
-                !windows[hit.index].minimised) {
-            windows[hit.index].minimised = true;
-            return true;
-        }
-        windows[hit.index].minimised = false;
-        trait_shell_focus(hit.index);
-        return true;
-    case TRAIT_PANEL_HIT_PAGER:
-        return trait_panel_set_desktop(hit.index, 2U) ==
-            TRAIT_PANEL_STATUS_OK;
-    case TRAIT_PANEL_HIT_WINCMD: {
-        /* Show the desktop: minimise everything, or put it all back if
-         * everything is already down. */
-        bool any_up = false;
-        uint32_t at;
-
-        for (at = 0U; at < TRAIT_SHELL_MAX_WINDOWS; ++at) {
-            if (used[at] && !windows[at].minimised) {
-                any_up = true;
-            }
-        }
-        for (at = 0U; at < TRAIT_SHELL_MAX_WINDOWS; ++at) {
-            if (used[at]) {
-                windows[at].minimised = any_up;
-            }
-        }
-        return true;
-    }
-    case TRAIT_PANEL_HIT_MENU:
-        /* A second press on the button that opened it CLOSES it, which
-         * is what every menu button does and the thing that is missing
-         * when a menu can only be dismissed by clicking away. */
-        menu_open = !menu_open;
-        volume_open = false;
-        return true;
-    case TRAIT_PANEL_HIT_VOLUME:
-        volume_open = !volume_open;
-        menu_open = false;
-        return true;
-    case TRAIT_PANEL_HIT_CLOCK:
-    case TRAIT_PANEL_HIT_NONE:
-    default:
-        /* Reported so the press does not fall through to a window
-         * underneath.  The clock opens a calendar in lxpanel and there
-         * is no calendar here, so it does nothing rather than pretending
-         * to. */
-        return false;
-    }
-}
-
 bool trait_shell_handle(const struct trait_event *event)
 {
     uint32_t slot;
@@ -1479,68 +1340,6 @@ bool trait_shell_handle(const struct trait_event *event)
             resize_to(event->x, event->y);
             return true;
         }
-        if (!dragging) {
-            /*
-             * Not dragging: this is a hover.  The tip RESETS when the
-             * pointer moves to something else and counts up while it
-             * rests - which is what makes it a tip rather than something
-             * that flashes as the mouse crosses the bar.
-             */
-            struct trait_panel_hit over =
-                trait_panel_hit(shell_screen, event->x, event->y);
-            const char *label = "";
-
-            switch (over.kind) {
-            case TRAIT_PANEL_HIT_MENU:
-                label = "Applications";
-                break;
-            case TRAIT_PANEL_HIT_LAUNCHER:
-                label = over.index == 0U ? "File Manager" :
-                    (over.index == 1U ? "Package Manager" : "Terminal");
-                break;
-            case TRAIT_PANEL_HIT_WINCMD:
-                label = "Show the desktop";
-                break;
-            case TRAIT_PANEL_HIT_PAGER:
-                label = "Workspace";
-                break;
-            case TRAIT_PANEL_HIT_VOLUME:
-                label = "Volume";
-                break;
-            case TRAIT_PANEL_HIT_CLOCK:
-                label = "Clock";
-                break;
-            default:
-                label = "";
-                break;
-            }
-            {
-                uint32_t at = 0U;
-                bool same_tip = true;
-
-                while (label[at] != '\0' || tip_text[at] != '\0') {
-                    if (label[at] != tip_text[at]) {
-                        same_tip = false;
-                        break;
-                    }
-                    ++at;
-                }
-                tip_x = event->x;
-                tip_y = event->y;
-                if (!same_tip) {
-                    at = 0U;
-                    while (label[at] != '\0' &&
-                            at + 1U < sizeof(tip_text)) {
-                        tip_text[at] = label[at];
-                        ++at;
-                    }
-                    tip_text[at] = '\0';
-                    tip_rested = 0U;
-                    return true;
-                }
-            }
-            return false;
-        }
         windows[drag_slot].frame.x = event->x > drag_dx ?
             event->x - drag_dx : 0U;
         windows[drag_slot].frame.y = event->y > drag_dy ?
@@ -1605,75 +1404,18 @@ bool trait_shell_handle(const struct trait_event *event)
         context_open = false;
         /* fall through, so the press still lands where it landed */
     }
-    if (menu_open) {
-        struct trait_rect button;
-        struct trait_rect box;
+    if (root_menu) {
+        struct trait_rect box = trait_menu_bounds(shell_screen,
+                                                  root_anchor);
 
-        if (trait_panel_plugin_bounds(shell_screen,
-                TRAIT_PANEL_PLUGIN_MENU, &button) ==
-                TRAIT_PANEL_STATUS_OK) {
-            box = trait_menu_bounds(shell_screen, button);
-            if (trait_rect_contains(box, event->x, event->y)) {
-                uint32_t row = shell_menu_row(box, event->y);
+        if (trait_rect_contains(box, event->x, event->y)) {
+            uint32_t row = shell_menu_row(box, event->y);
 
-                menu_open = false;
-                return shell_menu_pick(row);
-            }
-            /*
-             * A press on the BUTTON is not a dismiss - it is the toggle,
-             * and the panel below handles it.  Closing it here as well
-             * makes the press close and re-open in one go, which is a
-             * menu button that does nothing: the first version of this
-             * did exactly that and the harness caught it.
-             */
-            if (trait_rect_contains(button, event->x, event->y)) {
-                return shell_panel_press((struct trait_panel_hit){
-                    TRAIT_PANEL_HIT_MENU, 0U });
-            }
+            root_menu = false;
+            return shell_menu_pick(row);
         }
-        menu_open = false;
+        root_menu = false;
         /* fall through: the press still lands where it landed */
-    }
-    if (volume_open) {
-        struct trait_rect slider = shell_volume_bounds();
-        struct trait_rect icon;
-
-        /* The same rule as the menu: a press on the icon is the toggle. */
-        if (trait_panel_plugin_bounds(shell_screen,
-                TRAIT_PANEL_PLUGIN_VOLUME, &icon) ==
-                TRAIT_PANEL_STATUS_OK &&
-                trait_rect_contains(icon, event->x, event->y)) {
-            return shell_panel_press((struct trait_panel_hit){
-                TRAIT_PANEL_HIT_VOLUME, 0U });
-        }
-        if (trait_rect_contains(slider, event->x, event->y)) {
-            /* The slider runs bottom to top, so a press near its foot is
-             * quiet and near its head is loud. */
-            uint32_t from_top = event->y - slider.y;
-
-            volume_level = slider.height > 0U ?
-                100U - (from_top * 100U / slider.height) : 0U;
-            volume_muted = volume_level == 0U;
-            (void)trait_panel_set_volume(volume_level, volume_muted);
-            return true;
-        }
-        volume_open = false;
-    }
-
-    /*
-     * THE PANEL IS ALWAYS ON TOP, so it is asked first - before the
-     * window stack.  A maximised window ends at the bar's top edge, but
-     * a window dragged over it would otherwise swallow presses meant for
-     * the bar, and a taskbar you cannot click is the worst version of a
-     * control that does not do what it is drawn as.
-     */
-    {
-        struct trait_panel_hit hit =
-            trait_panel_hit(shell_screen, event->x, event->y);
-
-        if (hit.kind != TRAIT_PANEL_HIT_NONE) {
-            return shell_panel_press(hit);
-        }
     }
 
     slot = trait_shell_at(event->x, event->y);
@@ -1744,48 +1486,6 @@ bool trait_shell_handle(const struct trait_event *event)
     return true;
 }
 
-/*
- * THE BAR'S TASK LIST IS THE WINDOW LIST.  Anything that opens, closes or
- * minimises a window calls this, so the buttons on the bar are the
- * windows that exist rather than a list somebody remembered to update.
- * A taskbar carrying a button for a window that closed is the same bug as
- * a button that does nothing, wearing a different coat.
- */
-static const char *const APP_ICONS[TRAIT_APP_COUNT] = {
-    "file-manager", "terminal", "gtk-preferences", "gtk-preferences",
-    "gtk-preferences"
-};
-
-static void sync_panel(void)
-{
-    uint32_t at;
-
-    for (at = 0U; at < TRAIT_SHELL_MAX_WINDOWS &&
-            at < TRAIT_PANEL_MAX_TASKS; ++at) {
-        struct trait_panel_task task;
-        uint32_t byte = 0U;
-
-        if (!used[at]) {
-            (void)trait_panel_clear_task(at);
-            continue;
-        }
-        /* The bar shows THIS desktop's windows, which is what
-         * ShowAllDesks=0 in the panel's own profile asks for. */
-        task.icon = APP_ICONS[apps[at]];
-        task.active = trait_shell_focused() == at &&
-            !windows[at].minimised;
-        task.minimised = windows[at].minimised;
-        task.desktop = windows[at].desktop;
-        while (windows[at].title[byte] != '\0' &&
-                byte + 1U < TRAIT_PANEL_LABEL_BYTES) {
-            task.label[byte] = windows[at].title[byte];
-            ++byte;
-        }
-        task.label[byte] = '\0';
-        (void)trait_panel_set_task(at, &task);
-    }
-}
-
 void trait_shell_draw(void)
 {
     uint32_t at;
@@ -1793,7 +1493,6 @@ void trait_shell_draw(void)
     if (!trait_surface_valid(canvas)) {
         return;
     }
-    sync_panel();
     /* FORWARDS: bottom first, so the top window is drawn last and covers
      * what it is over.  The same order the hit test walks backwards. */
     for (at = 0U; at < stack_depth; ++at) {
@@ -1833,60 +1532,11 @@ void trait_shell_draw(void)
  */
 void trait_shell_draw_overlays(void)
 {
-    struct trait_rect button;
-
     if (!trait_surface_valid(canvas)) {
         return;
     }
     if (root_menu) {
         trait_menu_draw(canvas, shell_screen, root_anchor);
-    }
-    if (menu_open && trait_panel_plugin_bounds(shell_screen,
-            TRAIT_PANEL_PLUGIN_MENU, &button) == TRAIT_PANEL_STATUS_OK) {
-        trait_menu_draw(canvas, shell_screen, button);
-    }
-    if (volume_open) {
-        struct trait_rect box = shell_volume_bounds();
-        uint32_t lit;
-        uint32_t at;
-
-        if (box.height == 0U) {
-            return;
-        }
-        trait_surface_fill(canvas, box, box, TRAIT_BG);
-        for (at = 0U; at < box.width; ++at) {
-            trait_surface_plot(canvas, box, box.x + at, box.y,
-                               TRAIT_LINE);
-            trait_surface_plot(canvas, box, box.x + at,
-                               box.y + box.height - 1U, TRAIT_LINE);
-        }
-        for (at = 0U; at < box.height; ++at) {
-            trait_surface_plot(canvas, box, box.x, box.y + at,
-                               TRAIT_LINE);
-            trait_surface_plot(canvas, box, box.x + box.width - 1U,
-                               box.y + at, TRAIT_LINE);
-        }
-        /* The trough, and the level filled from the BOTTOM: a slider
-         * that fills downwards reads as the amount you have lost. */
-        {
-            struct trait_rect trough;
-
-            trough.x = box.x + box.width / 2U - 2U;
-            trough.y = box.y + 8U;
-            trough.width = 4U;
-            trough.height = box.height > 16U ? box.height - 16U : 0U;
-            trait_surface_fill(canvas, box, trough, TRAIT_BASE);
-            lit = trough.height * trait_shell_volume() / 100U;
-            {
-                struct trait_rect fill;
-
-                fill.x = trough.x;
-                fill.width = trough.width;
-                fill.height = lit;
-                fill.y = trough.y + trough.height - lit;
-                trait_surface_fill(canvas, box, fill, TRAIT_SEL_BG);
-            }
-        }
     }
     if (run_open) {
         struct trait_rect box;
@@ -1998,8 +1648,7 @@ void trait_shell_draw_overlays(void)
             box.width = 220U;
             box.height = 46U;
             box.x = shell_screen.x + shell_screen.width - box.width - 10U;
-            box.y = shell_screen.y + shell_screen.height -
-                TRAIT_PANEL_HEIGHT - 8U -
+            box.y = shell_screen.y + shell_screen.height - 8U -
                 (note_count - at) * (box.height + 6U);
             trait_surface_fill(canvas, box, box, TRAIT_BG);
             for (edge = 0U; edge < box.width; ++edge) {
@@ -2020,13 +1669,6 @@ void trait_shell_draw_overlays(void)
                             notes[at].body, TRAIT_TEXT);
         }
     }
-    /*
-     * The tip last of all, because it is the thing nearest the pointer
-     * and nothing should be able to cover it.  GTK's tooltip is a pale
-     * yellow box, which is what tooltip_bg_color is in every GTK2 theme
-     * that ships one - it is not the widget background, and using the
-     * widget background is how a tip stops looking like a tip.
-     */
     if (context_open) {
         struct trait_rect box = trait_shell_context_bounds();
         uint32_t at;
@@ -2102,26 +1744,6 @@ void trait_shell_draw_overlays(void)
             trait_font_draw(canvas, box, box.x + 12U, box.y + 74U,
                             rename_error, TRAIT_TEXT);
         }
-    }
-    if (trait_shell_tip_visible()) {
-        struct trait_rect box = trait_shell_tip_bounds();
-        uint32_t edge;
-
-        trait_surface_fill(canvas, box, box, 0xF5F5B5U);
-        for (edge = 0U; edge < box.width; ++edge) {
-            trait_surface_plot(canvas, box, box.x + edge, box.y,
-                               0x000000U);
-            trait_surface_plot(canvas, box, box.x + edge,
-                               box.y + box.height - 1U, 0x000000U);
-        }
-        for (edge = 0U; edge < box.height; ++edge) {
-            trait_surface_plot(canvas, box, box.x, box.y + edge,
-                               0x000000U);
-            trait_surface_plot(canvas, box, box.x + box.width - 1U,
-                               box.y + edge, 0x000000U);
-        }
-        trait_font_draw(canvas, box, box.x + 7U, box.y + 14U,
-                        tip_text, 0x000000U);
     }
 }
 
@@ -2227,12 +1849,14 @@ bool trait_shell_self_test(void)
     }
 
     /*
-     * And the bar.  A press on a launcher has to OPEN something, and a
-     * press on the button of the focused window has to put it down -
-     * both were pictures until the panel got a hit test.
+     * And the root menu, which is the only way in now that there is no
+     * bar.  A press on the root has to OPEN it where the pointer is, a
+     * press on a row has to start the thing the row names, and maximise
+     * has to fill the WHOLE screen - there is nothing at the foot to
+     * stop at any more.
      */
     {
-        struct trait_panel_hit hit;
+        struct trait_rect box;
         uint32_t opened;
 
         trait_shell_reset(canvas);
@@ -2241,57 +1865,58 @@ bool trait_shell_self_test(void)
          * the work area is nought by nought and "maximised" means a
          * window of no size - which is what the first run of this found. */
         trait_shell_set_screen((struct trait_rect){ 0U, 0U, 1280U, 800U });
-        (void)trait_panel_initialize();
-        hit.kind = TRAIT_PANEL_HIT_LAUNCHER;
-        hit.index = 0U;
-        if (!shell_panel_press(hit)) {
+        trait_menu_reset();
+        if (!trait_menu_add("xterm", false, false) ||
+                !trait_menu_add("Files", false, false)) {
             return false;
+        }
+        if (!trait_shell_root_press(400U, 300U)) {
+            return false;
+        }
+        if (!trait_shell_root_menu_open() ||
+                !trait_shell_root_menu_bounds(&box)) {
+            return false;
+        }
+        /* The menu opens AT THE PRESS.  It used to grow upwards off a
+         * button at the foot of the screen, and handed the press point
+         * unchanged it opened above the pointer. */
+        if (box.x < 400U || box.y < 300U) {
+            return false;
+        }
+        {
+            struct trait_event pick;
+            uint8_t *zero = (uint8_t *)&pick;
+            uint32_t byte;
+
+            for (byte = 0U; byte < sizeof(pick); ++byte) {
+                zero[byte] = 0U;
+            }
+            pick.kind = TRAIT_EVENT_POINTER_DOWN;
+            pick.x = box.x + 20U;
+            pick.y = box.y + 10U;
+            if (!trait_shell_handle(&pick)) {
+                return false;
+            }
         }
         if (trait_shell_window_count() != 1U) {
             return false;
         }
         opened = trait_shell_focused();
-        if (trait_shell_app_of(opened) != TRAIT_APP_FILES) {
+        if (trait_shell_app_of(opened) != TRAIT_APP_TERMINAL) {
             return false;
         }
-        /* A launcher index the bar does not have opens nothing rather
-         * than reading off the end of the table. */
-        hit.index = 9U;
-        if (shell_panel_press(hit)) {
+        /* And the menu is shut afterwards: a menu that stays open after
+         * it has been used is a menu you have to dismiss twice. */
+        if (trait_shell_root_menu_open()) {
             return false;
         }
-        if (trait_shell_window_count() != 1U) {
-            return false;
-        }
-        /* The focused window's own task button minimises it. */
-        hit.kind = TRAIT_PANEL_HIT_TASK;
-        hit.index = opened;
-        if (!shell_panel_press(hit)) {
-            return false;
-        }
-        if (!windows[opened].minimised) {
-            return false;
-        }
-        /* A minimised window is not under the pointer any more. */
-        if (trait_shell_at(windows[opened].frame.x + 5U,
-                windows[opened].frame.y + 5U) <
-                TRAIT_SHELL_MAX_WINDOWS) {
-            return false;
-        }
-        /* And pressing it again brings it back. */
-        if (!shell_panel_press(hit)) {
-            return false;
-        }
-        if (windows[opened].minimised) {
-            return false;
-        }
-        /* Maximise fills the work area and stops at the panel. */
+        /* Maximise fills the screen, all of it. */
         toggle_maximise(opened, shell_screen);
         if (!windows[opened].maximised) {
             return false;
         }
-        if (windows[opened].frame.y + windows[opened].frame.height +
-                TRAIT_PANEL_HEIGHT != shell_screen.height) {
+        if (windows[opened].frame.y + windows[opened].frame.height !=
+                shell_screen.height) {
             return false;
         }
         /* And unmaximising puts it back where it was, not somewhere
@@ -2308,6 +1933,7 @@ bool trait_shell_self_test(void)
             }
         }
     }
+
     trait_shell_reset(canvas);
     return true;
 }

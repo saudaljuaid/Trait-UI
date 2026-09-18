@@ -46,9 +46,7 @@ enum trait_settings_what {
     TRAIT_SET_DESKTOP_ICONS,     /* pcmanfm: draw the desktop's icons */
     TRAIT_SET_SHOW_HIDDEN,       /* pcmanfm: show_hidden */
     TRAIT_SET_FILES_VIEW,        /* pcmanfm: view_mode */
-    TRAIT_SET_SINGLE_CLICK,      /* pcmanfm: single_click */
-    TRAIT_SET_ALL_DESKTOPS,      /* lxpanel taskbar: ShowAllDesks */
-    TRAIT_SET_CLOCK_24H          /* lxpanel clock: ClockFmt */
+    TRAIT_SET_SINGLE_CLICK       /* pcmanfm: single_click */
 };
 
 struct trait_settings_row {

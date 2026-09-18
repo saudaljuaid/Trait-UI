@@ -6,13 +6,17 @@ X11, the way fvwm and twm leave it, drawn in sixteen colours.
 
 ![a session](build/session.png)
 
-The root is glxgears. Not a screenshot of it: `tools/make-gears.py`
-takes the radii, tooth counts and view angles out of Brian Paul's
-`glxgears.c` and projects them, and `src/gears.c` fills the outlines at
-whatever size the screen turns out to be. Each gear is two of the
-sixteen colours, the face the light reaches and the sides it does not,
-because flat shading is what is left when the shades run out. There is
-no wallpaper image, and nothing here decodes one.
+The root is one flat colour, which is what fvwm comes up on and what
+OpenBSD therefore comes up on. There is no wallpaper image and nothing
+here decodes one.
+
+glxgears runs in a window, because glxgears is a program. Not a
+screenshot of one: `tools/make-gears.py` takes the radii, tooth counts
+and view angles out of Brian Paul's `glxgears.c` and projects them, and
+`src/gears.c` fills the outlines at whatever size the window turns out
+to be. Each gear is two of the sixteen colours, the face the light
+reaches and the sides it does not, because flat shading is what is left
+when the shades run out.
 
 No panel, no dock, no tray, no clock. You reach the menu by pressing the
 root and it opens where the pointer is; you reach a window by clicking it
@@ -20,8 +24,12 @@ or with Alt+Tab; what is running is in the Task Manager. The bar used to
 be here and be switched off, which meant a thousand lines that nothing
 reached. It is gone, and the Debian artwork that dressed it went with it.
 
-The root comes up bare — the gears and nothing over them. ~/Desktop is
-one switch away in Settings.
+The root comes up bare. ~/Desktop is one switch away in Settings.
+
+Put a window down and it lands on the root as an icon, at the foot of
+the screen, the way fvwm iconifies. That is where the taskbar went: a
+minimised window that lives only in Alt+Tab is a window you have to
+remember you have. The menu wears a title bar, which fvwm's does too.
 
 No menu bars either. The file manager had File, Edit, View, Bookmarks,
 Tools and Help across the top and none of them was hit-tested; so did the
@@ -70,6 +78,7 @@ file that defines it, and the table says which file.
 | What | Where it came from |
 | --- | --- |
 | The three gears, their radii, tooth counts and view angles | Mesa demos, `src/xdemos/glxgears.c`, Brian Paul — see `assets/gears/SOURCE.txt` |
+| A flat root, an icon at the foot per iconified window, a titled menu | fvwm, which is what `startx` gives you on OpenBSD |
 | The text: Misc-Fixed 6x13, 7x14, 9x18 and 8x16 | `xfonts-cyrillic`, the KOI8-R builds of the X11 bitmap faces — see `assets/fonts/SOURCE.txt` |
 | The icons | `gentoo` 0.20.7-4, `usr/share/gentoo/icons/`, Johan Hanson 1998 — see `assets/icons/gentoo/SOURCE.txt` |
 | The Clearlooks palette | `gtk2-engines`, `Clearlooks/gtk-2.0/gtkrc` |
@@ -84,7 +93,7 @@ include/trait/theme.h      the palette, as runtime state
 include/trait/font.h       text as coverage — three sizes and a mono face
 include/trait/input.h      pointer and key events
 include/trait/window.h     Openbox's frame
-include/trait/gears.h      the root window
+include/trait/gears.h      glxgears, in a window
 include/trait/menu.h       the root menu
 include/trait/files.h      pcmanfm
 include/trait/taskmgr.h    lxtask

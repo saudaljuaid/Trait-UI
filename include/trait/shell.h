@@ -38,6 +38,10 @@ enum trait_shell_app {
     TRAIT_APP_TASKMGR,
     TRAIT_APP_SETTINGS,
     TRAIT_APP_PACKAGES,
+    /* glxgears, which is a PROGRAM.  It ran as the root window for a
+     * while, which is not where it runs: you type glxgears and a window
+     * comes up with the gears turning in it. */
+    TRAIT_APP_GEARS,
     TRAIT_APP_COUNT
 };
 
@@ -96,6 +100,18 @@ void trait_shell_set_desktop_icons(bool show);
 bool trait_shell_desktop_icons(void);
 void trait_shell_draw_desktop(void);
 bool trait_shell_desktop_icon_bounds(uint32_t at, struct trait_rect *out);
+
+/*
+ * ICONIFIED WINDOWS, ON THE ROOT, which is where a minimised window
+ * goes and the reason there is no taskbar to miss it from.  fvwm drops
+ * an icon at the foot of the screen and OpenBSD comes up on fvwm; a
+ * window that lives only in Alt+Tab is a window you have to remember
+ * you have.  Pressing one puts it back.
+ */
+uint32_t trait_shell_window_icon_count(void);
+uint32_t trait_shell_window_icon_slot(uint32_t at);
+bool trait_shell_window_icon_bounds(uint32_t at, struct trait_rect *out);
+void trait_shell_draw_window_icons(void);
 uint32_t trait_shell_desktop_icon_count(void);
 
 /* The Run box: type a name, press return, and it runs or says it cannot. */

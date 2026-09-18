@@ -108,7 +108,7 @@ static uint32_t drag_node;
 
 static const char *const TITLES[TRAIT_APP_COUNT] = {
     "user", "user@trait: ~", "Task Manager", "Desktop Preferences",
-    "Package Manager"
+    "Package Manager", "glxgears"
 };
 
 static void set_title(struct trait_window *window, const char *text)
@@ -399,7 +399,14 @@ void trait_shell_draw_root(void)
      * trait_shell_set_screen - which painted nothing at all. */
     whole.width = canvas->width;
     whole.height = canvas->height;
-    trait_gears_draw(canvas, whole);
+    /*
+     * ONE COLOUR.  fvwm comes up on a flat grey root and OpenBSD ships
+     * fvwm, so that is what a bare session looks like; the reference is
+     * #3F3F3F and this is the nearest of the sixteen.  The gears ran
+     * here for a while, which was the wrong place for them - glxgears
+     * is a program, and it has a window of its own now.
+     */
+    trait_surface_fill(canvas, whole, whole, TRAIT_BG_ACTIVE);
 }
 
 /*
@@ -411,9 +418,30 @@ bool trait_shell_root_press(uint32_t x, uint32_t y)
 {
     struct trait_rect probe = { x, 0U, 1U, 1U };
     uint32_t height;
+    uint32_t at;
 
     if (trait_shell_at(x, y) < trait_shell_window_count()) {
         return false;      /* a window is under it: not the root */
+    }
+    /*
+     * AN ICON FIRST.  An iconified window's icon is on the root, so a
+     * press on one would otherwise open the menu over it and the window
+     * would have no way back except Alt+Tab - which is the taskbar
+     * problem again, wearing a different coat.
+     */
+    for (at = 0U; at < trait_shell_window_icon_count(); ++at) {
+        struct trait_rect cell;
+        uint32_t slot = trait_shell_window_icon_slot(at);
+
+        if (slot >= TRAIT_SHELL_MAX_WINDOWS ||
+                !trait_shell_window_icon_bounds(at, &cell) ||
+                !trait_rect_contains(cell, x, y)) {
+            continue;
+        }
+        windows[slot].minimised = false;
+        trait_shell_focus(slot);
+        root_menu = false;
+        return true;
     }
     /*
      * trait_menu_bounds grows the menu UPWARDS from its anchor, because
@@ -502,6 +530,114 @@ bool trait_shell_desktop_icon_bounds(uint32_t at, struct trait_rect *out)
     return true;
 }
 
+/*
+ * ICONIFIED WINDOWS, ON THE ROOT.
+ *
+ * This is where a window GOES when you put it down, and it is the
+ * reason there is no taskbar to miss.  fvwm drops an icon on the root
+ * and that is how OpenBSD comes up; a minimised window that lives only
+ * in Alt+Tab is a window you have to remember you have.
+ *
+ * Along the foot, left to right, because that is fvwm's default icon
+ * box and because the top-left corner is where ~/Desktop already is.
+ */
+static uint32_t icon_list(uint32_t *out, uint32_t room)
+{
+    uint32_t found = 0U;
+    uint32_t at;
+
+    for (at = 0U; at < TRAIT_SHELL_MAX_WINDOWS && found < room; ++at) {
+        if (used[at] && windows[at].minimised &&
+                windows[at].desktop == shell_desktop) {
+            out[found] = at;
+            ++found;
+        }
+    }
+    return found;
+}
+
+uint32_t trait_shell_window_icon_count(void)
+{
+    uint32_t list[TRAIT_SHELL_MAX_WINDOWS];
+
+    return icon_list(list, TRAIT_SHELL_MAX_WINDOWS);
+}
+
+uint32_t trait_shell_window_icon_slot(uint32_t at)
+{
+    uint32_t list[TRAIT_SHELL_MAX_WINDOWS];
+    uint32_t count = icon_list(list, TRAIT_SHELL_MAX_WINDOWS);
+
+    return at < count ? list[at] : TRAIT_SHELL_MAX_WINDOWS;
+}
+
+bool trait_shell_window_icon_bounds(uint32_t at, struct trait_rect *out)
+{
+    uint32_t columns;
+
+    if (out == NULL || at >= trait_shell_window_icon_count()) {
+        return false;
+    }
+    columns = shell_screen.width > DESKTOP_MARGIN ?
+        (shell_screen.width - DESKTOP_MARGIN) / DESKTOP_CELL_W : 1U;
+    if (columns == 0U) {
+        columns = 1U;
+    }
+    out->width = DESKTOP_CELL_W;
+    out->height = DESKTOP_CELL_H;
+    out->x = shell_screen.x + DESKTOP_MARGIN +
+        (at % columns) * DESKTOP_CELL_W;
+    /* Counted up from the foot, so a second row of icons grows towards
+     * the middle rather than off the bottom of the screen. */
+    out->y = shell_screen.y + shell_screen.height - DESKTOP_MARGIN -
+        (at / columns + 1U) * DESKTOP_CELL_H;
+    return true;
+}
+
+static void draw_mark_and_label(struct trait_rect cell, const char *mark,
+    const char *label)
+{
+    uint32_t width = trait_font_width(label);
+    uint32_t pen = cell.x + (cell.width > width ?
+        (cell.width - width) / 2U : 0U);
+    uint32_t base = cell.y + DESKTOP_MARK + 16U;
+
+    trait_files_draw_icon_at(canvas, cell, mark, DESKTOP_MARK,
+        cell.x + (cell.width - DESKTOP_MARK) / 2U, cell.y + 4U);
+    /*
+     * pcmanfm's LXDE profile is desktop_fg=#ffffff with
+     * desktop_shadow=#000000: white ink over a dark halo, which is what
+     * keeps a label readable wherever it lands.  The halo is the same
+     * text offset by one in each direction - cheaper than a blur and
+     * what a one-pixel shadow IS.
+     */
+    trait_font_draw(canvas, cell, pen + 1U, base, label, 0x000000U);
+    trait_font_draw(canvas, cell, pen, base + 1U, label, 0x000000U);
+    trait_font_draw(canvas, cell, pen, base, label, 0xFFFFFFU);
+}
+
+void trait_shell_draw_window_icons(void)
+{
+    uint32_t at;
+
+    if (!trait_surface_valid(canvas)) {
+        return;
+    }
+    for (at = 0U; at < trait_shell_window_icon_count(); ++at) {
+        uint32_t slot = trait_shell_window_icon_slot(at);
+        struct trait_rect cell;
+
+        if (slot >= TRAIT_SHELL_MAX_WINDOWS ||
+                !trait_shell_window_icon_bounds(at, &cell)) {
+            continue;
+        }
+        draw_mark_and_label(cell,
+            apps[slot] == TRAIT_APP_FILES ? "folder" :
+                "application-x-executable",
+            windows[slot].title);
+    }
+}
+
 void trait_shell_draw_desktop(void)
 {
     static const char *const STANDARD[DESKTOP_STANDARD] = {
@@ -536,29 +672,7 @@ void trait_shell_draw_desktop(void)
             mark = trait_files_node_mark(node);
             label = trait_files_node_name(node);
         }
-        trait_files_draw_icon_at(canvas, cell, mark, DESKTOP_MARK,
-            cell.x + (cell.width - DESKTOP_MARK) / 2U, cell.y + 4U);
-        {
-            uint32_t width = trait_font_width(label);
-
-            /*
-             * pcmanfm's LXDE profile is desktop_fg=#ffffff with
-             * desktop_shadow=#000000: white ink over a dark halo, which
-             * is what keeps a label readable over a wallpaper that is
-             * light in one place and dark in another.  The halo is drawn
-             * as the same text offset by one in each direction - cheaper
-             * than a blur and what a one-pixel shadow IS.
-             */
-            uint32_t pen = cell.x + (cell.width > width ?
-                (cell.width - width) / 2U : 0U);
-            uint32_t base = cell.y + DESKTOP_MARK + 16U;
-
-            trait_font_draw(canvas, cell, pen + 1U, base, label,
-                            0x000000U);
-            trait_font_draw(canvas, cell, pen, base + 1U, label,
-                            0x000000U);
-            trait_font_draw(canvas, cell, pen, base, label, 0xFFFFFFU);
-        }
+        draw_mark_and_label(cell, mark, label);
     }
 }
 
@@ -893,7 +1007,7 @@ static bool handle_client(uint32_t slot, const struct trait_event *event)
  * than rows, so this walks them rather than dividing. */
 static uint32_t shell_menu_row(struct trait_rect box, uint32_t y)
 {
-    uint32_t top = box.y + 4U;
+    uint32_t top = box.y + TRAIT_MENU_TITLE_HEIGHT + 4U;
     uint32_t at;
 
     for (at = 0U; at < trait_menu_row_count(); ++at) {
@@ -945,6 +1059,12 @@ static bool shell_menu_pick(uint32_t row)
     }
     if (label_is(label, "Packages")) {
         return trait_shell_open(TRAIT_APP_PACKAGES, where) <
+            TRAIT_SHELL_MAX_WINDOWS;
+    }
+    if (label_is(label, "glxgears")) {
+        struct trait_rect square = { 300U, 220U, 320U, 320U };
+
+        return trait_shell_open(TRAIT_APP_GEARS, square) <
             TRAIT_SHELL_MAX_WINDOWS;
     }
     if (label_is(label, "Task Manager")) {
@@ -1567,6 +1687,10 @@ void trait_shell_draw(void)
         case TRAIT_APP_SETTINGS:
             trait_settings_draw(canvas, &windows[slot]);
             break;
+        case TRAIT_APP_GEARS:
+            trait_gears_draw(canvas,
+                             trait_window_client(&windows[slot]));
+            break;
         case TRAIT_APP_PACKAGES:
             trait_packages_draw(canvas, &windows[slot]);
             break;
@@ -1944,7 +2068,8 @@ bool trait_shell_self_test(void)
             }
             pick.kind = TRAIT_EVENT_POINTER_DOWN;
             pick.x = box.x + 20U;
-            pick.y = box.y + 10U;
+            /* Past the title bar: the first ROW starts below it. */
+            pick.y = box.y + TRAIT_MENU_TITLE_HEIGHT + 10U;
             if (!trait_shell_handle(&pick)) {
                 return false;
             }

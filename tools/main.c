@@ -81,23 +81,25 @@ static int emit(const char *directory, const char *name,
 }
 
 /*
- * THE ROOT IS THE GEARS, AND THE CHECK HAS TO BE ABLE TO SAY SO.
+ * THE GEARS ARE IN A WINDOW, AND THE CHECK HAS TO SAY SO.
  *
  * Two things are worth proving and neither is "it drew something".  The
- * first is that every pixel is one of seven colours - black and the
- * three face/side pairs - because the whole point of drawing the gears
- * from geometry rather than decoding a picture is that no eighth colour
- * can get in.  The second is that the big gear's bore is a HOLE: a row
- * through its middle has to leave the gear, cross black, and come back.
- * A gear drawn as a solid disc passes every colour test there is.
+ * first is that every pixel inside the window is one of seven colours -
+ * black and the three face/side pairs - because the whole point of
+ * drawing the gears from geometry rather than decoding a picture is
+ * that no eighth colour can get in.  The second is that the big gear's
+ * bore is a HOLE: a row through its middle has to leave the gear, cross
+ * black, and come back.  A gear drawn as a solid disc passes every
+ * colour test there is.
  */
-static int root_is_gears(struct trait_surface *surface)
+static int gears_window_is_gears(struct trait_surface *surface,
+    struct trait_rect where)
 {
     uint32_t allowed[1U + TRAIT_GEARS_COUNT * 2U];
     uint32_t counts[1U + TRAIT_GEARS_COUNT * 2U];
     uint32_t total = 1U + TRAIT_GEARS_COUNT * 2U;
     const struct trait_gears_shape *big = &trait_gears[0];
-    uint32_t top = surface->height;
+    uint32_t top = where.y + where.height;
     uint32_t bottom = 0U;
     uint32_t runs = 0U;
     uint32_t gap = 0U;
@@ -119,8 +121,8 @@ static int root_is_gears(struct trait_surface *surface)
     for (at = 0U; at < total; ++at) {
         counts[at] = 0U;
     }
-    for (y = 0U; y < surface->height; ++y) {
-        for (x = 0U; x < surface->width; ++x) {
+    for (y = where.y; y < where.y + where.height; ++y) {
+        for (x = where.x; x < where.x + where.width; ++x) {
             uint32_t pixel = trait_surface_read(surface, x, y);
             uint32_t found = total;
 
@@ -131,8 +133,8 @@ static int root_is_gears(struct trait_surface *surface)
                 }
             }
             if (found == total) {
-                fprintf(stderr, "trait: the root has #%06X at %ux%u, "
-                        "which is not one of the gears' seven\n",
+                fprintf(stderr, "trait: the gears window has #%06X at "
+                        "%ux%u, which is not one of its seven\n",
                         pixel, x, y);
                 return 0;
             }
@@ -149,18 +151,19 @@ static int root_is_gears(struct trait_surface *surface)
     }
     for (at = 1U; at < total; ++at) {
         if (counts[at] == 0U) {
-            fprintf(stderr, "trait: the root never draws #%06X - a gear "
-                    "or one of its sides is missing\n", allowed[at]);
+            fprintf(stderr, "trait: the gears window never draws #%06X "
+                    "- a gear or one of its sides is missing\n",
+                    allowed[at]);
             return 0;
         }
     }
     if (bottom <= top) {
-        fprintf(stderr, "trait: the largest gear is not on the root\n");
+        fprintf(stderr, "trait: the largest gear is not in the window\n");
         return 0;
     }
     /* Across the middle of the widest gear: gear, black, gear. */
     row = top + (bottom - top) / 2U;
-    for (x = 0U; x < surface->width; ++x) {
+    for (x = where.x; x < where.x + where.width; ++x) {
         uint32_t pixel = trait_surface_read(surface, x, row);
         int solid = pixel == big->face || pixel == big->side;
 
@@ -184,9 +187,9 @@ static int root_is_gears(struct trait_surface *surface)
                 row, runs, bore);
         return 0;
     }
-    printf("proof: the root is %u gears in %u colours and nothing else, "
-           "and a row through the widest one crosses it %u times either "
-           "side of a %u-pixel bore\n",
+    printf("proof: the glxgears window is %u gears in %u colours and "
+           "nothing else, and a row through the widest one crosses it "
+           "%u times either side of a %u-pixel bore\n",
            TRAIT_GEARS_COUNT, total, runs, bore);
     return 1;
 }
@@ -451,11 +454,28 @@ int main(int argc, char **argv)
     trait_shell_reset(&screen);
     trait_shell_set_screen(whole());
     trait_shell_draw_root();
-    if (!root_is_gears(&screen)) {
-        return 1;
-    }
     if (!emit(out, "desktop.png", whole())) {
         return 1;
+    }
+
+    /* glxgears, in a window, which is where glxgears runs. */
+    {
+        uint32_t gears = trait_shell_open(TRAIT_APP_GEARS,
+            (struct trait_rect){ 300U, 220U, 320U, 320U });
+
+        if (gears >= TRAIT_SHELL_MAX_WINDOWS) {
+            fprintf(stderr, "trait: glxgears opened no window\n");
+            return 1;
+        }
+        trait_shell_draw();
+        if (!gears_window_is_gears(&screen,
+                trait_window_client(trait_shell_window(gears)))) {
+            return 1;
+        }
+        if (!emit(out, "gears.png", whole())) {
+            return 1;
+        }
+        (void)trait_shell_close(gears);
     }
 
     /*
@@ -477,6 +497,7 @@ int main(int argc, char **argv)
     (void)trait_menu_add("xterm", false, false);
     (void)trait_menu_add("Files", false, false);
     (void)trait_menu_add("Packages", false, false);
+    (void)trait_menu_add("glxgears", false, false);
     (void)trait_menu_add("Task Manager", false, false);
     (void)trait_menu_add("Settings", false, false);
     (void)trait_menu_add("", false, true);
@@ -873,6 +894,7 @@ int main(int argc, char **argv)
         (void)trait_menu_add("xterm", false, false);
         (void)trait_menu_add("Files", false, false);
         (void)trait_menu_add("Packages", false, false);
+        (void)trait_menu_add("glxgears", false, false);
         (void)trait_menu_add("Task Manager", false, false);
         (void)trait_menu_add("Settings", false, false);
         (void)trait_menu_add("", false, true);
@@ -894,10 +916,11 @@ int main(int argc, char **argv)
         }
 
         /* The second row is Files, so pressing it has to open Files -
-         * and the menu has to be gone afterwards. */
+         * and the menu has to be gone afterwards.  The rows start below
+         * the title bar. */
         before = trait_shell_window_count();
         press.x = box.x + 20U;
-        press.y = box.y + 4U + 20U + 10U;
+        press.y = box.y + TRAIT_MENU_TITLE_HEIGHT + 4U + 20U + 10U;
         if (!trait_shell_handle(&press)) {
             fprintf(stderr, "trait: a press on a menu row did nothing\n");
             return 1;
@@ -1026,6 +1049,7 @@ int main(int argc, char **argv)
 
         trait_shell_draw_root();
         trait_shell_draw_desktop();
+        trait_shell_draw_window_icons();
         trait_shell_draw();
         trait_shell_draw_overlays();
         if (!emit(out, "root.png", whole())) {
@@ -1077,6 +1101,7 @@ int main(int argc, char **argv)
             }
             trait_shell_draw_root();
             trait_shell_draw_desktop();
+            trait_shell_draw_window_icons();
             trait_shell_draw();
             trait_shell_draw_overlays();
             if (!emit(out, "run.png", whole())) {
@@ -1108,6 +1133,74 @@ int main(int argc, char **argv)
             }
             if (trait_shell_window_count() != before + 1U) {
                 fprintf(stderr, "trait: Run opened no window\n");
+                return 1;
+            }
+        }
+
+        /*
+         * ICONIFY, AND THE WAY BACK.  With no taskbar, a minimised
+         * window has to land somewhere you can see and press: fvwm puts
+         * an icon on the root and so does this.  Pressing the window's
+         * own minimise box puts it down, the icon appears at the foot of
+         * the screen, and a press on the icon brings it back.
+         */
+        {
+            uint32_t slot = trait_shell_focused();
+            struct trait_event press;
+            struct trait_rect box;
+            struct trait_rect cell;
+
+            memset(&press, 0, sizeof(press));
+            press.kind = TRAIT_EVENT_POINTER_DOWN;
+            if (slot >= TRAIT_SHELL_MAX_WINDOWS) {
+                fprintf(stderr, "trait: nothing was focused to iconify\n");
+                return 1;
+            }
+            if (!trait_window_button_bounds(trait_shell_window(slot),
+                    TRAIT_WINDOW_MINIMISE, &box)) {
+                fprintf(stderr, "trait: the minimise box has no bounds\n");
+                return 1;
+            }
+            press.x = box.x + box.width / 2U;
+            press.y = box.y + box.height / 2U;
+            if (!trait_shell_handle(&press)) {
+                fprintf(stderr, "trait: the minimise box did nothing\n");
+                return 1;
+            }
+            if (trait_shell_window_icon_count() != 1U ||
+                    trait_shell_window_icon_slot(0U) != slot) {
+                fprintf(stderr, "trait: iconifying put no icon on the "
+                                "root (%u there)\n",
+                        trait_shell_window_icon_count());
+                return 1;
+            }
+            if (!trait_shell_window_icon_bounds(0U, &cell)) {
+                return 1;
+            }
+            trait_shell_draw_root();
+            trait_shell_draw_window_icons();
+            trait_shell_draw();
+            if (!emit(out, "iconified.png", whole())) {
+                return 1;
+            }
+            press.x = cell.x + cell.width / 2U;
+            press.y = cell.y + cell.height / 2U;
+            if (!trait_shell_root_press(press.x, press.y)) {
+                fprintf(stderr, "trait: a press on the icon did "
+                                "nothing\n");
+                return 1;
+            }
+            if (trait_shell_window_icon_count() != 0U ||
+                    trait_shell_focused() != slot) {
+                fprintf(stderr, "trait: the icon did not put the window "
+                                "back\n");
+                return 1;
+            }
+            /* And it is not the MENU that opened: an icon press is not
+             * a root press, even though the icon is on the root. */
+            if (trait_shell_root_menu_open()) {
+                fprintf(stderr, "trait: the icon press opened the menu "
+                                "over it\n");
                 return 1;
             }
         }
@@ -1174,6 +1267,7 @@ int main(int argc, char **argv)
         }
         trait_shell_draw_root();
         trait_shell_draw_desktop();
+        trait_shell_draw_window_icons();
         trait_shell_draw();
         trait_shell_draw_overlays();
         if (!emit(out, "switcher.png", whole())) {
@@ -1365,6 +1459,7 @@ int main(int argc, char **argv)
 
         trait_shell_draw_root();
         trait_shell_draw_desktop();
+        trait_shell_draw_window_icons();
         trait_shell_draw();
         trait_shell_draw_overlays();
         if (!emit(out, "notes.png", whole())) {
@@ -1471,6 +1566,7 @@ int main(int argc, char **argv)
             }
             trait_shell_draw_root();
             trait_shell_draw_desktop();
+            trait_shell_draw_window_icons();
             trait_shell_draw();
             trait_shell_draw_overlays();
             if (!emit(out, "context.png", whole())) {
@@ -1567,6 +1663,7 @@ int main(int argc, char **argv)
             }
             trait_shell_draw_root();
             trait_shell_draw_desktop();
+            trait_shell_draw_window_icons();
             trait_shell_draw();
             trait_shell_draw_overlays();
             if (!emit(out, "renamed.png", whole())) {

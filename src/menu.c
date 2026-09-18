@@ -63,7 +63,7 @@ const char *trait_menu_row_label(uint32_t at)
 
 static uint32_t menu_height(void)
 {
-    uint32_t total = 4U;
+    uint32_t total = 4U + TRAIT_MENU_TITLE_HEIGHT;
     uint32_t at;
 
     for (at = 0U; at < row_count; ++at) {
@@ -97,7 +97,7 @@ void trait_menu_draw(struct trait_surface *surface,
     struct trait_rect screen, struct trait_rect button)
 {
     struct trait_rect box = trait_menu_bounds(screen, button);
-    uint32_t top = box.y + 4U;
+    uint32_t top = box.y + TRAIT_MENU_TITLE_HEIGHT + 4U;
     uint32_t at;
     uint32_t edge;
 
@@ -105,6 +105,18 @@ void trait_menu_draw(struct trait_surface *surface,
         return;
     }
     trait_surface_fill(surface, box, box, TRAIT_BG);
+    {
+        struct trait_rect head = box;
+        uint32_t width;
+
+        head.height = TRAIT_MENU_TITLE_HEIGHT;
+        trait_surface_fill(surface, box, head, TRAIT_FRAME_ACTIVE_TOP);
+        width = trait_font_width(TRAIT_MENU_TITLE);
+        trait_font_draw(surface, head,
+            head.x + (head.width > width ?
+                (head.width - width) / 2U : 0U),
+            head.y + 13U, TRAIT_MENU_TITLE, TRAIT_FRAME_INK);
+    }
     for (edge = 0U; edge < box.width; ++edge) {
         trait_surface_plot(surface, box, box.x + edge, box.y, TRAIT_LINE);
         trait_surface_plot(surface, box, box.x + edge,

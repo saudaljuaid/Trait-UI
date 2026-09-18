@@ -28,6 +28,15 @@
  * the package manager a package manager rather than a shop window.
  */
 
+/*
+ * THE MENU WEARS A TITLE, the way fvwm's does - "Root Menu" in the
+ * frame's own colours across the top of it.  It is not a control and
+ * nothing presses it; it is what tells you which menu this is when a
+ * submenu is open beside it.
+ */
+#define TRAIT_MENU_TITLE_HEIGHT 18U
+#define TRAIT_MENU_TITLE "Root Menu"
+
 #define TRAIT_MENU_MAX_ROWS 16U
 #define TRAIT_MENU_TEXT_BYTES 32U
 

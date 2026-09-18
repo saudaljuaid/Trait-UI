@@ -5,14 +5,13 @@
 #include <trait/surface.h>
 
 /*
- * The root window.
+ * glxgears, which is a PROGRAM and therefore lives in a window.
  *
- * An X session with nothing running on it shows the weave twm and fvwm
- * come up on, and for a while this desktop did too.  It shows glxgears
- * now, which is the other thing a bare X session has always had on it
- * and the one people recognise.  The geometry is Brian Paul's, projected
- * ahead of time into src/trait_gears_art.h; this draws it at whatever
- * size the surface turns out to be.
+ * It was the root window for a while, which is not where it runs: you
+ * type glxgears and a window comes up with the gears in it.  The
+ * geometry is Brian Paul's, projected ahead of time into
+ * src/trait_gears_art.h; this fills it into whatever rectangle it is
+ * handed, so the same code serves a 320-pixel window and a screen.
  */
 void trait_gears_draw(struct trait_surface *surface, struct trait_rect clip);
 

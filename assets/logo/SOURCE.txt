@@ -58,6 +58,27 @@ outline, body, tongue and eye holds most of it, and each class is inked
 in the mean of every source pixel that fell into it. So the fish is
 drawn in the fish's own reds rather than in anything anybody picked.
 
+TWO THINGS THAT LOOKED WRONG AND WHY.
+
+The drawing is built out of black lines - the outside edge, the mouth,
+the fins, the rims of the eyes - and a cell here is thirty-odd pixels of
+the mark, so every one of those lines is thinner than the cell it lands
+in. Inked black on a black terminal each one is a bite out of the fish.
+Keeping only the lines that bound something was tried and so was keeping
+only the ones that make a pupil; the first leaves a mass of black where
+this drawing's lines are thickest, which is around the eyes. So the line
+is not drawn at all, except where it borders the white of an eye, where
+it is a pupil. The fish is red and the terminal is black: a silhouette
+does not have to draw its own edge.
+
+And brightness alone is not enough to be the tongue. The antialiased rim
+of a black pupil against a white eye is a grey as light as the tongue
+is, so the only two cells that came out "tongue" were both inside an eye
+and the tongue itself was never drawn. The tongue is PINK - its red
+channel runs well clear of its other two, and a grey's does not - so
+that is what is asked. At 32 columns the tongue is two cells, because at
+32 columns the tongue is two cells wide; more of it needs a wider mark.
+
 ---
 
 trait.svg is this project's own mark, unused since the panel it was the

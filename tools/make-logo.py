@@ -121,7 +121,14 @@ def main():
             return EYE
         if light < 70:
             return OUTLINE
-        if light > 165:
+        # LIGHT IS NOT ENOUGH TO BE THE TONGUE.  Brightness alone calls
+        # the antialiased rim of a black pupil against a white eye pink,
+        # because a grey halfway between them is as light as the tongue
+        # is - and the two cells that came out "tongue" in this mark
+        # were both inside an eye, which is to say the tongue was never
+        # drawn at all.  The tongue is PINK: its red channel runs well
+        # clear of its other two, and a grey's does not.
+        if light > 165 and r - min(g, b) > 40:
             return TONGUE
         return BODY
 
@@ -130,9 +137,12 @@ def main():
     # beside the shapes rather than on them.
     sums = {OUTLINE: [0, 0, 0, 0], BODY: [0, 0, 0, 0],
             TONGUE: [0, 0, 0, 0], EYE: [0, 0, 0, 0]}
-    inks = []
+    # First the class of every cell, then a pass over the grid, then the
+    # ink: the second pass needs to see a cell's neighbours, which the
+    # first one has not finished making yet.
+    grid = []
     for row in range(rows):
-        codes = []
+        line = []
         for column in range(columns):
             tally = {}
             x0 = column * wide // columns
@@ -155,6 +165,45 @@ def main():
                 if tally.get(small, 0) >= total * share:
                     cell = small
                     break
+            line.append(cell)
+        grid.append(line)
+
+    # THERE IS NO BLACK IN IT, and that is the whole difference between
+    # a fish and a mess at this size.
+    #
+    # The drawing is built out of black: the outside edge, the mouth,
+    # the fins, the rims of the eyes.  A cell here is thirty-odd pixels
+    # of the mark, so every one of those lines is thinner than the cell
+    # it lands in - and a black cell on a black terminal is a bite taken
+    # out of the fish wherever a line runs through it.  Keeping only the
+    # ones that bound something was tried, and so was keeping only the
+    # ones that make a pupil; both leave a mass of black around the eyes,
+    # which is where this drawing's lines are thickest.
+    #
+    # So the line is not drawn, with ONE exception: black that borders
+    # the white of an eye is a pupil, and an eye without one is a white
+    # block.  Everywhere else the line becomes the body it runs through -
+    # including round the outside, where it is not needed at all, since
+    # the fish is red and the terminal is black and a silhouette does
+    # not have to draw its own edge.
+    for row in range(rows):
+        for column in range(columns):
+            if grid[row][column] != OUTLINE:
+                continue
+            pupil = False
+            for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                y, x = row + dy, column + dx
+                if 0 <= y < rows and 0 <= x < columns \
+                        and grid[y][x] == EYE:
+                    pupil = True
+            if not pupil:
+                grid[row][column] = BODY
+
+    inks = []
+    for row in range(rows):
+        codes = []
+        for column in range(columns):
+            cell = grid[row][column]
             drawn = lines[row][column] if column < len(lines[row]) else " "
             if drawn == " ":
                 # Nothing is drawn there, so nothing is inked there.
@@ -162,9 +211,9 @@ def main():
             elif cell == PAPER:
                 # The converter drew a block over pixels the classifier
                 # calls paper - the edge running diagonally through the
-                # cell.  The art is right; the ink falls back to the
-                # line's own.
-                codes.append(INK[OUTLINE])
+                # cell.  The art is right about there being something
+                # there, so it is drawn, and it is drawn as the body.
+                codes.append(INK[BODY])
             else:
                 codes.append(INK[cell])
         inks.append("".join(str(code) for code in

@@ -48,17 +48,16 @@ static const char PROMPT[] = "user@openrfs:~$ ";
  * The two reds are the MARK'S OWN, averaged out of the drawing by
  * tools/make-logo.py rather than picked to look about right - which is
  * why they are the only two colours on this desktop that are not one of
- * the sixteen.  The outline is not among them: it is black in the
- * drawing and black on a black terminal is a line you cannot see, so it
- * takes the palette's dark grey - one of the sixteen - and reads as a
- * line rather than as a mass, which the terminal's own foreground did
- * not once the mark was drawn in solid blocks.
+ * the sixteen.  Black is in the table for ONE thing, which is a pupil:
+ * the drawing is built out of black lines, and a line thinner than a
+ * cell inked black on a black terminal is a bite out of the fish rather
+ * than a line.  tools/make-logo.py is where that is decided and why.
  */
 #define TERM_INKS 5U
 
 static const uint32_t TERM_INK_TABLE[TERM_INKS] = {
     TERM_INK,               /* 0: everything printed the ordinary way */
-    0x555555U,              /* 1: the outline, as a line and not a mass */
+    0x000000U,              /* 1: a pupil, and nothing else */
     TRAIT_LOGO_BODY,        /* 2: the fish */
     TRAIT_LOGO_TONGUE,      /* 3: its tongue */
     TRAIT_LOGO_EYE          /* 4: the white of an eye */

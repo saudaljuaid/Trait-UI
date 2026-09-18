@@ -31,9 +31,12 @@ the mean of every pixel that came out body and every pixel that came out
 tongue, so they are sampled rather than picked. They are the only two
 colours on this desktop outside the sixteen, and that is the reason.
 
-The fish's black outline is not among them. It is black in the drawing,
-and black on a black terminal is a line you cannot see, so it takes the
-terminal's own foreground and reads as the line it is.
+The fish's black outline is not drawn. Every line in the drawing is
+thinner than a cell at this size, so inking one black on a black
+terminal takes a bite out of the fish rather than drawing a line; the
+silhouette does not need an edge drawn round it when it is red on black.
+The one exception is black that borders the white of an eye, which is a
+pupil.
 
 The ASCII itself is not this project's work: it is asciiart.eu's
 converter, run over the mark with its "Black and White" character set at

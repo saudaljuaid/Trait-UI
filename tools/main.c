@@ -27,6 +27,7 @@
 #include <trait/surface.h>
 
 #include "png.h"
+#include "trait_gears_art.h"
 
 #define SCREEN_WIDTH 1280U
 #define SCREEN_HEIGHT 800U
@@ -42,15 +43,10 @@ static struct trait_rect whole(void)
 }
 
 /*
- * The wallpaper, as the raw RGB24 dump tools/make-wallpaper.py writes.
- * There is no image decoder here on purpose: a desktop that needs a PNG
- * decoder to put up a background needs one in the kernel.
- */
-/*
- * There is no wallpaper. The session comes up on the root weave, which
- * trait_shell_draw_root() paints from the palette - so the loader that
- * used to read assets/wallpaper/wallpaper.bin, and the flat fill that
- * stood in when the dump was missing, both went with it.
+ * There is no wallpaper and no image to decode.  The session comes up on
+ * glxgears, which trait_shell_draw_root() draws from geometry - so the
+ * loader that used to read assets/wallpaper/wallpaper.bin, and the flat
+ * fill that stood in when the dump was missing, both went with it.
  */
 
 static int emit(const char *directory, const char *name,
@@ -82,6 +78,117 @@ static int emit(const char *directory, const char *name,
         return 0;
     }
     printf("wrote %s (%ux%u)\n", path, area.width, area.height);
+    return 1;
+}
+
+/*
+ * THE ROOT IS THE GEARS, AND THE CHECK HAS TO BE ABLE TO SAY SO.
+ *
+ * Two things are worth proving and neither is "it drew something".  The
+ * first is that every pixel is one of seven colours - black and the
+ * three face/side pairs - because the whole point of drawing the gears
+ * from geometry rather than decoding a picture is that no eighth colour
+ * can get in.  The second is that the big gear's bore is a HOLE: a row
+ * through its middle has to leave the gear, cross black, and come back.
+ * A gear drawn as a solid disc passes every colour test there is.
+ */
+static int root_is_gears(struct trait_surface *surface)
+{
+    uint32_t allowed[1U + TRAIT_GEARS_COUNT * 2U];
+    uint32_t counts[1U + TRAIT_GEARS_COUNT * 2U];
+    uint32_t total = 1U + TRAIT_GEARS_COUNT * 2U;
+    const struct trait_gears_shape *big = &trait_gears[0];
+    uint32_t top = surface->height;
+    uint32_t bottom = 0U;
+    uint32_t runs = 0U;
+    uint32_t gap = 0U;
+    uint32_t bore = 0U;
+    uint32_t inside = 0U;
+    uint32_t row;
+    uint32_t x;
+    uint32_t y;
+    uint32_t at;
+
+    allowed[0] = 0x000000U;
+    for (at = 0U; at < TRAIT_GEARS_COUNT; ++at) {
+        allowed[1U + at * 2U] = trait_gears[at].face;
+        allowed[2U + at * 2U] = trait_gears[at].side;
+        if (trait_gears[at].outline_points > big->outline_points) {
+            big = &trait_gears[at];
+        }
+    }
+    for (at = 0U; at < total; ++at) {
+        counts[at] = 0U;
+    }
+    for (y = 0U; y < surface->height; ++y) {
+        for (x = 0U; x < surface->width; ++x) {
+            uint32_t pixel = trait_surface_read(surface, x, y);
+            uint32_t found = total;
+
+            for (at = 0U; at < total; ++at) {
+                if (allowed[at] == pixel) {
+                    found = at;
+                    break;
+                }
+            }
+            if (found == total) {
+                fprintf(stderr, "trait: the root has #%06X at %ux%u, "
+                        "which is not one of the gears' seven\n",
+                        pixel, x, y);
+                return 0;
+            }
+            ++counts[found];
+            if (pixel == big->face || pixel == big->side) {
+                if (y < top) {
+                    top = y;
+                }
+                if (y > bottom) {
+                    bottom = y;
+                }
+            }
+        }
+    }
+    for (at = 1U; at < total; ++at) {
+        if (counts[at] == 0U) {
+            fprintf(stderr, "trait: the root never draws #%06X - a gear "
+                    "or one of its sides is missing\n", allowed[at]);
+            return 0;
+        }
+    }
+    if (bottom <= top) {
+        fprintf(stderr, "trait: the largest gear is not on the root\n");
+        return 0;
+    }
+    /* Across the middle of the widest gear: gear, black, gear. */
+    row = top + (bottom - top) / 2U;
+    for (x = 0U; x < surface->width; ++x) {
+        uint32_t pixel = trait_surface_read(surface, x, row);
+        int solid = pixel == big->face || pixel == big->side;
+
+        if (solid && inside == 0U) {
+            ++runs;
+            if (runs > 1U && gap > bore) {
+                bore = gap;
+            }
+        }
+        if (!solid && runs > 0U) {
+            ++gap;
+        }
+        if (solid) {
+            gap = 0U;
+        }
+        inside = solid ? 1U : 0U;
+    }
+    if (runs < 2U || bore < 8U) {
+        fprintf(stderr, "trait: row %u crosses the gear %u time(s) with "
+                "a %u-pixel gap - the bore is not a hole\n",
+                row, runs, bore);
+        return 0;
+    }
+    printf("proof: the root is %u gears in %u colours and nothing else, "
+           "and a row through the widest one crosses it %u times either "
+           "side of a %u-pixel bore\n",
+           TRAIT_GEARS_COUNT, total, runs, bore);
     return 1;
 }
 
@@ -410,6 +517,9 @@ int main(int argc, char **argv)
     trait_shell_reset(&screen);
     trait_shell_set_screen(whole());
     trait_shell_draw_root();
+    if (!root_is_gears(&screen)) {
+        return 1;
+    }
     bar = trait_panel_bounds(whole());
     if (!emit(out, "desktop.png", whole())) {
         return 1;
@@ -460,9 +570,8 @@ int main(int argc, char **argv)
                     "press was\n");
             return 1;
         }
-        printf("proof: no panel, a weave of two palette colours, and a "
-               "root menu at %ux%u - where the press was, not where a "
-               "button is\n", menu.x, menu.y);
+        printf("proof: no panel and a root menu at %ux%u - where the "
+               "press was, not where a button is\n", menu.x, menu.y);
     }
     trait_shell_reset(&screen);
     trait_shell_set_screen(whole());

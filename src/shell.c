@@ -3,6 +3,7 @@
 
 #include <trait/files.h>
 #include <trait/font.h>
+#include <trait/gears.h>
 #include <trait/packages.h>
 #include <trait/menu.h>
 #include <trait/theme.h>
@@ -433,8 +434,6 @@ void trait_shell_set_desktop_folder(uint32_t folder)
 void trait_shell_draw_root(void)
 {
     struct trait_rect whole = { 0U, 0U, 0U, 0U };
-    uint32_t y;
-    uint32_t x;
 
     if (!trait_surface_valid(canvas)) {
         return;
@@ -444,19 +443,7 @@ void trait_shell_draw_root(void)
      * trait_shell_set_screen - which painted nothing at all. */
     whole.width = canvas->width;
     whole.height = canvas->height;
-    for (y = 0U; y < whole.height; ++y) {
-        for (x = 0U; x < whole.width; ++x) {
-            bool lit = ((x + y) & 1U) == 0U;
-
-            /* Light grey against black. Half and half reads as a mid
-             * grey from a normal distance, which is what leaves the
-             * light-grey window chrome standing off it - a weave of two
-             * dark colours averages to black and the windows float on
-             * nothing. */
-            trait_surface_plot(canvas, whole, x, y,
-                               lit ? TRAIT_BG : 0x000000U);
-        }
-    }
+    trait_gears_draw(canvas, whole);
 }
 
 void trait_shell_set_panel(bool shown)

@@ -17,7 +17,7 @@
 /* The sizes that were generated.  Settings offers these and no others,
  * because a size nobody rasterised has no glyphs to draw. */
 uint32_t trait_font_size_count(void);
-uint32_t trait_font_size_points(uint32_t at);
+uint32_t trait_font_size_pixels(uint32_t at);
 bool trait_font_select(uint32_t at);
 uint32_t trait_font_selected(void);
 

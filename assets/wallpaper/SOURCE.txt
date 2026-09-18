@@ -18,3 +18,9 @@ nothing and you get this file back.
 
 The wordmark is set in DejaVu Sans Bold, which is the font this container
 has and is itself freely licensed (Bitstream Vera / DejaVu licence).
+
+The desktop no longer draws this.  The root window is glxgears now, from
+geometry, and there is no image loader left to put a PNG behind it.  The
+file stays because the Trait palette in src/theme.c was sampled out of
+it - the #212121 ground is read from its corner - and a palette whose
+source has been deleted is a palette somebody chose.

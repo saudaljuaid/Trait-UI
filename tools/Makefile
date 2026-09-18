@@ -23,10 +23,21 @@ HOST_FLAGS := -std=c11 -D_POSIX_C_SOURCE=200809L -O2 -g \
 	-I$(ROOT)/include -I$(ROOT)/src -I.
 
 SHELL_SOURCES := $(ROOT)/src/surface.c $(ROOT)/src/theme.c $(ROOT)/src/font.c \
-	$(ROOT)/src/panel.c \
+	$(ROOT)/src/gears.c $(ROOT)/src/panel.c \
 	$(ROOT)/src/window.c $(ROOT)/src/taskmgr.c $(ROOT)/src/settings.c $(ROOT)/src/files.c $(ROOT)/src/terminal.c \
 	$(ROOT)/src/menu.c $(ROOT)/src/packages.c $(ROOT)/src/shell.c
 HOST_SOURCES := png.c main.c
+
+# Every object depends on every header, generated ones included.
+#
+# It is blunt and it is right. The generated art and font tables are
+# #included by name, so a regenerated icon set changes no .c file and
+# make has nothing to notice - the desktop rendered the old icons out of
+# a stale files.o for a full round of this work before anyone looked.
+HEADERS := $(wildcard $(ROOT)/include/trait/*.h) $(wildcard $(ROOT)/src/*.h)
+ifeq ($(HEADERS),)
+$(error $$(HEADERS) is empty: no headers found under $(ROOT))
+endif
 
 SHELL_OBJECTS := $(patsubst %.c,$(BUILD)/%.o,$(notdir $(SHELL_SOURCES)))
 HOST_OBJECTS := $(patsubst %.c,$(BUILD)/%.o,$(HOST_SOURCES))
@@ -37,26 +48,16 @@ all: $(BINARY)
 $(BUILD):
 	mkdir -p $(BUILD)
 
-$(BUILD)/%.o: $(ROOT)/src/%.c | $(BUILD)
+$(BUILD)/%.o: $(ROOT)/src/%.c $(HEADERS) | $(BUILD)
 	$(CC) $(SHELL_FLAGS) -c $< -o $@
 
-$(BUILD)/%.o: %.c | $(BUILD)
+$(BUILD)/%.o: %.c $(HEADERS) | $(BUILD)
 	$(CC) $(HOST_FLAGS) -c $< -o $@
 
 $(BINARY): $(SHELL_OBJECTS) $(HOST_OBJECTS)
 	$(CC) $(HOST_FLAGS) $^ -o $@
 
-# The wallpaper dump is GENERATED, not committed: it is three megabytes
-# of bytes that tools/make-wallpaper.py derives from the PNG beside it,
-# and a generated file in the history is a second copy that can disagree
-# with its source.
-WALLPAPER := $(ROOT)/assets/wallpaper/wallpaper.bin
-
-$(WALLPAPER): $(ROOT)/assets/wallpaper/wallpaper.png
-	cd $(ROOT) && python3 tools/make-wallpaper.py \
-		assets/wallpaper/wallpaper.png assets/wallpaper/wallpaper.bin
-
-run: $(BINARY) $(WALLPAPER)
+run: $(BINARY)
 	cd $(ROOT) && ./build/trait build
 
 clean:

@@ -1,18 +1,23 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 #include <trait/font.h>
 
-#include "trait_font_10.h"
-#include "trait_font_11.h"
-#include "trait_font_13.h"
+#include "trait_font_6x13.h"
+#include "trait_font_7x14.h"
+#include "trait_font_9x18.h"
 
 /*
- * THREE SIZES, RASTERISED AHEAD OF TIME.
+ * THREE SIZES, UNPACKED AHEAD OF TIME.
  *
  * There is no font server behind a framebuffer and no scaler either, so
  * "a different font size" means a different set of bitmaps.  Settings
  * offers the three that exist; offering a slider over sizes that were
  * never generated would be a control that does nothing, and scaling one
  * set to stand in for the others is how text stops looking like text.
+ *
+ * The three are Misc-Fixed 6x13, 7x14 and 9x18 - the sizes an X session
+ * has offered since R6, and the ones people actually name in .Xdefaults.
+ * They are measured in pixels because that is the only unit a bitmap
+ * font has; a point size would be a number with nothing behind it.
  */
 struct trait_font_face {
     const struct trait_glyph *glyphs;
@@ -20,39 +25,39 @@ struct trait_font_face {
     uint32_t first;
     uint32_t ascent;
     uint32_t height;
-    uint32_t points;
+    uint32_t pixels;
 };
 
 static const struct trait_font_face FACES[] = {
-    { (const struct trait_glyph *)trait_font_10,
-      sizeof(trait_font_10) / sizeof(trait_font_10[0]),
-      TRAIT_FONT_10_FIRST, TRAIT_FONT_10_ASCENT, TRAIT_FONT_10_HEIGHT,
-      10U },
-    { (const struct trait_glyph *)trait_font_11,
-      sizeof(trait_font_11) / sizeof(trait_font_11[0]),
-      TRAIT_FONT_11_FIRST, TRAIT_FONT_11_ASCENT, TRAIT_FONT_11_HEIGHT,
-      11U },
-    { (const struct trait_glyph *)trait_font_13,
-      sizeof(trait_font_13) / sizeof(trait_font_13[0]),
-      TRAIT_FONT_13_FIRST, TRAIT_FONT_13_ASCENT, TRAIT_FONT_13_HEIGHT,
-      13U }
+    { (const struct trait_glyph *)trait_font_6x13,
+      sizeof(trait_font_6x13) / sizeof(trait_font_6x13[0]),
+      TRAIT_FONT_6X13_FIRST, TRAIT_FONT_6X13_ASCENT, TRAIT_FONT_6X13_HEIGHT,
+      13U },
+    { (const struct trait_glyph *)trait_font_7x14,
+      sizeof(trait_font_7x14) / sizeof(trait_font_7x14[0]),
+      TRAIT_FONT_7X14_FIRST, TRAIT_FONT_7X14_ASCENT, TRAIT_FONT_7X14_HEIGHT,
+      14U },
+    { (const struct trait_glyph *)trait_font_9x18,
+      sizeof(trait_font_9x18) / sizeof(trait_font_9x18[0]),
+      TRAIT_FONT_9X18_FIRST, TRAIT_FONT_9X18_ASCENT, TRAIT_FONT_9X18_HEIGHT,
+      18U }
 };
 
 #define FACE_COUNT (sizeof(FACES) / sizeof(FACES[0]))
 
-static uint32_t face_at = 1U;   /* 11px, the LXDE default */
+static uint32_t face_at = 1U;   /* 7x14 */
 
 uint32_t trait_font_size_count(void)
 {
     return (uint32_t)FACE_COUNT;
 }
 
-uint32_t trait_font_size_points(uint32_t at)
+uint32_t trait_font_size_pixels(uint32_t at)
 {
     if (at >= FACE_COUNT) {
         return 0U;
     }
-    return FACES[at].points;
+    return FACES[at].pixels;
 }
 
 bool trait_font_select(uint32_t at)

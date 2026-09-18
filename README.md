@@ -6,10 +6,13 @@ X11, the way fvwm and twm leave it, drawn in sixteen colours.
 
 ![a session](build/session.png)
 
-The root is a 50% weave - every other pixel, light grey against black.
-X has drawn it that way since before there were wallpapers; it has a
-period of two, so it costs nothing and has no resolution. There is no
-wallpaper image any more.
+The root is glxgears. Not a screenshot of it: `tools/make-gears.py`
+takes the radii, tooth counts and view angles out of Brian Paul's
+`glxgears.c` and projects them, and `src/gears.c` fills the outlines at
+whatever size the screen turns out to be. Each gear is two of the
+sixteen colours, the face the light reaches and the sides it does not,
+because flat shading is what is left when the shades run out. There is
+no wallpaper image, and nothing here decodes one.
 
 No panel. You reach the menu by pressing the root, and it opens where
 the pointer is. The panel still works and is one press of the Settings
@@ -119,8 +122,9 @@ There is no font server and no image decoder behind a framebuffer, so both
 happen ahead of time:
 
 ```sh
-python3 tools/make-font.py <ttf> <px> src/trait_font_<px>.h trait_font_<px>
-python3 tools/make-wallpaper.py [source.png] [out.bin] [WxH]
+python3 tools/make-font.py <font.pcf.gz> src/trait_font_<WxH>.h trait_font_<WxH>
+python3 tools/make-gears.py src/trait_gears_art.h
+python3 tools/make-icons.py assets/icons/drawn src/trait_files_art.h
 python3 tools/make-app-icons.py <dir> <out.h> --prefix <p> --sizes 16,48
 ```
 

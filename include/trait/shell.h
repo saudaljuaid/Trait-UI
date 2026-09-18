@@ -71,15 +71,14 @@ void trait_shell_send_to_desktop(uint32_t slot, uint32_t desktop);
  * have to know what ~/Desktop's node index happens to be. */
 void trait_shell_set_desktop_folder(uint32_t folder);
 /* pcmanfm draws the desktop, so turning its icons off is turning the
- * desktop's own drawing off - the wallpaper stays. */
+ * desktop's own drawing off - what is behind them stays. */
 /*
- * THE ROOT WINDOW.
+ * THE ROOT WINDOW, which is glxgears.
  *
- * X has drawn its root as a 50% weave - every other pixel, two
- * colours - since before there were wallpapers, and fvwm and twm still
- * come up on it. It is not a texture file; it is a pattern with a
- * period of two, which is why it costs nothing to draw and never has a
- * resolution.
+ * Not a picture of it: trait_gears_draw() fills Brian Paul's gears from
+ * their own radii and tooth counts, so the root has no resolution and
+ * no image file behind it, and it comes out right on a screen no one
+ * has measured yet.
  */
 void trait_shell_draw_root(void);
 

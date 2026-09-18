@@ -1,5 +1,32 @@
 # Trait OS
 
+## The look
+
+X11, the way fvwm and twm leave it, drawn in sixteen colours.
+
+![a session](build/session.png)
+
+The root is a 50% weave - every other pixel, light grey against black.
+X has drawn it that way since before there were wallpapers; it has a
+period of two, so it costs nothing and has no resolution. There is no
+wallpaper image any more.
+
+No panel. You reach the menu by pressing the root, and it opens where
+the pointer is. The panel still works and is one press of the Settings
+row away - it is off, not gone.
+
+The palette is the IBM sixteen, which is what `tools/render.c` paints
+the console and the installer with. Red is the brand's `#9E1B1B` rather
+than IBM's `#AA0000`, in all three. Nothing is shaded and no value is
+computed from another: the title bar is one flat colour because a
+gradient needs colours that are not in the palette to get from one end
+to the other.
+
+The font is thresholded at 128, so a glyph is one bit deep. A letter
+with forty shades along its edge would be the only thing on the screen
+not made of those sixteen.
+
+
 A desktop shell in freestanding C, drawing on a linear framebuffer.
 
 It is a copy of the Debian LXDE desktop — lxpanel's bar, pcmanfm, lxtask,

@@ -46,44 +46,12 @@ static struct trait_rect whole(void)
  * There is no image decoder here on purpose: a desktop that needs a PNG
  * decoder to put up a background needs one in the kernel.
  */
-static int load_wallpaper(const char *path)
-{
-    FILE *file = fopen(path, "rb");
-    size_t want = (size_t)SCREEN_WIDTH * SCREEN_HEIGHT * 3U;
-    uint8_t *bytes;
-    size_t got;
-
-    if (file == NULL) {
-        return 0;
-    }
-    bytes = malloc(want);
-    if (bytes == NULL) {
-        (void)fclose(file);
-        return 0;
-    }
-    got = fread(bytes, 1U, want, file);
-    (void)fclose(file);
-    if (got != want) {
-        free(bytes);
-        return 0;
-    }
-    for (uint32_t y = 0U; y < SCREEN_HEIGHT; ++y) {
-        for (uint32_t x = 0U; x < SCREEN_WIDTH; ++x) {
-            size_t at = ((size_t)y * SCREEN_WIDTH + x) * 3U;
-
-            trait_surface_plot(&screen, whole(), x, y,
-                ((uint32_t)bytes[at] << 16) |
-                ((uint32_t)bytes[at + 1U] << 8) | bytes[at + 2U]);
-        }
-    }
-    free(bytes);
-    return 1;
-}
-
-static void flat(uint32_t colour)
-{
-    trait_surface_fill(&screen, whole(), whole(), colour);
-}
+/*
+ * There is no wallpaper. The session comes up on the root weave, which
+ * trait_shell_draw_root() paints from the palette - so the loader that
+ * used to read assets/wallpaper/wallpaper.bin, and the flat fill that
+ * stood in when the dump was missing, both went with it.
+ */
 
 static int emit(const char *directory, const char *name,
     struct trait_rect area)
@@ -388,11 +356,8 @@ static void script_present(void *context)
     struct script *run = context;
     char name[64];
 
-    if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
-        flat(0x212121U);
-    }
+    trait_shell_draw_root();
     trait_shell_draw();
-    (void)trait_panel_draw(whole());
     trait_shell_draw_overlays();
     snprintf(name, sizeof(name), "loop-%02u.png", run->frames++);
     (void)emit(run->out, name, whole());
@@ -434,19 +399,80 @@ int main(int argc, char **argv)
     }
     populate();
 
-    if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
-        /* The ground the wallpaper is drawn on, so a missing dump is a
-         * plain backdrop rather than whatever was in memory. */
-        flat(0x212121U);
-        fprintf(stderr, "trait: no wallpaper dump, using a flat ground\n");
+    /*
+     * No panel on the session shot. The panel still draws and is still
+     * checked below - it is off by default rather than gone, which is a
+     * choice this desktop makes and not a feature it lacks.
+     */
+    /* The shell has to be attached before it can draw: the wallpaper
+     * this replaced was loaded straight into the surface and never went
+     * through the shell at all. */
+    trait_shell_reset(&screen);
+    trait_shell_set_screen(whole());
+    trait_shell_draw_root();
+    bar = trait_panel_bounds(whole());
+    if (!emit(out, "desktop.png", whole())) {
+        return 1;
     }
+
+    /*
+     * A session: two windows on the weave, and the menu where the root
+     * was pressed. With no panel there is nowhere else for the menu to
+     * be, which is how fvwm and twm have always worked.
+     */
+    (void)trait_shell_open(TRAIT_APP_TERMINAL,
+        (struct trait_rect){ 96U, 90U, 560U, 320U });
+    (void)trait_shell_open(TRAIT_APP_FILES,
+        (struct trait_rect){ 470U, 330U, 620U, 400U });
+    /*
+     * twm's root menu: what you can start, and the two ways out. The
+     * panel's menu is built from the installed packages; this one is
+     * the window manager's own, so it is written here.
+     */
+    trait_menu_reset();
+    (void)trait_menu_add("xterm", false, false);
+    (void)trait_menu_add("Files", false, false);
+    (void)trait_menu_add("Task Manager", false, false);
+    (void)trait_menu_add("Settings", false, false);
+    (void)trait_menu_add("", false, true);
+    (void)trait_menu_add("Restart", false, false);
+    (void)trait_menu_add("Exit", false, false);
+
+    trait_shell_draw_root();
+    trait_shell_draw();
+    if (!trait_shell_root_press(300U, 470U)) {
+        fprintf(stderr, "trait: a press on bare root was not the root\n");
+        return 1;
+    }
+    trait_shell_draw_overlays();
+    if (!emit(out, "session.png", whole())) {
+        return 1;
+    }
+    {
+        struct trait_rect menu;
+
+        if (!trait_shell_root_menu_bounds(&menu)) {
+            fprintf(stderr, "trait: the root menu has no bounds\n");
+            return 1;
+        }
+        if (menu.x < 300U || menu.y < 470U) {
+            fprintf(stderr, "trait: the menu did not open where the "
+                    "press was\n");
+            return 1;
+        }
+        printf("proof: no panel, a weave of two palette colours, and a "
+               "root menu at %ux%u - where the press was, not where a "
+               "button is\n", menu.x, menu.y);
+    }
+    trait_shell_reset(&screen);
+    trait_shell_set_screen(whole());
+    populate();
+    trait_shell_draw_root();
     if (trait_panel_draw(whole()) != TRAIT_PANEL_STATUS_OK) {
         fprintf(stderr, "trait: panel refused to draw\n");
         return 1;
     }
-    bar = trait_panel_bounds(whole());
-    if (!emit(out, "desktop.png", whole()) ||
-            !emit(out, "panel.png", bar)) {
+    if (!emit(out, "panel.png", bar)) {
         return 1;
     }
 
@@ -522,9 +548,7 @@ int main(int argc, char **argv)
         files.active = true;
         trait_window_set_title(&files, "user");
 
-        if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
-            flat(0x212121U);
-        }
+        trait_shell_draw_root();
         trait_window_draw(&screen, &files);
         trait_files_draw(&screen, &files);
         if (!emit(out, "files.png", files.frame)) {
@@ -581,9 +605,7 @@ int main(int argc, char **argv)
         term.active = true;
         trait_window_set_title(&term, "user@trait: ~");
 
-        if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
-            flat(0x212121U);
-        }
+        trait_shell_draw_root();
         trait_window_draw(&screen, &term);
         trait_terminal_draw(&screen, &term);
         if (!emit(out, "terminal.png", term.frame)) {
@@ -666,9 +688,7 @@ int main(int argc, char **argv)
         populate_taskmgr();
         populate_settings();
 
-        if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
-            flat(0x212121U);
-        }
+        trait_shell_draw_root();
         trait_shell_draw();
         (void)trait_panel_draw(whole());
         if (!emit(out, "live-before.png", whole())) {
@@ -734,9 +754,7 @@ int main(int argc, char **argv)
             return 1;
         }
 
-        if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
-            flat(0x212121U);
-        }
+        trait_shell_draw_root();
         trait_shell_draw();
         (void)trait_panel_draw(whole());
         if (!emit(out, "live-after.png", whole())) {
@@ -848,9 +866,7 @@ int main(int argc, char **argv)
         }
         opened = trait_shell_focused();
 
-        if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
-            flat(0x212121U);
-        }
+        trait_shell_draw_root();
         trait_shell_draw();
         (void)trait_panel_draw(whole());
         if (!emit(out, "bar-opened.png", whole())) {
@@ -881,9 +897,7 @@ int main(int argc, char **argv)
                             "under the pointer\n");
             return 1;
         }
-        if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
-            flat(0x212121U);
-        }
+        trait_shell_draw_root();
         trait_shell_draw();
         (void)trait_panel_draw(whole());
         if (!emit(out, "bar-minimised.png", whole())) {
@@ -911,9 +925,7 @@ int main(int argc, char **argv)
             fprintf(stderr, "trait: the menu button opened nothing\n");
             return 1;
         }
-        if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
-            flat(0x212121U);
-        }
+        trait_shell_draw_root();
         trait_shell_draw();
         (void)trait_panel_draw(whole());
         trait_shell_draw_overlays();
@@ -954,9 +966,7 @@ int main(int argc, char **argv)
                 return 1;
             }
         }
-        if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
-            flat(0x212121U);
-        }
+        trait_shell_draw_root();
         trait_shell_draw();
         (void)trait_panel_draw(whole());
         trait_shell_draw_overlays();
@@ -993,9 +1003,7 @@ int main(int argc, char **argv)
                                 "its window\n");
                 return 1;
             }
-            if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
-                flat(0x212121U);
-            }
+            trait_shell_draw_root();
             trait_shell_draw();
             (void)trait_panel_draw(whole());
             trait_shell_draw_overlays();
@@ -1036,9 +1044,7 @@ int main(int argc, char **argv)
         settings = trait_shell_open(TRAIT_APP_SETTINGS,
             (struct trait_rect){ 500U, 330U, 520U, 280U });
 
-        if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
-            flat(0x212121U);
-        }
+        trait_shell_draw_root();
         trait_shell_draw();
         (void)trait_panel_draw(whole());
         if (!emit(out, "theme-before.png", whole())) {
@@ -1065,9 +1071,7 @@ int main(int argc, char **argv)
             return 1;
         }
 
-        if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
-            flat(0x212121U);
-        }
+        trait_shell_draw_root();
         trait_shell_draw();
         (void)trait_panel_draw(whole());
         if (!emit(out, "theme-after.png", whole())) {
@@ -1113,9 +1117,7 @@ int main(int argc, char **argv)
             return 1;
         }
 
-        if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
-            flat(0x212121U);
-        }
+        trait_shell_draw_root();
         trait_shell_draw_desktop();
         trait_shell_draw();
         (void)trait_panel_draw(whole());
@@ -1172,9 +1174,7 @@ int main(int argc, char **argv)
                                 "silently\n");
                 return 1;
             }
-            if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
-                flat(0x212121U);
-            }
+            trait_shell_draw_root();
             trait_shell_draw_desktop();
             trait_shell_draw();
             (void)trait_panel_draw(whole());
@@ -1222,9 +1222,7 @@ int main(int argc, char **argv)
             fprintf(stderr, "trait: Alt+Tab opened no switcher\n");
             return 1;
         }
-        if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
-            flat(0x212121U);
-        }
+        trait_shell_draw_root();
         trait_shell_draw_desktop();
         trait_shell_draw();
         (void)trait_panel_draw(whole());
@@ -1493,9 +1491,7 @@ int main(int argc, char **argv)
             return 1;
         }
 
-        if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
-            flat(0x212121U);
-        }
+        trait_shell_draw_root();
         trait_shell_draw_desktop();
         trait_shell_draw();
         (void)trait_panel_draw(whole());
@@ -1612,9 +1608,7 @@ int main(int argc, char **argv)
                 fprintf(stderr, "trait: a right-click opened no menu\n");
                 return 1;
             }
-            if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
-                flat(0x212121U);
-            }
+            trait_shell_draw_root();
             trait_shell_draw_desktop();
             trait_shell_draw();
             (void)trait_panel_draw(whole());
@@ -1711,9 +1705,7 @@ int main(int argc, char **argv)
                     }
                 }
             }
-            if (!load_wallpaper("assets/wallpaper/wallpaper.bin")) {
-                flat(0x212121U);
-            }
+            trait_shell_draw_root();
             trait_shell_draw_desktop();
             trait_shell_draw();
             (void)trait_panel_draw(whole());

@@ -2,7 +2,7 @@
 #include <trait/theme.h>
 
 /*
- * FOUR THEMES, AND EVERY COLOUR IN THEM IS TAKEN FROM SOMEWHERE.
+ * FIVE THEMES, AND EVERY COLOUR IN THEM IS TAKEN FROM SOMEWHERE.
  *
  * Clearlooks and Adwaita are the palettes Debian's own gtkrc files carry;
  * Adwaita-dark is the dark variant's.  Those three are the GTK themes on
@@ -50,19 +50,50 @@ static const struct trait_palette PALETTES[] = {
         0x2B2B2BU, 0x333333U, 0x212121U, 0x232323U, 0x2A2A2AU,
         0xE8E6E0U, 0xE0DED6U, 0xB08020U, 0x1A1400U, 0x151515U, 0x3A3A3AU,
         0x4A3C22U, 0x2A2114U, 0x272727U, 0x1C1C1CU, 0xE8E6E0U, 0x8A8780U
+    },
+    /*
+     * OpenRFS.  Sixteen colours and nothing between them.
+     *
+     * The palette is the IBM text one, which is what TempleOS drew in
+     * and what tools/render.c paints the console and the installer
+     * with - the same table, so the three do not end up three slightly
+     * different reds.  Red is the brand's #9E1B1B rather than IBM's
+     * #AA0000, for the same reason.
+     *
+     * Every pair here is two of those sixteen. Nothing is shaded, no
+     * value is computed from another, and the two frame ends are equal
+     * because a gradient needs colours that are not in the palette to
+     * get from one end to the other.
+     */
+    {
+        0xAAAAAAU,   /* bg          light grey */
+        0xAAAAAAU,   /* prelight    the same: there is nothing to shade */
+        0x555555U,   /* active      dark grey */
+        0xFFFFFFU,   /* base        white */
+        0xFFFFFFU,   /* base pre    white */
+        0x000000U,   /* fg          black */
+        0x000000U,   /* text        black */
+        0x0000AAU,   /* sel bg      blue */
+        0xFFFFFFU,   /* sel fg      white */
+        0x000000U,   /* line        black */
+        0xFFFFFFU,   /* line light  white, for the lit side of a bevel */
+        0x9E1B1BU, 0x9E1B1BU,   /* active frame, flat */
+        0xAAAAAAU, 0xAAAAAAU,   /* idle frame, flat */
+        0xFFFFFFU,   /* frame ink       white on the red */
+        0x000000U    /* frame ink dim   black on the grey */
     }
 };
 
 static const char *const NAMES[] = {
-    "Clearlooks", "Adwaita", "Adwaita-dark", "Trait"
+    "Clearlooks", "Adwaita", "Adwaita-dark", "Trait", "OpenRFS"
 };
 
 #define THEME_COUNT (sizeof(PALETTES) / sizeof(PALETTES[0]))
 
-/* Trait, not Clearlooks: this is the desktop's own theme and the one it
- * was drawn to look like.  The LXDE defaults are still in the list, one
- * press of the Widget row away. */
-static uint32_t current = 3U;
+/* OpenRFS.  The LXDE themes are still in the list, one press of the
+ * Widget row away, because they are installed and a list that hides
+ * what is installed is a shorter list than the machine has. */
+static uint32_t current = TRAIT_THEME_DEFAULT;
 
 const struct trait_palette *trait_theme(void)
 {

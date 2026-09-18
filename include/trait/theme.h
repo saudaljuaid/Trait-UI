@@ -48,6 +48,9 @@ struct trait_palette {
     uint32_t frame_ink_dim;
 };
 
+/* The one a fresh session comes up in. */
+#define TRAIT_THEME_DEFAULT 4U
+
 const struct trait_palette *trait_theme(void);
 
 /* The themes that are INSTALLED.  lxappearance lists what is on the

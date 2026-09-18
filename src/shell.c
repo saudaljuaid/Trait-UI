@@ -76,6 +76,9 @@ static uint32_t switcher_at;
 #define DESKTOP_MARGIN 8U
 static uint32_t desktop_folder = TRAIT_FILES_MAX_NODES;
 static bool desktop_icons = true;   /* pcmanfm: show_documents/the root */
+static bool panel_shown;            /* off: see trait_shell_set_panel */
+static bool root_menu;              /* the menu the root press opened */
+static struct trait_rect root_anchor;
 static struct trait_window windows[TRAIT_SHELL_MAX_WINDOWS];
 static enum trait_shell_app apps[TRAIT_SHELL_MAX_WINDOWS];
 static bool used[TRAIT_SHELL_MAX_WINDOWS];
@@ -150,6 +153,12 @@ void trait_shell_reset(struct trait_surface *surface)
      * desktop came up with no icons in a test that had never touched
      * them. */
     desktop_icons = true;
+    panel_shown = false;
+    root_menu = false;
+    /* The theme too. It is static state like the rest, and a check that
+     * switched it left every screenshot after it in the wrong palette -
+     * which is the same leak the comment above is about, one line up. */
+    (void)trait_theme_select(TRAIT_THEME_DEFAULT);
     menu_open = false;
     volume_open = false;
     run_open = false;
@@ -411,6 +420,101 @@ uint32_t trait_shell_switcher_at(void)
 void trait_shell_set_desktop_folder(uint32_t folder)
 {
     desktop_folder = folder;
+}
+
+/*
+ * The root weave.
+ *
+ * Two colours, every other pixel, offset by one on odd rows. At a period
+ * of two it reads as a single darker tone from a normal distance and as
+ * a weave up close, which is the whole trick and the reason X shipped it
+ * instead of an image.
+ */
+void trait_shell_draw_root(void)
+{
+    struct trait_rect whole = { 0U, 0U, 0U, 0U };
+    uint32_t y;
+    uint32_t x;
+
+    if (!trait_surface_valid(canvas)) {
+        return;
+    }
+    /* The canvas, not shell_screen: the root is the whole framebuffer,
+     * and shell_screen is zero until somebody has called
+     * trait_shell_set_screen - which painted nothing at all. */
+    whole.width = canvas->width;
+    whole.height = canvas->height;
+    for (y = 0U; y < whole.height; ++y) {
+        for (x = 0U; x < whole.width; ++x) {
+            bool lit = ((x + y) & 1U) == 0U;
+
+            /* Light grey against black. Half and half reads as a mid
+             * grey from a normal distance, which is what leaves the
+             * light-grey window chrome standing off it - a weave of two
+             * dark colours averages to black and the windows float on
+             * nothing. */
+            trait_surface_plot(canvas, whole, x, y,
+                               lit ? TRAIT_BG : 0x000000U);
+        }
+    }
+}
+
+void trait_shell_set_panel(bool shown)
+{
+    panel_shown = shown;
+}
+
+bool trait_shell_panel(void)
+{
+    return panel_shown;
+}
+
+/*
+ * A press on the root opens the menu there. With no panel there is
+ * nowhere else for it to live, which is how fvwm and twm have always
+ * done it.
+ */
+bool trait_shell_root_press(uint32_t x, uint32_t y)
+{
+    struct trait_rect probe = { x, 0U, 1U, 1U };
+    uint32_t height;
+
+    if (trait_shell_at(x, y) < trait_shell_window_count()) {
+        return false;      /* a window is under it: not the root */
+    }
+    /*
+     * trait_menu_bounds grows the menu UPWARDS from its anchor, because
+     * the panel it was written for sits at the bottom of the screen. A
+     * root menu drops from the pointer instead. One call gives the
+     * menu's height, and an anchor that far below the press makes the
+     * existing rule put the menu's top where the press was.
+     */
+    height = trait_menu_bounds(shell_screen, probe).height;
+    root_anchor.x = x;
+    root_anchor.y = y + height;
+    /* Except at the bottom, where dropping it would put it off the
+     * screen. There it hangs above the pointer, the way it would. */
+    if (y + height > shell_screen.height) {
+        root_anchor.y = shell_screen.height;
+    }
+    root_anchor.width = 1U;
+    root_anchor.height = 1U;
+    root_menu = true;
+    return true;
+}
+
+bool trait_shell_root_menu_open(void)
+{
+    return root_menu;
+}
+
+bool trait_shell_root_menu_bounds(struct trait_rect *out)
+{
+    if (out == NULL || !root_menu) {
+        return false;
+    }
+    *out = trait_menu_bounds(shell_screen, root_anchor);
+    return true;
 }
 
 void trait_shell_set_desktop_icons(bool show)
@@ -1746,6 +1850,9 @@ void trait_shell_draw_overlays(void)
 
     if (!trait_surface_valid(canvas)) {
         return;
+    }
+    if (root_menu) {
+        trait_menu_draw(canvas, shell_screen, root_anchor);
     }
     if (menu_open && trait_panel_plugin_bounds(shell_screen,
             TRAIT_PANEL_PLUGIN_MENU, &button) == TRAIT_PANEL_STATUS_OK) {

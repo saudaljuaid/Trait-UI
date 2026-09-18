@@ -72,6 +72,35 @@ void trait_shell_send_to_desktop(uint32_t slot, uint32_t desktop);
 void trait_shell_set_desktop_folder(uint32_t folder);
 /* pcmanfm draws the desktop, so turning its icons off is turning the
  * desktop's own drawing off - the wallpaper stays. */
+/*
+ * THE ROOT WINDOW.
+ *
+ * X has drawn its root as a 50% weave - every other pixel, two
+ * colours - since before there were wallpapers, and fvwm and twm still
+ * come up on it. It is not a texture file; it is a pattern with a
+ * period of two, which is why it costs nothing to draw and never has a
+ * resolution.
+ */
+void trait_shell_draw_root(void);
+
+/*
+ * The panel, which is off.
+ *
+ * A window manager of this kind does not have one: you reach the menu by
+ * pressing the root, and you reach a window by clicking it. The panel is
+ * still here and still works, one press of the Settings row away, rather
+ * than deleted - it is a choice this desktop makes, not a feature it
+ * lacks.
+ */
+void trait_shell_set_panel(bool shown);
+bool trait_shell_panel(void);
+
+/* The root menu, at the point that was pressed. Returns false if the
+ * press was not on the root. */
+bool trait_shell_root_press(uint32_t x, uint32_t y);
+bool trait_shell_root_menu_open(void);
+bool trait_shell_root_menu_bounds(struct trait_rect *out);
+
 void trait_shell_set_desktop_icons(bool show);
 bool trait_shell_desktop_icons(void);
 void trait_shell_draw_desktop(void);

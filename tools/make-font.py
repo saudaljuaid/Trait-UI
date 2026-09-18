@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
-"""Turn a TTF into the alpha bitmaps the C shell draws text with.
+"""Turn a TTF into the bitmaps the C shell draws text with.
 
-    python3 tools/make-font.py [font.ttf] [size] [out.h] [prefix]
+    python3 tools/make-font.py [font.ttf] [size] [out.h] [prefix] [--aa]
 
 THERE IS NO FONT SERVER IN A FRAMEBUFFER.  The C side draws text by
 compositing a coverage bitmap per glyph, so the rasterising happens once,
@@ -12,6 +12,12 @@ Only the printable ASCII range is emitted, because that is what a panel
 puts on screen: a clock, a task name, a menu row.  A glyph that is not
 here draws nothing rather than a box, and the caller can see that in the
 coverage table.
+
+Coverage is 0 or 255 unless --aa is passed.  The desktop draws in a
+sixteen-colour palette with no blending anywhere else, and a letter with
+forty shades along its edge is the one thing on the screen that is not
+made of those sixteen.  Thresholding is what makes it a pixel font
+rather than a small smooth one.
 """
 import sys
 from pathlib import Path
@@ -28,6 +34,7 @@ def main():
     out = Path(sys.argv[3] if len(sys.argv) > 3
                else "src/trait_font.h")
     prefix = sys.argv[4] if len(sys.argv) > 4 else "trait_font"
+    antialias = "--aa" in sys.argv
 
     font = ImageFont.truetype(str(ttf), size)
     ascent, descent = font.getmetrics()
@@ -40,8 +47,13 @@ def main():
         width = max(advance, 1)
         cell = Image.new("L", (width + 2, height), 0)
         ImageDraw.Draw(cell).text((0, 0), ch, font=font, fill=255)
-        glyphs.append((code, ch, advance, width + 2,
-                       list(cell.get_flattened_data())))
+        data = list(cell.get_flattened_data())
+        if not antialias:
+            # 128 rather than a lower number: a lower one fattens every
+            # stem by the half-covered pixel beside it and the face comes
+            # out bold at every size.
+            data = [255 if v >= 128 else 0 for v in data]
+        glyphs.append((code, ch, advance, width + 2, data))
 
     lines = [
         "/* SPDX-License-Identifier: GPL-3.0-only */",
@@ -51,6 +63,7 @@ def main():
         f" * {ttf.name} at {size}px, printable ASCII only.  One coverage",
         " * byte per pixel; the drawing code tints it, so a glyph carries",
         " * no colour of its own.  Metrics are the font's own:",
+        f" * Coverage is {'antialiased' if antialias else '0 or 255, thresholded at 128'}.",
         f" * ascent {ascent}, descent {descent}, line {height}.",
         " */",
         f"#ifndef {prefix.upper()}_H",
@@ -99,8 +112,12 @@ def main():
     lines.append("")
     lines.append(f"#endif /* {prefix.upper()}_H */")
     out.write_text("\n".join(lines) + "\n")
+    lit = sum(1 for _, _, _, _, d in glyphs for v in d if v)
+    shades = len({v for _, _, _, _, d in glyphs for v in d})
+    if not antialias and shades > 2:
+        sys.exit("REFUSED: %d shades in a thresholded font" % shades)
     print(f"wrote {out}: {len(glyphs)} glyphs, {ttf.name} at {size}px, "
-          f"line height {height}")
+          f"line height {height}, {shades} shade(s), {lit} lit pixels")
 
 
 if __name__ == "__main__":

@@ -72,14 +72,32 @@ terminal has always had: no compositor and no alpha channel, just a
 window that is drawn after what is behind it and mixes with what it
 finds. One switch on the Desktop page makes it opaque.
 
-Its foreground follows its ground. There is no compositor to hold the
-text opaque while the ground goes clear, so the ground rises towards the
-ink and a light grey on a mid grey is the first thing to become
-uncomfortable — which is why a sheer terminal writes in white and an
-opaque one in lxterminal's own `#D3D7CF`. The contrast the transparency
-spends is bought back by the foreground rather than paid for by keeping
-the ground dark, and that is what lets it sit at 140 of 255 rather than
-208.
+For a long time it was not see-through at all, and the reason is worth
+writing down. The frame used to fill the whole window — border, title
+bar and client together — and leave the application to paint over the
+inside, which every application does as its first act. So by the time
+the terminal read the framebuffer back, what was under it was not the
+desktop but its own frame: one flat colour, everywhere, whatever the
+window happened to be sitting on. Mixing black into a flat colour gives
+you another flat colour. The terminal came out **lighter**, which is not
+the same thing as transparent, and the check that was supposed to catch
+this only asked that the ground be neither black nor the root — which a
+third flat colour satisfies perfectly. The frame now draws four strips
+around the client and leaves what is inside alone, and the check reads
+the ground in two places, one over bare root and one over a window, and
+fails unless they differ.
+
+Its foreground follows its ground, twice over. There is no compositor to
+hold the text opaque while the ground goes clear, so a sheer terminal
+writes in white and an opaque one in lxterminal's own `#D3D7CF`. That
+alone runs out at about 140 of 255: white cannot go any whiter, and now
+that the window really does show what is behind it, a pale window behind
+it lifts the ground to meet the ink. What buys the rest is a halo — the
+text drawn once in black a pixel down and right before it is drawn in
+white — which is what pcmanfm's desktop labels do over a wallpaper that
+is light in one place and dark in another. It is the same problem and
+the same answer, and it is what lets the ground sit at 90 of 255 and
+stay readable over black, over the root and over a white window alike.
 
 The launcher is dmenu's. A strip across the top of the screen: a prompt,
 what you have typed, and the programs it matches laid out along the rest

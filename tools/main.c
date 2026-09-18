@@ -513,6 +513,17 @@ int main(int argc, char **argv)
     (void)trait_menu_add("", false, true);
     (void)trait_menu_add("Run...", false, false);
 
+    /*
+     * A LINE LONG ENOUGH TO CROSS WHAT IS BEHIND IT.  The terminal is
+     * see-through and the file manager is behind its right-hand half,
+     * so a line that runs that far is the one place the halo under the
+     * glyphs has to earn itself: white on a pale ground is white on
+     * white without it.
+     */
+    trait_terminal_reset();
+    trait_terminal_run("uname -a");
+    trait_terminal_run("ls");
+
     trait_shell_draw_root();
     trait_shell_draw();
     /* Bare root, below and left of every window in this session. */
@@ -834,8 +845,19 @@ int main(int argc, char **argv)
         struct script run;
         uint32_t count = 0U;
         uint32_t term;
+        uint32_t files;
 
         trait_shell_reset(&screen);
+        /*
+         * SOMETHING BEHIND IT.  A see-through window over bare root
+         * shows you the root, which is one flat colour here, and a flat
+         * colour mixed with black is just a darker flat colour - it
+         * looks like a tint rather than like glass.  The file manager
+         * goes under the terminal's right-hand half so that what shows
+         * through is a WINDOW: its icons, its labels, its edge.
+         */
+        files = trait_shell_open(TRAIT_APP_FILES,
+            (struct trait_rect){ 660U, 200U, 380U, 400U });
         term = trait_shell_open(TRAIT_APP_TERMINAL,
             (struct trait_rect){ 160U, 150U, 700U, 400U });
         if (term >= TRAIT_SHELL_MAX_WINDOWS) {
@@ -944,34 +966,76 @@ int main(int argc, char **argv)
         }
 
         /*
-         * AND YOU CAN SEE THROUGH IT.  There is no compositor, so the
-         * only way this can be true is that the terminal read the
-         * framebuffer back and mixed with it - which means the proof is
-         * a pixel that is NEITHER the terminal's black NOR the root.
+         * AND YOU CAN SEE THROUGH IT - THROUGH IT, not merely paler.
+         *
+         * The old form of this check read one pixel of the terminal's
+         * ground and asked that it be neither black nor the root
+         * colour.  That passed for months while the window was not
+         * see-through at all: the frame used to fill the client before
+         * handing it over, so the terminal mixed with its own frame and
+         * came out a third flat colour, which satisfies "neither black
+         * nor the root" perfectly.  Lighter is not transparent.
+         *
+         * What transparency means is that the ground DEPENDS ON WHAT IS
+         * BEHIND IT.  So the check reads the same row at two places -
+         * one with bare root behind it, one with the file manager - and
+         * demands that they differ.  Nothing that mixes with a flat
+         * colour of its own can pass that.
          */
         {
             struct trait_rect client =
                 trait_window_client(trait_shell_window(term));
+            struct trait_rect behind =
+                trait_window_client(trait_shell_window(files));
             uint32_t root;
             uint32_t sheer;
+            uint32_t over;
             uint32_t solid;
-            uint32_t sample_x = client.x + client.width - 4U;
+            /* Below the last line gfetch printed, so this is ground and
+             * not ink: the left end is over root, the right end is over
+             * the window. */
             uint32_t sample_y = client.y + client.height - 4U;
+            uint32_t sample_x = client.x + 4U;
+            uint32_t over_x = behind.x + 8U;
 
+            if (over_x >= client.x + client.width ||
+                    sample_y < behind.y ||
+                    sample_y >= behind.y + behind.height) {
+                fprintf(stderr, "trait: the two windows do not overlap "
+                                "where the check samples them\n");
+                return 1;
+            }
             root = trait_surface_read(&screen, 4U, 4U);
             sheer = trait_surface_read(&screen, sample_x, sample_y);
+            over = trait_surface_read(&screen, over_x, sample_y);
+            if (sheer == over) {
+                fprintf(stderr, "trait: the terminal's ground reads "
+                                "#%06X over the root and #%06X over a "
+                                "window - one flat tint is not "
+                                "transparency\n", sheer, over);
+                return 1;
+            }
             if (sheer == 0x000000U || sheer == root) {
                 fprintf(stderr, "trait: the terminal's ground is #%06X - "
                                 "neither mixed with the root #%06X nor "
                                 "anything else\n", sheer, root);
                 return 1;
             }
-            /* Off, and it is the terminal's black exactly. */
+            /* Off, and it is the terminal's black exactly - in both
+             * places, because an opaque window owes nothing to what is
+             * under it. */
             trait_terminal_set_transparent(false);
             trait_shell_draw_root();
             trait_shell_draw();
+            /* The same screen with the glass taken out of it, so the
+             * two can be put side by side. */
+            if (!emit(out, "gfetch-opaque.png", whole())) {
+                return 1;
+            }
             solid = trait_surface_read(&screen, sample_x, sample_y);
-            if (solid != 0x000000U) {
+            if (solid != 0x000000U ||
+                    trait_surface_read(&screen, over_x, sample_y) !=
+                        0x000000U) {
                 fprintf(stderr, "trait: an opaque terminal drew #%06X, "
                                 "not black\n", solid);
                 return 1;
@@ -1000,12 +1064,13 @@ int main(int argc, char **argv)
             trait_terminal_set_transparent(true);
             trait_shell_draw_root();
             trait_shell_draw();
-            printf("proof: gfetch printed the mark and its facts, and the "
-                   "terminal's ground over a #%06X root reads #%06X "
-                   "rather than #000000 - it is mixed with what is "
-                   "behind it - and the switch makes it black again and "
-                   "takes the ink back down to lxterminal's grey\n",
-                   root, sheer);
+            printf("proof: gfetch printed the mark and its facts, and "
+                   "the terminal's ground reads #%06X where the #%06X "
+                   "root is behind it and #%06X where a window is - it "
+                   "is what is behind it that shows, not a tint - and "
+                   "the switch makes both black again and takes the ink "
+                   "back down to lxterminal's grey\n",
+                   sheer, root, over);
         }
 
         printf("proof: %u keystrokes went through the shell to the "

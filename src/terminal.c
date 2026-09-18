@@ -20,15 +20,20 @@
  * through, which is what `xterm -tr` has done since before there was a
  * compositor to do it properly.
  *
- * 140.  It was 208, which is see-through on paper and not on a screen -
- * over a flat root you cannot tell - and then 170, which is.  140 was
- * too far while the ink was lxterminal's light grey, and is not now
- * that a sheer terminal writes in white: the contrast the transparency
- * spends is bought back by the foreground rather than paid for by
- * keeping the ground dark.  See TERM_INK_SHEER.
+ * 90, which is a third of the way to opaque.  The road here: 208 is
+ * see-through on paper and not on a screen, 170 is, 140 needed the ink
+ * to go white first, and below that the limit stopped being the ink at
+ * all - white text cannot go any whiter, and a PALE WINDOW behind a
+ * sheer terminal lifts the ground to meet it.  80 and 55 were tried and
+ * both lose the text wherever the file manager is behind it.
+ *
+ * What buys the rest is the halo under the glyphs: see draw_mono().
+ * With the text carrying its own dark ground the limit moves off the
+ * contrast entirely, and 90 reads over black, over the root and over a
+ * white window alike.
  */
 #define TERM_OPAQUE 255U
-#define TERM_SHEER 140U
+#define TERM_SHEER 90U
 
 static uint32_t term_opacity = TERM_SHEER;
 /*
@@ -498,7 +503,37 @@ static const struct trait_glyph *glyph_for(char ch)
     return &trait_mono[code - TRAIT_MONO_FIRST];
 }
 
+/*
+ * A HALO UNDER THE TEXT WHILE THE TERMINAL IS SEE-THROUGH.
+ *
+ * Shading the ground is the whole of what pseudo-transparency is, and
+ * it has one failure: the ground is whatever is BEHIND the window, so a
+ * pale window behind a sheer terminal lifts the ground to near white
+ * and white text on it disappears.  Going whiter cannot fix that - it
+ * is already white.
+ *
+ * So the text carries its own dark ground, one pixel down and right,
+ * the way pcmanfm's desktop labels do over a wallpaper that is light in
+ * one place and dark in another.  It is the same problem and it is the
+ * same answer, and it is what lets the ground go much clearer than the
+ * ink alone could stand.
+ */
+static uint32_t draw_run(struct trait_surface *surface,
+    struct trait_rect clip, uint32_t x, uint32_t baseline,
+    const char *text, uint32_t colour);
+
 static uint32_t draw_mono(struct trait_surface *surface,
+    struct trait_rect clip, uint32_t x, uint32_t baseline,
+    const char *text, uint32_t colour)
+{
+    if (term_opacity < TERM_OPAQUE) {
+        (void)draw_run(surface, clip, x + 1U, baseline + 1U, text,
+                       0x000000U);
+    }
+    return draw_run(surface, clip, x, baseline, text, colour);
+}
+
+static uint32_t draw_run(struct trait_surface *surface,
     struct trait_rect clip, uint32_t x, uint32_t baseline,
     const char *text, uint32_t colour)
 {

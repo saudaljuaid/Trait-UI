@@ -167,6 +167,7 @@ void trait_window_draw(struct trait_surface *surface,
 {
     struct trait_rect title;
     struct trait_rect client;
+    struct trait_rect edge;
     uint32_t top;
     uint32_t bottom;
     uint32_t ink;
@@ -183,9 +184,43 @@ void trait_window_draw(struct trait_surface *surface,
         TRAIT_FRAME_ACTIVE_BOTTOM : TRAIT_FRAME_IDLE_BOTTOM;
     ink = window->active ? TRAIT_FRAME_INK : TRAIT_FRAME_INK_DIM;
 
-    /* The border, drawn as the frame with the client punched out of it
-     * afterwards - one fill rather than four strips. */
-    trait_surface_fill(surface, window->frame, window->frame, bottom);
+    /*
+     * THE BORDER, AND ONLY THE BORDER.
+     *
+     * This used to be one fill of the whole frame with the client
+     * painted over it afterwards, which is cheaper and was harmless for
+     * as long as every application filled its client as its first act -
+     * and every one of them does.  It stopped being harmless the moment
+     * one of them wanted to be SEE-THROUGH.  Pseudo-transparency works
+     * by reading the framebuffer back, and what the terminal read there
+     * was this fill: its own frame, a flat colour, already covering the
+     * desktop it was trying to show.  That is why a sheer terminal came
+     * out one even tint wherever you put it, lighter than an opaque one
+     * but no more transparent.
+     *
+     * So the frame draws four strips around the client and leaves what
+     * is inside alone.  The window owns its border and its title bar;
+     * what is under the client belongs to whatever is behind the
+     * window, until the application covers it.
+     */
+    edge = window->frame;
+    edge.height = client.y - window->frame.y;
+    trait_surface_fill(surface, window->frame, edge, bottom);
+
+    edge = window->frame;
+    edge.y = client.y + client.height;
+    edge.height = window->frame.y + window->frame.height - edge.y;
+    trait_surface_fill(surface, window->frame, edge, bottom);
+
+    edge = window->frame;
+    edge.y = client.y;
+    edge.height = client.height;
+    edge.width = client.x - window->frame.x;
+    trait_surface_fill(surface, window->frame, edge, bottom);
+
+    edge.x = client.x + client.width;
+    edge.width = window->frame.x + window->frame.width - edge.x;
+    trait_surface_fill(surface, window->frame, edge, bottom);
 
     for (row = 0U; row < title.height; ++row) {
         for (at = 0U; at < title.width; ++at) {
@@ -196,5 +231,4 @@ void trait_window_draw(struct trait_surface *surface,
     trait_font_draw(surface, title, title.x + 7U,
         title.y + title.height - 7U, window->title, ink);
     buttons(surface, title, window, ink);
-    trait_surface_fill(surface, client, client, TRAIT_BG);
 }

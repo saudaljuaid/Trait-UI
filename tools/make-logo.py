@@ -1,62 +1,85 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
-"""Turn the OpenRFS mark into the ASCII the terminal prints.
+"""Turn the OpenRFS mark into the coloured ASCII gfetch prints.
 
-    python3 tools/make-logo.py [mark.png] [out.h] [columns] [rows]
+    python3 tools/make-logo.py [art.txt] [mark.png] [out.h]
 
-gfetch puts the mark beside the facts, the way every fetch has since
-screenfetch, and a terminal has no pixels to put a PNG in - it has
-characters.  So the mark is reduced here, once, and the C side prints
-the lines.
+TWO SOURCES, AND THEY DO DIFFERENT HALVES OF THE JOB.
 
-THE SOURCE IS THE DRAWING, not the trimmed mark beside it.  The mark
-that the website builds has had its white lifted to transparency, and
-the fish's EYES are white - so in that file they are holes, and a
-reduction of it comes out with a blank-faced fish.  The drawing still
-has them, and which white is an eye and which is the paper around the
-fish is answered by a flood fill from the border: paper is the white you
-can reach from the edge, an eye is the white you cannot.
+The CHARACTERS come from assets/logo/openrfs-logo.txt, which is the
+output of asciiart.eu's converter run over assets/logo/openrfs-mark-flat
+.png - the settings are recorded in assets/logo/SOURCE.txt.  That tool
+does the thing this file used to do badly: it has edge detection and a
+proper gradient, and it draws a fish you can see the fins on.  What was
+here before classified each block into one of five things and drew a
+character per class, which is a reduction that cannot render an edge
+running diagonally through a cell.
 
-NOT A LUMINANCE RAMP.  The obvious ' .:-=+*#%@' ramp turns this mark to
-mush: the body is one flat red, so every pixel of it lands on the same
-rung and the fish comes out as a featureless blob.  What makes the
-drawing legible is that it has FOUR THINGS IN IT - the paper, the black
-outline, the red body and the pink tongue - so each of those gets a
-character and the reduction is a classification rather than a ramp.
+The COLOURS are still computed here, because the converter has none to
+give: it emits text.  So the mark is classified on the same grid the
+art is laid out on - paper, outline, body, tongue, eye - and each cell's
+class picks its ink.  The inks themselves are the mean of every source
+pixel that fell into each class, so the fish is drawn in the fish's own
+two reds rather than in something that looks about right.
 
-Characters are about twice as tall as they are wide, so the rows are
-asked for separately rather than derived from the width; asking for a
-square grid gives you a fish squashed to half its height.
+WHICH WHITE IS AN EYE.  Outside the drawing and inside the eyes are both
+white, and only one of them is paper.  A flood fill from the border
+answers it: paper is the white you can reach from the edge.
 """
 import sys
 from pathlib import Path
 
 from PIL import Image
 
-PAPER = " "      # transparent: outside the drawing altogether
-OUTLINE = "#"    # the black line the whole drawing is built from
-BODY = "+"       # the red
-TONGUE = ":"     # the pink
-EYE = "o"        # the white of the eyes, which is NOT the paper
+PAPER = " "
+OUTLINE = "#"
+BODY = "+"
+TONGUE = ":"
+EYE = "o"
 
-# What each class is INKED in, as a code the C side indexes with.
-INK = {PAPER: "0", OUTLINE: "1", BODY: "2", TONGUE: "3", EYE: "4"}
+INK = {PAPER: 0, OUTLINE: 1, BODY: 2, TONGUE: 3, EYE: 4}
 
-# The share of a block a small feature needs to take it.  The eyes are
-# not on this list: once the paper is told from the eye whites they are
-# big enough to win their own blocks outright, and giving them a floor
-# as well swallowed the pupils.  The tongue is a thin curl and does not.
-FLOOR = ((TONGUE, 0.34),)
+# WHAT COLOUR A CELL IS: whichever of the four holds most of it, with a
+# floor under the three small ones.
+#
+# The mean of the cell snapped to the nearest colour was tried first and
+# is worse, which is not what you would guess.  A cell straddling the
+# fish's edge averages red and white into a pale pink, pink is one of
+# the four, and the fish comes out speckled with tongue along every
+# boundary.  A vote has no such midpoint to fall into.
+#
+# The floors are here because the three small things are all thinner
+# than a cell: the black line round the outside, the tongue, and the
+# whites of the eyes each lose every vote they are in and the fish comes
+# out one flat red.  The numbers are where they can be argued with.
+FLOOR = ((EYE, 0.30), (TONGUE, 0.30), (OUTLINE, 0.45))
 
 MAX_LINE = 64    # a fetch has to leave room for the facts beside it
 
 
 def main():
-    src = Path(sys.argv[1] if len(sys.argv) > 1
-               else "assets/logo/openrfs-logo-source.jpeg")
-    out = Path(sys.argv[2] if len(sys.argv) > 2 else "src/trait_logo.h")
-    columns = int(sys.argv[3]) if len(sys.argv) > 3 else 40
-    rows = int(sys.argv[4]) if len(sys.argv) > 4 else 18
+    art = Path(sys.argv[1] if len(sys.argv) > 1
+               else "assets/logo/openrfs-logo.txt")
+    src = Path(sys.argv[2] if len(sys.argv) > 2
+               else "assets/logo/openrfs-mark-flat.png")
+    out = Path(sys.argv[3] if len(sys.argv) > 3 else "src/trait_logo.h")
+
+    # U+2588 is the character the converter's "Black and White" set
+    # draws with, and it is not in a Misc-Fixed face - tools/make-font.py
+    # synthesises it at the code after the last, because a solid
+    # rectangle is not a typeface.  The art carries it as itself; the
+    # table below carries it as that code.
+    BLOCK_IN = "\u2588"
+    BLOCK_OUT = chr(127)
+    lines = [line.rstrip("\n").replace(BLOCK_IN, BLOCK_OUT) for line in
+             art.read_text().rstrip("\n").split("\n")]
+    if not lines or not any(line.strip() for line in lines):
+        sys.exit("REFUSED: %s has no art in it" % art.name)
+    rows = len(lines)
+    columns = max(len(line) for line in lines)
+    if columns > MAX_LINE:
+        sys.exit("REFUSED: %d columns leaves no room for the facts"
+                 % columns)
 
     image = Image.open(src).convert("RGB")
     pixels = image.load()
@@ -66,10 +89,6 @@ def main():
         r, g, b = pixels[x, y]
         return r > 218 and g > 218 and b > 218
 
-    # OUTSIDE IS THE WHITE YOU CAN REACH FROM THE EDGE.  Everything else
-    # that is white - the eyes, the teeth - is inside the drawing, and
-    # the only thing that tells them apart is whether the paper connects
-    # them to the border.
     outside = bytearray(wide * tall)
     queue = []
     for x in range(wide):
@@ -92,7 +111,6 @@ def main():
                 queue.append((nx, ny))
 
     def classify(x, y):
-        """Which of the five things in the drawing this pixel is."""
         r, g, b = pixels[x, y]
         light = (r * 299 + g * 587 + b * 114) // 1000
         if outside[y * wide + x]:
@@ -105,53 +123,26 @@ def main():
             return TONGUE
         return BODY
 
-    # Trim to the ink, which is now everything that is not outside.
-    left, right, top, bottom = wide, 0, tall, 0
-    for y in range(tall):
-        for x in range(wide):
-            if not outside[y * wide + x]:
-                left = min(left, x)
-                right = max(right, x + 1)
-                top = min(top, y)
-                bottom = max(bottom, y + 1)
-    if right <= left or bottom <= top:
-        sys.exit("REFUSED: %s is all paper" % src.name)
-
-    # PLURALITY OVER THE BLOCK, not the colour of its average - and a
-    # floor under the two small things.
-    #
-    # Resampling first and classifying after is what loses features: an
-    # eye is three cells across and every one of them averages white,
-    # black pupil and dark outline into a mid grey that lands on the
-    # body.  Classifying every source pixel and then asking what the
-    # block is MOSTLY fixes that for anything the size of a cell.
-    #
-    # It is not enough on its own.  The white of an eye is a ring about
-    # half a cell wide between a black pupil and a black rim, so it is
-    # never the majority of anything and a strict plurality erases both
-    # eyes - which is to say a face is made of features smaller than a
-    # cell, and a rule that only reports majorities cannot draw one.  So
-    # the eye and the tongue win their block at a share rather than a
-    # majority, and the shares are here where they can be argued with.
+    # THE SAME GRID THE ART IS ON.  The converter maps the whole image
+    # to its grid, so this does too; anything else and the colours sit
+    # beside the shapes rather than on them.
     sums = {OUTLINE: [0, 0, 0, 0], BODY: [0, 0, 0, 0],
             TONGUE: [0, 0, 0, 0], EYE: [0, 0, 0, 0]}
-    lines = []
     inks = []
-    for y in range(rows):
-        row = []
-        ink_row = []
-        for x in range(columns):
+    for row in range(rows):
+        codes = []
+        for column in range(columns):
             tally = {}
-            x0 = left + x * (right - left) // columns
-            x1 = max(x0 + 1, left + (x + 1) * (right - left) // columns)
-            y0 = top + y * (bottom - top) // rows
-            y1 = max(y0 + 1, top + (y + 1) * (bottom - top) // rows)
+            x0 = column * wide // columns
+            x1 = max(x0 + 1, (column + 1) * wide // columns)
+            y0 = row * tall // rows
+            y1 = max(y0 + 1, (row + 1) * tall // rows)
             for sy in range(y0, y1):
                 for sx in range(x0, x1):
                     cell = classify(sx, sy)
                     tally[cell] = tally.get(cell, 0) + 1
+                    r, g, b = pixels[sx, sy]
                     if cell in sums:
-                        r, g, b = pixels[sx, sy]
                         sums[cell][0] += r
                         sums[cell][1] += g
                         sums[cell][2] += b
@@ -162,11 +153,20 @@ def main():
                 if tally.get(small, 0) >= total * share:
                     cell = small
                     break
-            row.append(cell)
-            ink_row.append(INK[cell])
-        text_row = "".join(row).rstrip()
-        lines.append(text_row)
-        inks.append("".join(ink_row)[:len(text_row)])
+            drawn = lines[row][column] if column < len(lines[row]) else " "
+            if drawn == " ":
+                # Nothing is drawn there, so nothing is inked there.
+                codes.append(0)
+            elif cell == PAPER:
+                # The converter drew a block over pixels the classifier
+                # calls paper - the edge running diagonally through the
+                # cell.  The art is right; the ink falls back to the
+                # line's own.
+                codes.append(INK[OUTLINE])
+            else:
+                codes.append(INK[cell])
+        inks.append("".join(str(code) for code in
+                            codes[:len(lines[row])]))
 
     def mean(cell):
         total = sums[cell]
@@ -174,34 +174,29 @@ def main():
             sys.exit("REFUSED: nothing in the drawing came out %s" % cell)
         return tuple(channel // total[3] for channel in total[:3])
 
-    if not any(line.strip() for line in lines):
-        sys.exit("REFUSED: the reduction came out blank")
-    if max(len(line) for line in lines) > MAX_LINE:
-        sys.exit("REFUSED: %d columns leaves no room for the facts"
-                 % columns)
-
     text = [
         "/* SPDX-License-Identifier: GPL-3.0-only */",
         "/*",
         " * GENERATED by tools/make-logo.py - do not edit.",
         " *",
-        " * The OpenRFS mark at %u by %u characters, reduced from"
-        % (columns, rows),
-        " * %s.  See assets/logo/SOURCE.txt for" % src.name,
-        " * whose drawing it is.",
+        " * The characters are %s, which is asciiart.eu's" % art.name,
+        " * converter run over %s." % src.name,
+        " * The colours are computed from that same image on the same",
+        " * grid.  assets/logo/SOURCE.txt records the settings and whose",
+        " * drawing it is.",
         " */",
         "#ifndef TRAIT_LOGO_H",
         "#define TRAIT_LOGO_H",
         "",
-        "#define TRAIT_LOGO_ROWS %uU" % len(lines),
+        "#define TRAIT_LOGO_ROWS %uU" % rows,
         "#define TRAIT_LOGO_COLUMNS %uU" % columns,
         "",
         "/*",
-        " * The colours are the DRAWING'S, averaged over every cell that",
-        " * came out body, tongue or eye.  The outline is not here: it is",
-        " * black in the drawing, and black on a black terminal is a line",
-        " * you cannot see, so the C side inks it in the terminal's own",
-        " * foreground and says so.",
+        " * The colours are the DRAWING'S, averaged over every pixel",
+        " * that came out body, tongue or eye.  The outline is not here:",
+        " * it is black in the drawing, and black on a black terminal is",
+        " * a line you cannot see, so the C side inks it in the",
+        " * terminal's own foreground and says so.",
         " */",
         "#define TRAIT_LOGO_BODY 0x%02X%02X%02XU" % mean(BODY),
         "#define TRAIT_LOGO_TONGUE 0x%02X%02X%02XU" % mean(TONGUE),
@@ -210,21 +205,23 @@ def main():
         "static const char *const trait_logo[TRAIT_LOGO_ROWS] = {",
     ]
     for line in lines:
-        text.append('    "%s",' % line.replace("\\", "\\\\")
-                    .replace('"', '\\"'))
+        text.append('    "%s",' % "".join(
+            "\\177" if ch == BLOCK_OUT else
+            ("\\\\" if ch == "\\" else ('\\"' if ch == '"' else ch))
+            for ch in line))
     text += [
         "};",
         "",
         "/* One code per character of the row above: 0 the terminal's own",
-        " * ink, 1 the outline, 2 the body, 3 the tongue. */",
+        " * ink, 1 the outline, 2 the body, 3 the tongue, 4 an eye. */",
         "static const char *const trait_logo_ink[TRAIT_LOGO_ROWS] = {",
     ]
     for line in inks:
         text.append('    "%s",' % line)
     text += ["};", "", "#endif /* TRAIT_LOGO_H */"]
     out.write_text("\n".join(text) + "\n")
-    print("wrote %s: %u rows, widest %u characters"
-          % (out, len(lines), max(len(line) for line in lines)))
+    print("wrote %s: %u rows, widest %u characters, inked from %s"
+          % (out, rows, columns, src.name))
 
 
 if __name__ == "__main__":

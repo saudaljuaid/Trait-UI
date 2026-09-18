@@ -18,7 +18,8 @@
 #include <stdint.h>
 
 #define TRAIT_FONT_7X14_FIRST 32U
-#define TRAIT_FONT_7X14_LAST 126U
+#define TRAIT_FONT_7X14_LAST 127U
+#define TRAIT_FONT_7X14_BLOCK 127U
 #define TRAIT_FONT_7X14_ASCENT 12U
 #define TRAIT_FONT_7X14_DESCENT 2U
 #define TRAIT_FONT_7X14_HEIGHT 14U
@@ -973,6 +974,16 @@ static const uint8_t trait_font_7x14_126[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,
 };
+/* 127 '█' advance 7 */
+static const uint8_t trait_font_7x14_127[] = {
+     255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+     255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+     255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+     255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+     255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+     255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+     255, 255,
+};
 
 #ifndef TRAIT_GLYPH_DEFINED
 #define TRAIT_GLYPH_DEFINED
@@ -1079,6 +1090,7 @@ static const struct trait_glyph trait_font_7x14[] = {
     { trait_font_7x14_124, 7U, 7U },
     { trait_font_7x14_125, 7U, 7U },
     { trait_font_7x14_126, 7U, 7U },
+    { trait_font_7x14_127, 7U, 7U },
 };
 
 #endif /* TRAIT_FONT_7X14_H */

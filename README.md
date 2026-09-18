@@ -35,12 +35,25 @@ The fish's black outline is not among them. It is black in the drawing,
 and black on a black terminal is a line you cannot see, so it takes the
 terminal's own foreground and reads as the line it is.
 
-The reduction reads the DRAWING, not the trimmed mark the website
-builds from it. That build lifts the white to transparency and the
-fish's eyes are white, so in the mark they are holes and the fish comes
-out blank-faced. Which white is paper and which is an eye is answered
-by a flood fill from the border: paper is the white you can reach from
-the edge.
+The ASCII itself is not this project's work: it is asciiart.eu's
+converter, run over the mark with its "Black and White" character set at
+46 columns, and `assets/logo/SOURCE.txt` records every setting so it can
+be redone. The reduction that used to be here classified each cell into
+one of five things, which cannot render an edge running diagonally
+through a cell — and most of a drawing's edges do.
+
+Two of the converter's other sets were tried and read as noise: a tonal
+gradient wants a denser grid than an 8x16 bitmap font gives it. The
+block set does not, because it draws a shape and leaves the tone to the
+colour. Misc-Fixed has no block glyph, so `tools/make-font.py`
+synthesises one at the code after the last — a solid rectangle is not a
+typeface.
+
+Which white is paper and which is an eye is answered by a flood fill
+from the border: paper is the white you can reach from the edge. That
+matters because the website's build of the mark lifts white to
+transparency, and the fish's eyes are white, so in that file they are
+holes.
 
 The facts are read from the things they name — the theme from the theme,
 the font from the generated face's metrics, the package count from the
@@ -181,7 +194,7 @@ happen ahead of time:
 ```sh
 python3 tools/make-font.py <font.pcf.gz> src/trait_font_<WxH>.h trait_font_<WxH>
 python3 tools/make-gears.py src/trait_gears_art.h
-python3 tools/make-logo.py assets/logo/openrfs-logo-source.jpeg src/trait_logo.h 36 17
+python3 tools/make-logo.py assets/logo/openrfs-logo.txt assets/logo/openrfs-mark-flat.png src/trait_logo.h
 python3 tools/make-icons.py assets/icons/gentoo src/trait_files_art.h
 ```
 

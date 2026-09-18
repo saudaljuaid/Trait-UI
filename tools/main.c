@@ -837,7 +837,7 @@ int main(int argc, char **argv)
 
         trait_shell_reset(&screen);
         term = trait_shell_open(TRAIT_APP_TERMINAL,
-            (struct trait_rect){ 200U, 180U, 560U, 320U });
+            (struct trait_rect){ 160U, 150U, 700U, 400U });
         if (term >= TRAIT_SHELL_MAX_WINDOWS) {
             return 1;
         }

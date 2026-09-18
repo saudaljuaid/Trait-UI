@@ -32,6 +32,15 @@ from PIL import Image, PcfFontFile
 
 FIRST, LAST = 32, 126
 
+# ONE GLYPH THAT IS NOT IN THE FONT, at the code after the last.
+#
+# Misc-Fixed has no full block and neither does any other X bitmap face
+# here; U+2588 lives above the range these were drawn for.  A terminal
+# wants one - it is how you draw a picture out of characters - and a
+# solid rectangle is not a typeface, so synthesising it is not the same
+# as redrawing somebody's letterforms.  gfetch is what asked.
+BLOCK = 127
+
 
 def load(path):
     """PCF, gzipped or not.  PcfFontFile wants a seekable file."""
@@ -72,6 +81,10 @@ def main():
         glyphs.append((code, chr(code), advance, width,
                        list(cell.get_flattened_data())))
 
+    # The block, filling the cell the face defines.
+    block = [255] * (glyphs[0][3] * height)
+    glyphs.append((BLOCK, "\u2588", glyphs[0][2], glyphs[0][3], block))
+
     lines = [
         "/* SPDX-License-Identifier: GPL-3.0-only */",
         "/*",
@@ -93,7 +106,8 @@ def main():
         "#include <stdint.h>",
         "",
         f"#define {prefix.upper()}_FIRST {FIRST}U",
-        f"#define {prefix.upper()}_LAST {LAST}U",
+        f"#define {prefix.upper()}_LAST {BLOCK}U",
+        f"#define {prefix.upper()}_BLOCK {BLOCK}U",
         f"#define {prefix.upper()}_ASCENT {ascent}U",
         f"#define {prefix.upper()}_DESCENT {descent}U",
         f"#define {prefix.upper()}_HEIGHT {height}U",

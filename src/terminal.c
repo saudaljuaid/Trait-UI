@@ -50,13 +50,15 @@ static const char PROMPT[] = "user@openrfs:~$ ";
  * why they are the only two colours on this desktop that are not one of
  * the sixteen.  The outline is not among them: it is black in the
  * drawing and black on a black terminal is a line you cannot see, so it
- * takes the terminal's foreground and reads as the line it is.
+ * takes the palette's dark grey - one of the sixteen - and reads as a
+ * line rather than as a mass, which the terminal's own foreground did
+ * not once the mark was drawn in solid blocks.
  */
 #define TERM_INKS 5U
 
 static const uint32_t TERM_INK_TABLE[TERM_INKS] = {
     TERM_INK,               /* 0: everything printed the ordinary way */
-    TERM_INK,               /* 1: the outline, in the same ink */
+    0x555555U,              /* 1: the outline, as a line and not a mass */
     TRAIT_LOGO_BODY,        /* 2: the fish */
     TRAIT_LOGO_TONGUE,      /* 3: its tongue */
     TRAIT_LOGO_EYE          /* 4: the white of an eye */

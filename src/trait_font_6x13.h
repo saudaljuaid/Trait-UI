@@ -18,7 +18,8 @@
 #include <stdint.h>
 
 #define TRAIT_FONT_6X13_FIRST 32U
-#define TRAIT_FONT_6X13_LAST 126U
+#define TRAIT_FONT_6X13_LAST 127U
+#define TRAIT_FONT_6X13_BLOCK 127U
 #define TRAIT_FONT_6X13_ASCENT 10U
 #define TRAIT_FONT_6X13_DESCENT 3U
 #define TRAIT_FONT_6X13_HEIGHT 13U
@@ -783,6 +784,14 @@ static const uint8_t trait_font_6x13_126[] = {
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
+/* 127 '█' advance 6 */
+static const uint8_t trait_font_6x13_127[] = {
+     255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+     255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+     255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+     255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+     255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+};
 
 #ifndef TRAIT_GLYPH_DEFINED
 #define TRAIT_GLYPH_DEFINED
@@ -889,6 +898,7 @@ static const struct trait_glyph trait_font_6x13[] = {
     { trait_font_6x13_124, 6U, 6U },
     { trait_font_6x13_125, 6U, 6U },
     { trait_font_6x13_126, 6U, 6U },
+    { trait_font_6x13_127, 6U, 6U },
 };
 
 #endif /* TRAIT_FONT_6X13_H */

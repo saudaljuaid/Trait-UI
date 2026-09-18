@@ -475,12 +475,25 @@ bool trait_settings_self_test(void)
         if (TRAIT_BG != was_bg) {
             return false;
         }
-        /* A switch flips. */
-        if (!trait_settings_press(1U, 0U)) {
-            return false;
-        }
-        if (pages[1].rows[0].on) {
-            return false;
+        /*
+         * A switch FLIPS.  This used to assert it came back off, which
+         * was only true while the desktop's icons defaulted to on; what
+         * a switch has to do is change, whichever way it started.
+         */
+        {
+            bool was = trait_shell_desktop_icons();
+
+            if (!trait_settings_press(1U, 0U)) {
+                return false;
+            }
+            if (pages[1].rows[0].on == was ||
+                    trait_shell_desktop_icons() == was) {
+                return false;
+            }
+            if (!trait_settings_press(1U, 0U) ||
+                    trait_shell_desktop_icons() != was) {
+                return false;
+            }
         }
         /* A row that is not a control refuses the press rather than
          * swallowing it. */

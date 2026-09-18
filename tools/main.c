@@ -215,7 +215,7 @@ static void populate_taskmgr(void)
         { "lxterminal", 41U, 5122U, 3U },
         { "lxtask", 8U, 1904U, 4U },
         { "openbox", 3U, 2201U, 5U },
-        { "lxpanel", 19U, 3355U, 6U }
+        { "glxgears", 19U, 3355U, 6U }
     };
     struct trait_taskmgr_row row;
 
@@ -240,7 +240,6 @@ static void populate_settings(void)
     trait_settings_reset();
     (void)trait_settings_add_page("Widget");
     (void)trait_settings_add_page("Desktop");
-    (void)trait_settings_add_page("Panel");
     (void)trait_settings_add_page("Keyboard");
 
     /*
@@ -250,13 +249,12 @@ static void populate_settings(void)
      * picker beside them, and pressing them did nothing at all, which is
      * the failure this header warns about in the largest possible form.
      *
-     * Each is now one of two things.  If the shell can carry it out it is
-     * a real control wired to the thing it names.  If it cannot, it is a
-     * NOTE, which is not drawn as a control and says why - the panel's
-     * height and edge are not adjustable because its background is one
-     * 26-pixel column of lxpanel's own artwork, and stretching vendored
-     * artwork to make a setting look real is the same lie in a different
-     * place.
+     * Each is now one of two things.  If the shell can carry it out it
+     * is a real control wired to the thing it names.  If it cannot, it
+     * is a NOTE, which is not drawn as a control and says what it is
+     * instead - the icon theme and the font are stated rather than
+     * offered, because there is one of each and a picker over one
+     * choice is a picker that does nothing.
      */
 
     /* ---- Widget: lxappearance ---- */
@@ -269,10 +267,10 @@ static void populate_settings(void)
     memset(&row, 0, sizeof(row));
     row.kind = TRAIT_SETTINGS_NOTE;
     (void)snprintf(row.label, TRAIT_SETTINGS_TEXT_BYTES,
-                   "Icon theme: nuoveXT2, the one here.");
+                   "Icons: gentoo's, Johan Hanson 1998.");
     (void)trait_settings_add_row(0U, &row);
     (void)snprintf(row.label, TRAIT_SETTINGS_TEXT_BYTES,
-                   "Font: the 11px bitmap, drawn ahead.");
+                   "Font: Misc-Fixed, unpacked ahead.");
     (void)trait_settings_add_row(0U, &row);
 
     /* ---- Desktop: pcmanfm's Desktop Preferences ---- */
@@ -301,16 +299,16 @@ static void populate_settings(void)
     row.kind = TRAIT_SETTINGS_NOTE;
     (void)snprintf(row.label, TRAIT_SETTINGS_TEXT_BYTES,
                    "W-e   Open the file manager");
-    (void)trait_settings_add_row(3U, &row);
+    (void)trait_settings_add_row(2U, &row);
     (void)snprintf(row.label, TRAIT_SETTINGS_TEXT_BYTES,
                    "W-r   Open the Run box");
-    (void)trait_settings_add_row(3U, &row);
+    (void)trait_settings_add_row(2U, &row);
     (void)snprintf(row.label, TRAIT_SETTINGS_TEXT_BYTES,
                    "C-A-t Open a terminal");
-    (void)trait_settings_add_row(3U, &row);
+    (void)trait_settings_add_row(2U, &row);
     (void)snprintf(row.label, TRAIT_SETTINGS_TEXT_BYTES,
                    "A-F4  Close the focused window");
-    (void)trait_settings_add_row(3U, &row);
+    (void)trait_settings_add_row(2U, &row);
 }
 
 
@@ -763,7 +761,7 @@ int main(int argc, char **argv)
             return 1;
         }
         was_page = trait_settings_selected();
-        if (!trait_settings_tab_bounds(trait_shell_window(settings), 3U,
+        if (!trait_settings_tab_bounds(trait_shell_window(settings), 2U,
                                        &tab)) {
             return 1;
         }
@@ -771,7 +769,7 @@ int main(int argc, char **argv)
         press.y = tab.y + tab.height / 2U;
         (void)trait_shell_handle(&press);
         if (trait_settings_selected() == was_page ||
-                trait_settings_selected() != 3U) {
+                trait_settings_selected() != 2U) {
             fprintf(stderr, "trait: pressing a tab did not change the "
                             "page\n");
             return 1;
@@ -1014,6 +1012,9 @@ int main(int argc, char **argv)
         (void)trait_files_add(desktop_folder, "Projects", true, 0U);
         trait_shell_set_desktop_folder(desktop_folder);
         (void)trait_files_open(user);
+        /* The root comes up bare, so this turns them on rather than
+         * assuming they are there. */
+        trait_shell_set_desktop_icons(true);
 
         if (trait_shell_desktop_icon_count() != 3U) {
             fprintf(stderr, "trait: the root window shows %u icons, not "
@@ -1111,6 +1112,56 @@ int main(int argc, char **argv)
             }
         }
 
+        /*
+         * THE THREE SHORTCUTS THE KEYBOARD PAGE CLAIMS.  They were
+         * three lines of text and nothing behind them until now, so
+         * this asks each one to do the thing its line says.
+         */
+        {
+            uint32_t had = trait_shell_window_count();
+
+            key.modifiers = TRAIT_MOD_SUPER;
+            key.special = 0U;
+            key.key = 'e';
+            if (!trait_shell_handle(&key) ||
+                    trait_shell_window_count() != had + 1U ||
+                    trait_shell_app_of(trait_shell_focused()) !=
+                        TRAIT_APP_FILES) {
+                fprintf(stderr, "trait: W-e opened no file manager\n");
+                return 1;
+            }
+            key.key = 'r';
+            if (!trait_shell_handle(&key) || !trait_shell_run_open()) {
+                fprintf(stderr, "trait: W-r opened no Run box\n");
+                return 1;
+            }
+            key.modifiers = 0U;
+            key.special = TRAIT_KEY_ESCAPE;
+            key.key = 0;
+            (void)trait_shell_handle(&key);
+
+            had = trait_shell_window_count();
+            key.modifiers = TRAIT_MOD_CTRL | TRAIT_MOD_ALT;
+            key.special = 0U;
+            key.key = 't';
+            if (!trait_shell_handle(&key) ||
+                    trait_shell_window_count() != had + 1U ||
+                    trait_shell_app_of(trait_shell_focused()) !=
+                        TRAIT_APP_TERMINAL) {
+                fprintf(stderr, "trait: C-A-t opened no terminal\n");
+                return 1;
+            }
+            /* And Alt+F4 shuts the one it just opened. */
+            key.modifiers = TRAIT_MOD_ALT;
+            key.special = TRAIT_KEY_F4;
+            key.key = 0;
+            if (!trait_shell_handle(&key) ||
+                    trait_shell_window_count() != had) {
+                fprintf(stderr, "trait: A-F4 closed nothing\n");
+                return 1;
+            }
+        }
+
         /* Alt+Tab, with two windows up. */
         (void)trait_shell_open(TRAIT_APP_TASKMGR,
             (struct trait_rect){ 380U, 260U, 520U, 300U });
@@ -1177,20 +1228,31 @@ int main(int argc, char **argv)
         trait_shell_set_desktop_folder(trait_files_child(user, 0U));
         populate_settings();
 
-        /* Show icons on the desktop - page 1, row 1. */
+        /* Show icons on the desktop - page 1, row 1.  The root comes
+         * up bare now, so the switch is asked to FILL it and then to
+         * clear it again, which is the same switch either way. */
+        if (trait_shell_desktop_icon_count() != 0U) {
+            fprintf(stderr, "trait: the root came up with icons on it\n");
+            return 1;
+        }
+        if (!trait_settings_press(1U, 1U)) {
+            fprintf(stderr, "trait: the desktop-icons switch refused the "
+                            "press\n");
+            return 1;
+        }
         before = trait_shell_desktop_icon_count();
-        if (before == 0U || !trait_settings_press(1U, 1U) ||
-                trait_shell_desktop_icon_count() != 0U) {
-            fprintf(stderr, "trait: the desktop-icons switch did not "
-                            "clear the desktop (%u icons before)\n", before);
+        if (before == 0U) {
+            fprintf(stderr, "trait: the desktop-icons switch drew "
+                            "nothing on the root\n");
             return 1;
         }
         if (!trait_settings_press(1U, 1U) ||
-                trait_shell_desktop_icon_count() != before) {
-            fprintf(stderr, "trait: the desktop-icons switch did not put "
-                            "them back\n");
+                trait_shell_desktop_icon_count() != 0U) {
+            fprintf(stderr, "trait: the desktop-icons switch did not "
+                            "clear the root again (%u icons)\n", before);
             return 1;
         }
+        (void)trait_settings_press(1U, 1U);
 
         /* Show hidden files - page 1, row 2.  ~/.bashrc is the one. */
         before = trait_files_visible_count(user);
@@ -1266,7 +1328,7 @@ int main(int argc, char **argv)
         }
 
         printf("proof: every switch on the Settings window moves the "
-               "thing it names - the desktop went from %u icons to 0 and "
+               "thing it names - the root went from bare to %u icons and "
                "back, a dot file appeared (%u of %u), and one click "
                "opened a folder only once single click was on\n",
                before, after, trait_files_child_count(user));

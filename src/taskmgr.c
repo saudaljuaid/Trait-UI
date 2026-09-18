@@ -6,7 +6,11 @@
 
 /* ================================================================ METRICS */
 
-#define TASKMGR_MENUBAR 20U
+/* THERE IS NO MENU BAR.  lxtask has File, View and Help; this had all
+ * three drawn and none of them hit-tested, so they were three words
+ * that looked like menus.  The column headings below sort for real,
+ * which is the difference. */
+#define TASKMGR_MENUBAR 0U
 #define TASKMGR_SUMMARY 20U
 #define TASKMGR_HEADER 18U
 #define TASKMGR_ROW 17U
@@ -366,7 +370,6 @@ void trait_taskmgr_draw(struct trait_surface *surface,
     const struct trait_window *window)
 {
     struct trait_rect client;
-    struct trait_rect strip;
     char scratch[24];
     uint32_t at;
     uint32_t column;
@@ -377,25 +380,6 @@ void trait_taskmgr_draw(struct trait_surface *surface,
     }
     client = trait_window_client(window);
     trait_surface_fill(surface, client, client, TRAIT_BG);
-
-    /* the menu bar */
-    strip = client;
-    strip.height = TASKMGR_MENUBAR;
-    trait_surface_fill(surface, client, strip, TRAIT_BG);
-    {
-        static const char *const MENUS[3] = { "File", "View", "Help" };
-        uint32_t pen = client.x + TASKMGR_PAD;
-
-        for (at = 0U; at < 3U; ++at) {
-            trait_font_draw(surface, client, pen,
-                client.y + 14U, MENUS[at], TRAIT_FG);
-            pen += trait_font_width(MENUS[at]) + 14U;
-        }
-    }
-    for (at = 0U; at < client.width; ++at) {
-        trait_surface_plot(surface, client, client.x + at,
-            client.y + TASKMGR_MENUBAR - 1U, TRAIT_LINE);
-    }
 
     /* the summary line */
     {

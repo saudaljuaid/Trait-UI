@@ -20,6 +20,19 @@ or with Alt+Tab; what is running is in the Task Manager. The bar used to
 be here and be switched off, which meant a thousand lines that nothing
 reached. It is gone, and the Debian artwork that dressed it went with it.
 
+The root comes up bare — the gears and nothing over them. ~/Desktop is
+one switch away in Settings.
+
+No menu bars either. The file manager had File, Edit, View, Bookmarks,
+Tools and Help across the top and none of them was hit-tested; so did the
+Task Manager; so did a places pane, three sortable column headings that
+sorted nothing, and a path drawn as a text entry you could not type in.
+Fourteen pictures of controls, and they are gone. What is left answers a
+press: the entries, the Task Manager's headings, Apply in the package
+manager (which had a function behind it and no way to reach it until
+now), and the four keyboard shortcuts the Settings page lists — three of
+which were also just text until this pass.
+
 The palette is the IBM sixteen, which is what `tools/render.c` paints
 the console and the installer with. Red is the brand's `#9E1B1B` rather
 than IBM's `#AA0000`, in all three. Nothing is shaded and no value is

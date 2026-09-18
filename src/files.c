@@ -10,10 +10,20 @@
  *
  * pcmanfm's own, from its LXDE profile and its window.
  */
-#define FILES_MENUBAR 20U
-#define FILES_TOOLBAR 28U
-#define FILES_STATUS 20U
-#define FILES_PLACES 130U
+/*
+ * WHAT IS GONE, AND WHY IT WAS ALWAYS GOING TO GO.
+ *
+ * pcmanfm has a menu bar, a places pane and sortable column headings,
+ * and this had all three because it is a copy of pcmanfm.  None of them
+ * was ever hit-tested: File opened nothing, Desktop in the places pane
+ * went nowhere, and pressing Name sorted by nothing.  Fourteen controls
+ * that were pictures of controls, which is the one thing this desktop
+ * does not draw.  The path was worse than dead - it was drawn as a
+ * sunken entry, which is a window telling you it will take what you
+ * type.  It is a line of text now, because that is what it is.
+ */
+#define FILES_PATH 18U              /* the folder you are in, as text */
+#define FILES_STATUS 18U
 #define FILES_PAD 6U
 
 #define FILES_CELL_WIDTH 96U        /* the icon view's grid */
@@ -27,9 +37,6 @@
 #define FILES_SMALL 16U
 
 #define FILES_ROW 18U               /* the detailed list */
-#define FILES_NAME_COLUMN 220U
-#define FILES_KIND_COLUMN 120U
-#define FILES_SIZE_COLUMN 90U
 
 /* ================================================================== STATE */
 
@@ -117,23 +124,6 @@ static const char *mark_for(const struct trait_files_node *node)
         return "application-x-executable";
     }
     return "text-x-generic";
-}
-
-static const char *kind_for(const struct trait_files_node *node)
-{
-    if (node->folder) {
-        return "Folder";
-    }
-    if (ends_with(node->name, ".txt")) {
-        return "Plain text";
-    }
-    if (ends_with(node->name, ".png")) {
-        return "PNG image";
-    }
-    if (ends_with(node->name, ".ogg")) {
-        return "Ogg audio";
-    }
-    return "File";
 }
 
 static const struct trait_files_art_entry *art_named(const char *name)
@@ -840,13 +830,11 @@ static struct trait_rect view_area(const struct trait_window *window)
     struct trait_rect client = trait_window_client(window);
     struct trait_rect box;
 
-    box.x = client.x + FILES_PLACES;
-    box.y = client.y + FILES_MENUBAR + FILES_TOOLBAR;
-    box.width = client.width > FILES_PLACES ?
-        client.width - FILES_PLACES : 0U;
-    box.height = client.height > FILES_MENUBAR + FILES_TOOLBAR +
-        FILES_STATUS ?
-        client.height - FILES_MENUBAR - FILES_TOOLBAR - FILES_STATUS : 0U;
+    box.x = client.x;
+    box.y = client.y + FILES_PATH;
+    box.width = client.width;
+    box.height = client.height > FILES_PATH + FILES_STATUS ?
+        client.height - FILES_PATH - FILES_STATUS : 0U;
     return box;
 }
 
@@ -933,8 +921,10 @@ bool trait_files_entry_bounds(const struct trait_window *window,
         return false;
     }
     if (view_mode == TRAIT_FILES_LIST) {
+        /* No header row to skip any more: the first entry is at the
+         * top of the view. */
         out->x = box.x;
-        out->y = box.y + FILES_ROW + at * FILES_ROW;
+        out->y = box.y + at * FILES_ROW;
         out->width = box.width;
         out->height = FILES_ROW;
         return true;
@@ -961,77 +951,6 @@ static void frame_line(struct trait_surface *surface, struct trait_rect clip,
         trait_surface_plot(surface, clip, vertical ? x : x + at,
                            vertical ? y + at : y, ink);
     }
-}
-
-static void draw_places(struct trait_surface *surface,
-    struct trait_rect client)
-{
-    /* Three, not four.  Trash was here and it went with the trash can:
-     * a place you cannot put anything into is a row of decoration. */
-    static const char *const PLACES[3] = {
-        "user", "Desktop", "Filesystem"
-    };
-    static const char *const MARKS[3] = {
-        "user-home", "user-desktop", "drive-harddisk"
-    };
-    struct trait_rect pane;
-    uint32_t at;
-
-    pane.x = client.x;
-    pane.y = client.y + FILES_MENUBAR + FILES_TOOLBAR;
-    pane.width = FILES_PLACES;
-    pane.height = client.height > FILES_MENUBAR + FILES_TOOLBAR +
-        FILES_STATUS ?
-        client.height - FILES_MENUBAR - FILES_TOOLBAR - FILES_STATUS : 0U;
-    trait_surface_fill(surface, client, pane, TRAIT_BG);
-    frame_line(surface, client, pane.x + pane.width - 1U, pane.y,
-               pane.height, true, TRAIT_LINE);
-    for (at = 0U; at < 3U; ++at) {
-        uint32_t top = pane.y + 4U + at * 22U;
-
-        draw_icon(surface, pane, MARKS[at], FILES_SMALL,
-                  pane.x + 8U, top + 2U);
-        trait_font_draw(surface, pane, pane.x + 30U, top + 14U,
-                        PLACES[at], TRAIT_FG);
-    }
-}
-
-static void draw_toolbar(struct trait_surface *surface,
-    struct trait_rect client)
-{
-    struct trait_rect strip;
-    char path[TRAIT_FILES_PATH_BYTES];
-    struct trait_rect field;
-    uint32_t at;
-
-    strip = client;
-    strip.y = client.y + FILES_MENUBAR;
-    strip.height = FILES_TOOLBAR;
-    trait_surface_fill(surface, client, strip, TRAIT_BG);
-    frame_line(surface, client, strip.x, strip.y + strip.height - 1U,
-               strip.width, false, TRAIT_LINE);
-
-    /* The location bar, which is a sunken entry rather than a label: it
-     * is where the path is READ from, and a flat label would be saying
-     * this window has one when it has not. */
-    field.x = strip.x + FILES_PAD;
-    field.y = strip.y + 4U;
-    field.width = strip.width > FILES_PAD * 2U ?
-        strip.width - FILES_PAD * 2U : 0U;
-    field.height = 19U;
-    trait_surface_fill(surface, client, field, TRAIT_BASE);
-    frame_line(surface, client, field.x, field.y, field.width, false,
-               TRAIT_LINE);
-    frame_line(surface, client, field.x, field.y, field.height, true,
-               TRAIT_LINE);
-    frame_line(surface, client, field.x, field.y + field.height - 1U,
-               field.width, false, TRAIT_LINE_LIGHT);
-    frame_line(surface, client, field.x + field.width - 1U, field.y,
-               field.height, true, TRAIT_LINE_LIGHT);
-    trait_files_path(here, path, sizeof(path));
-    trait_font_draw(surface, field, field.x + 5U, field.y + 13U,
-                    path, TRAIT_TEXT);
-    (void)at;
 }
 
 static void draw_status(struct trait_surface *surface,
@@ -1089,14 +1008,14 @@ static void draw_status(struct trait_surface *surface,
                     strip.y + 14U, left, TRAIT_TEXT);
 
     /*
-     * The right-hand field is what is IN THIS FOLDER, counted.  pcmanfm
-     * puts free space there; there is no filesystem under this one to ask,
-     * and a status bar that makes up a figure is worse than one that
-     * leaves the field out.
+     * The right-hand field is what is in this folder, counted - and
+     * just the figure, because the line above says which folder.
+     * pcmanfm puts free space there; there is no filesystem under this
+     * one to ask, and a status bar that makes up a figure is worse than
+     * one that leaves the field out.
      */
     right[0] = '\0';
     human(right, trait_files_folder_bytes(here), sizeof(right));
-    append(right, " in this folder", sizeof(right));
     width = trait_font_width(right);
     if (strip.width > width + FILES_PAD) {
         trait_font_draw(surface, strip,
@@ -1110,32 +1029,6 @@ static void draw_entries(struct trait_surface *surface,
 {
     struct trait_rect cell;
     uint32_t at;
-
-    if (view_mode == TRAIT_FILES_LIST) {
-        static const char *const HEADS[3] = { "Name", "Description",
-                                              "Size" };
-        static const uint32_t WIDTHS[3] = {
-            FILES_NAME_COLUMN, FILES_KIND_COLUMN, FILES_SIZE_COLUMN
-        };
-        uint32_t left = box.x;
-
-        for (at = 0U; at < 3U; ++at) {
-            struct trait_rect head;
-
-            head.x = left;
-            head.y = box.y;
-            head.width = WIDTHS[at];
-            head.height = FILES_ROW;
-            trait_surface_fill(surface, box, head, TRAIT_BG_ACTIVE);
-            frame_line(surface, box, head.x + head.width - 1U, head.y,
-                       head.height, true, TRAIT_LINE);
-            frame_line(surface, box, head.x, head.y + head.height - 1U,
-                       head.width, false, TRAIT_LINE);
-            trait_font_draw(surface, head, head.x + 5U, head.y + 13U,
-                            HEADS[at], TRAIT_FG);
-            left += WIDTHS[at];
-        }
-    }
 
     for (at = 0U; at < trait_files_visible_count(here); ++at) {
         uint32_t node = trait_files_visible_child(here, at);
@@ -1160,17 +1053,26 @@ static void draw_entries(struct trait_surface *surface,
                       cell.x + 4U, cell.y + 1U);
             trait_font_draw(surface, box, cell.x + 24U, cell.y + 13U,
                 nodes[node].name, lit ? TRAIT_SEL_FG : TRAIT_TEXT);
-            trait_font_draw(surface, box,
-                cell.x + FILES_NAME_COLUMN + 5U, cell.y + 13U,
-                kind_for(&nodes[node]), lit ? TRAIT_SEL_FG : TRAIT_TEXT);
-            /* A FOLDER HAS NO SIZE in this column, and an empty cell says
-             * so better than a nought does. */
+            /*
+             * Name on the left, size on the right, and nothing in
+             * between.  There was a Description column reading "Folder"
+             * or "Plain text" against every row, next to an icon that
+             * had already said so.
+             *
+             * A FOLDER HAS NO SIZE here, and an empty right-hand end
+             * says so better than a nought does.
+             */
             if (!nodes[node].folder) {
+                uint32_t width;
+
                 human(size, nodes[node].bytes, sizeof(size));
-                trait_font_draw(surface, box,
-                    cell.x + FILES_NAME_COLUMN + FILES_KIND_COLUMN + 5U,
-                    cell.y + 13U, size,
-                    lit ? TRAIT_SEL_FG : TRAIT_TEXT);
+                width = trait_font_width(size);
+                if (cell.width > width + FILES_PAD) {
+                    trait_font_draw(surface, box,
+                        cell.x + cell.width - width - FILES_PAD,
+                        cell.y + 13U, size,
+                        lit ? TRAIT_SEL_FG : TRAIT_TEXT);
+                }
             }
             continue;
         }
@@ -1198,13 +1100,9 @@ static void draw_entries(struct trait_surface *surface,
 void trait_files_draw(struct trait_surface *surface,
     const struct trait_window *window)
 {
-    static const char *const MENUS[6] = {
-        "File", "Edit", "View", "Bookmarks", "Tools", "Help"
-    };
     struct trait_rect client;
     struct trait_rect box;
-    uint32_t pen;
-    uint32_t at;
+    char path[TRAIT_FILES_PATH_BYTES];
 
     if (window == NULL || !trait_surface_valid(surface)) {
         return;
@@ -1212,17 +1110,11 @@ void trait_files_draw(struct trait_surface *surface,
     client = trait_window_client(window);
     trait_surface_fill(surface, client, client, TRAIT_BG);
 
-    pen = client.x + FILES_PAD;
-    for (at = 0U; at < 6U; ++at) {
-        trait_font_draw(surface, client, pen, client.y + 14U,
-                        MENUS[at], TRAIT_FG);
-        pen += trait_font_width(MENUS[at]) + 14U;
-    }
-    frame_line(surface, client, client.x, client.y + FILES_MENUBAR - 1U,
+    trait_files_path(here, path, sizeof(path));
+    trait_font_draw(surface, client, client.x + FILES_PAD,
+                    client.y + 13U, path, TRAIT_TEXT);
+    frame_line(surface, client, client.x, client.y + FILES_PATH - 1U,
                client.width, false, TRAIT_LINE);
-
-    draw_toolbar(surface, client);
-    draw_places(surface, client);
 
     box = view_area(window);
     trait_surface_fill(surface, client, box, TRAIT_BASE);

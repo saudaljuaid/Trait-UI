@@ -202,6 +202,22 @@ static void box_at(struct trait_surface *surface, struct trait_rect clip,
     }
 }
 
+bool trait_packages_apply_bounds(const struct trait_window *window,
+    struct trait_rect *out)
+{
+    struct trait_rect client;
+
+    if (window == NULL || out == NULL) {
+        return false;
+    }
+    client = trait_window_client(window);
+    out->x = client.x + PKG_PAD;
+    out->y = client.y + 4U;
+    out->width = trait_font_width("Apply") + 16U;
+    out->height = 22U;
+    return out->width < client.width;
+}
+
 void trait_packages_draw(struct trait_surface *surface,
     const struct trait_window *window)
 {
@@ -217,22 +233,22 @@ void trait_packages_draw(struct trait_surface *surface,
     client = trait_window_client(window);
     trait_surface_fill(surface, client, client, TRAIT_BG);
 
-    /* the toolbar: what synaptic puts there, and Apply among them */
+    /*
+     * ONE BUTTON, AND IT IS THE ONE THAT DOES SOMETHING.
+     *
+     * synaptic's toolbar has Reload, Mark All Upgrades and Apply, and
+     * this drew all three.  Reload and Mark All had nothing behind
+     * them - there is no repository to reload and no upgrade to mark -
+     * so they were pictures.  Apply had a function behind it and no way
+     * to reach it: the harness called trait_packages_apply() directly
+     * and the button never did.  It does now.
+     */
     {
-        static const char *const TOOLS[3] = { "Reload", "Mark All",
-                                              "Apply" };
-        uint32_t pen = client.x + PKG_PAD;
+        struct trait_rect button;
 
-        for (at = 0U; at < 3U; ++at) {
-            uint32_t width = trait_font_width(TOOLS[at]) + 16U;
-            struct trait_rect button;
-
-            button.x = pen;
-            button.y = client.y + 4U;
-            button.width = width;
-            button.height = 22U;
+        if (trait_packages_apply_bounds(window, &button)) {
             trait_surface_fill(surface, client, button, TRAIT_BG);
-            for (edge = 0U; edge < width; ++edge) {
+            for (edge = 0U; edge < button.width; ++edge) {
                 trait_surface_plot(surface, client, button.x + edge,
                                    button.y, TRAIT_LINE_LIGHT);
                 trait_surface_plot(surface, client, button.x + edge,
@@ -242,11 +258,11 @@ void trait_packages_draw(struct trait_surface *surface,
                 trait_surface_plot(surface, client, button.x,
                                    button.y + edge, TRAIT_LINE_LIGHT);
                 trait_surface_plot(surface, client,
-                    button.x + width - 1U, button.y + edge, TRAIT_LINE);
+                    button.x + button.width - 1U, button.y + edge,
+                    TRAIT_LINE);
             }
             trait_font_draw(surface, client, button.x + 8U,
-                            button.y + 15U, TOOLS[at], TRAIT_FG);
-            pen += width + 5U;
+                            button.y + 15U, "Apply", TRAIT_FG);
         }
     }
 

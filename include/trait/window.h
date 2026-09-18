@@ -17,7 +17,10 @@
  * written without either of them knowing what a title bar looks like.
  */
 
-#define TRAIT_TITLE_HEIGHT 22U
+/* 18, which is 14 of font and two rows either side of it.  It was 22
+ * when the face was a 15px DejaVu; four rows of nothing at the top of
+ * every window is four rows of nothing. */
+#define TRAIT_TITLE_HEIGHT 18U
 #define TRAIT_BORDER 1U
 #define TRAIT_TITLE_BYTES 48U
 

@@ -73,7 +73,12 @@ static uint32_t switcher_at;
 #define DESKTOP_MARK 16U
 #define DESKTOP_MARGIN 8U
 static uint32_t desktop_folder = TRAIT_FILES_MAX_NODES;
-static bool desktop_icons = true;   /* pcmanfm: show_documents/the root */
+/*
+ * OFF.  A fresh X session comes up on a bare root, and this is what a
+ * bare root is: the gears and nothing over them.  The switch is in
+ * Settings for anyone who wants ~/Desktop drawn on it.
+ */
+static bool desktop_icons;
 static bool root_menu;              /* the menu the root press opened */
 static struct trait_rect root_anchor;
 static struct trait_window windows[TRAIT_SHELL_MAX_WINDOWS];
@@ -149,7 +154,7 @@ void trait_shell_reset(struct trait_surface *surface)
      * out, a settings press in one check leaked into the next and the
      * desktop came up with no icons in a test that had never touched
      * them. */
-    desktop_icons = true;
+    desktop_icons = false;
     root_menu = false;
     /* The theme too. It is static state like the rest, and a check that
      * switched it left every screenshot after it in the wrong palette -
@@ -844,7 +849,19 @@ static bool handle_client(uint32_t slot, const struct trait_event *event)
             return true;
         }
         return false;
-    case TRAIT_APP_PACKAGES:
+    case TRAIT_APP_PACKAGES: {
+        struct trait_rect apply;
+
+        if (trait_packages_apply_bounds(&windows[slot], &apply) &&
+                trait_rect_contains(apply, event->x, event->y)) {
+            uint32_t changed = trait_packages_apply();
+
+            if (changed > 0U) {
+                trait_shell_notify("Package Manager",
+                                   "changes applied");
+            }
+            return true;
+        }
         for (at = 0U; at < trait_packages_count(); ++at) {
             struct trait_rect row;
 
@@ -858,6 +875,7 @@ static bool handle_client(uint32_t slot, const struct trait_event *event)
             }
         }
         return false;
+    }
     case TRAIT_APP_TERMINAL:
     default:
         return false;
@@ -1245,6 +1263,39 @@ bool trait_shell_handle(const struct trait_event *event)
                 return true;
             }
             return false;
+        }
+        /*
+         * THE SHORTCUTS SETTINGS ADVERTISES, and they had to be written
+         * before that page could keep claiming them.  Alt+F4 was real;
+         * W-e, W-r and C-A-t were three lines of text on the Keyboard
+         * page and nothing behind any of them.
+         *
+         * With no bar, the keyboard is half the ways in: the other is
+         * the root menu, and neither of them is a button on a strip
+         * that eats a row of the screen forever.
+         */
+        {
+            struct trait_rect where = { 240U, 180U, 560U, 360U };
+
+            if ((event->modifiers & TRAIT_MOD_SUPER) != 0U) {
+                if (event->key == 'e') {
+                    return trait_shell_open(TRAIT_APP_FILES, where) <
+                        TRAIT_SHELL_MAX_WINDOWS;
+                }
+                if (event->key == 'r') {
+                    run_open = true;
+                    run_length = 0U;
+                    run_text[0] = '\0';
+                    run_error[0] = '\0';
+                    return true;
+                }
+            }
+            if (event->key == 't' &&
+                    (event->modifiers & TRAIT_MOD_CTRL) != 0U &&
+                    (event->modifiers & TRAIT_MOD_ALT) != 0U) {
+                return trait_shell_open(TRAIT_APP_TERMINAL, where) <
+                    TRAIT_SHELL_MAX_WINDOWS;
+            }
         }
         /*
          * ALT+TAB.  It is held open while Alt is down, so the state

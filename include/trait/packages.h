@@ -55,6 +55,11 @@ bool trait_packages_installed(const char *name);
 void trait_packages_select(uint32_t index);
 uint32_t trait_packages_selected(void);
 
+/* Where Apply is, so a press can find it.  A button whose bounds only
+ * the drawing code knows is a button nothing can hit. */
+bool trait_packages_apply_bounds(const struct trait_window *window,
+    struct trait_rect *out);
+
 void trait_packages_draw(struct trait_surface *surface,
     const struct trait_window *window);
 

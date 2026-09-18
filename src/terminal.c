@@ -16,15 +16,21 @@
 /*
  * HOW MUCH OF THE BLACK YOU GET.
  *
- * 255 is an opaque terminal and anything less lets the root through,
- * which is what `xterm -tr` has done since before there was a
- * compositor to do it properly.  208 is dark enough to read white text
- * on over any of the sixteen and light enough that you can tell there
- * is something behind it; at the values people actually pick - 160 and
- * below - the text stops being legible over a pale window.
+ * 255 is an opaque terminal and anything less lets what is behind it
+ * through, which is what `xterm -tr` has done since before there was a
+ * compositor to do it properly.
+ *
+ * 170.  It was 208, which is see-through on paper and not on a screen:
+ * over a flat root you cannot tell.  140 and 110 were tried as well and
+ * both are past the point where light grey text on a mid grey ground
+ * stops being comfortable - which is a real limit of this and not a
+ * number picked for looks, because there is no compositor to keep the
+ * text opaque while the ground goes clear.  At 170 the file manager
+ * behind the terminal is plainly visible through it and the prompt is
+ * still easy to read.
  */
 #define TERM_OPAQUE 255U
-#define TERM_SHEER 208U
+#define TERM_SHEER 170U
 
 static uint32_t term_opacity = TERM_SHEER;
 #define TERM_INK 0xD3D7CFU

@@ -71,13 +71,15 @@ is not drawn at all, except where it borders the white of an eye, where
 it is a pupil. The fish is red and the terminal is black: a silhouette
 does not have to draw its own edge.
 
-And brightness alone is not enough to be the tongue. The antialiased rim
-of a black pupil against a white eye is a grey as light as the tongue
-is, so the only two cells that came out "tongue" were both inside an eye
-and the tongue itself was never drawn. The tongue is PINK - its red
-channel runs well clear of its other two, and a grey's does not - so
-that is what is asked. At 32 columns the tongue is two cells, because at
-32 columns the tongue is two cells wide; more of it needs a wider mark.
+And the line between the two reds is MEASURED, not guessed. Over this
+mark the body's pixels sit at a luminance of about 110 to 130 and the
+tongue's at about 150 to 170, so the line between them is 140. It was
+165 for a while, which is inside the tongue's own range: two thirds of
+the tongue was called body, the fish came out with no tongue at all, and
+the only cells that survived were the antialiased rim of a black pupil
+against a white eye - a grey as light as the tongue is. Hence a second
+test: the tongue is PINK, its red channel runs well clear of its other
+two, and a grey's does not.
 
 ---
 

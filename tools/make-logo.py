@@ -121,14 +121,19 @@ def main():
             return EYE
         if light < 70:
             return OUTLINE
-        # LIGHT IS NOT ENOUGH TO BE THE TONGUE.  Brightness alone calls
-        # the antialiased rim of a black pupil against a white eye pink,
-        # because a grey halfway between them is as light as the tongue
-        # is - and the two cells that came out "tongue" in this mark
-        # were both inside an eye, which is to say the tongue was never
-        # drawn at all.  The tongue is PINK: its red channel runs well
-        # clear of its other two, and a grey's does not.
-        if light > 165 and r - min(g, b) > 40:
+        # THE TWO REDS, AND THE NUMBER BETWEEN THEM IS MEASURED.
+        #
+        # Over this mark the body's pixels sit at a luminance of about
+        # 110 to 130 and the tongue's at about 150 to 170, so the line
+        # between them is 140.  It was 165 for a while, which is inside
+        # the tongue's own range: two thirds of the tongue was called
+        # body, the fish came out with no tongue at all, and the only
+        # cells that survived were the antialiased rim of a pupil
+        # against a white eye - a grey as light as the tongue is.
+        #
+        # Hence the second test.  The tongue is PINK: its red channel
+        # runs well clear of its other two, and a grey's does not.
+        if light >= 140 and r - min(g, b) > 40:
             return TONGUE
         return BODY
 

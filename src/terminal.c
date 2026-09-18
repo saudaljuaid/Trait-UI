@@ -33,7 +33,7 @@
  * white window alike.
  */
 #define TERM_OPAQUE 255U
-#define TERM_SHEER 90U
+#define TERM_SHEER 150U
 
 static uint32_t term_opacity = TERM_SHEER;
 /*
@@ -73,7 +73,9 @@ static const char PROMPT[] = "user@openrfs:~$ ";
  * cell inked black on a black terminal is a bite out of the fish rather
  * than a line.  tools/make-logo.py is where that is decided and why.
  */
-#define TERM_INKS 5U
+/* The ink plane indexes trait_logo_ink[], which the mark's own capture
+ * generates; TRAIT_LOGO_INKS is how many entries it has. */
+#define TERM_INKS TRAIT_LOGO_INKS
 
 uint32_t trait_terminal_ink(void)
 {
@@ -87,19 +89,22 @@ static uint32_t term_ink(void)
 
 static uint32_t ink_of(uint8_t code)
 {
-    switch (code) {
-    case 1U:
-        return 0x000000U;       /* a pupil, and nothing else */
-    case 2U:
-        return TRAIT_LOGO_BODY;
-    case 3U:
-        return TRAIT_LOGO_TONGUE;
-    case 4U:
-        return TRAIT_LOGO_EYE;
-    case 0U:
-    default:
-        return term_ink();      /* everything printed the ordinary way */
+    /*
+     * A CELL'S COLOUR IS THE MARK'S OWN, straight out of the table the
+     * capture generated.  This used to be a switch over five named
+     * things - a pupil, the body, the tongue, an eye - because the art
+     * arrived as a silhouette and the colours had to be put back by
+     * classifying the drawing.  The art arrives coloured now, so there
+     * is nothing to name and nothing to decide: the index is the index.
+     *
+     * Index 0 is not a colour.  It means the cell was not part of the
+     * picture, and those are drawn in whatever the terminal is writing
+     * in - which is how the facts beside the mark come out.
+     */
+    if (code == 0U || code >= TRAIT_LOGO_INKS) {
+        return term_ink();
     }
+    return trait_logo_ink[code];
 }
 
 static char lines[TRAIT_TERM_HISTORY][TRAIT_TERM_LINE_BYTES];
@@ -230,9 +235,22 @@ static void print_inked(const char *line, const char *ink)
             while (scan < column && ink[scan] != '\0') {
                 ++scan;
             }
-            if (scan == column && ink[column] >= '0' &&
-                    ink[column] < (char)('0' + (char)TERM_INKS)) {
-                code = (uint8_t)(ink[column] - '0');
+            /* HEX, because there are more than ten inks now.  The
+             * generator writes 0-9 then A-F, which is one character a
+             * cell either way - an ink plane wider than the line it
+             * inks would not line up with it. */
+            if (scan == column) {
+                char digit = ink[column];
+                uint8_t value = TERM_INKS;
+
+                if (digit >= '0' && digit <= '9') {
+                    value = (uint8_t)(digit - '0');
+                } else if (digit >= 'A' && digit <= 'F') {
+                    value = (uint8_t)(digit - 'A' + 10);
+                }
+                if (value < TERM_INKS) {
+                    code = value;
+                }
             }
         }
         inks[line_count][column] = code;
@@ -400,7 +418,7 @@ static void gfetch(void)
             ++width;
             line[width] = '\0';
         }
-        copy(ink, at < TRAIT_LOGO_ROWS ? trait_logo_ink[at] : "",
+        copy(ink, at < TRAIT_LOGO_ROWS ? trait_logo_at[at] : "",
              sizeof(ink));
         if (at < count) {
             append(line, facts[at], sizeof(line));

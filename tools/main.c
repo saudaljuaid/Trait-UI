@@ -26,8 +26,9 @@
 #include <trait/surface.h>
 
 #include "png.h"
-#include "trait_gears_art.h"
+
 #include "trait_logo.h"
+#include "trait_gears_art.h"
 
 #define SCREEN_WIDTH 1280U
 #define SCREEN_HEIGHT 800U
@@ -922,42 +923,62 @@ int main(int argc, char **argv)
         trait_shell_draw_root();
         trait_shell_draw();
         /*
-         * AND THE FISH IS THE FISH'S COLOUR.  The face is a bitmap
-         * font, so a lit pixel is the ink exactly rather than a blend
-         * of it - which means the mark's own red has to be ON SCREEN,
-         * not merely in a table.
+         * AND THE FISH IS THE FISH'S COLOURS - all of them.
+         *
+         * The face is a bitmap font, so a lit pixel is the ink exactly
+         * rather than a blend of it, which means every colour the mark
+         * is drawn in has to be ON SCREEN and not merely in a table.
+         *
+         * This used to count two named reds and pass if both were
+         * non-zero.  The mark carries fifteen now, one per cell out of
+         * the capture, and two of them are the only thing that makes it
+         * a face rather than a silhouette - the white of an eye and the
+         * blue inside it.  So the check counts how many of the fifteen
+         * reach the screen, and wants nearly all: a mark reduced to
+         * three or four flat colours on the way out is the failure this
+         * whole pipeline exists to avoid.
          */
         {
             struct trait_rect client =
                 trait_window_client(trait_shell_window(term));
-            uint32_t body = 0U;
-            uint32_t tongue = 0U;
+            uint32_t seen_ink[TRAIT_LOGO_INKS];
+            uint32_t found = 0U;
+            uint32_t drawn = 0U;
             uint32_t x;
             uint32_t y;
+            uint32_t at;
 
+            for (at = 0U; at < TRAIT_LOGO_INKS; ++at) {
+                seen_ink[at] = 0U;
+            }
             for (y = client.y; y < client.y + client.height; ++y) {
                 for (x = client.x; x < client.x + client.width; ++x) {
                     uint32_t pixel = trait_surface_read(&screen, x, y);
 
-                    if (pixel == TRAIT_LOGO_BODY) {
-                        ++body;
-                    } else if (pixel == TRAIT_LOGO_TONGUE) {
-                        ++tongue;
+                    for (at = 1U; at < TRAIT_LOGO_INKS; ++at) {
+                        if (pixel == trait_logo_ink[at]) {
+                            ++seen_ink[at];
+                            ++drawn;
+                            break;
+                        }
                     }
                 }
             }
-            if (body == 0U || tongue == 0U) {
-                fprintf(stderr, "trait: gfetch drew %u pixels of #%06X "
-                                "and %u of #%06X - the mark is not in "
-                                "its own colours\n",
-                        body, TRAIT_LOGO_BODY, tongue,
-                        TRAIT_LOGO_TONGUE);
+            for (at = 1U; at < TRAIT_LOGO_INKS; ++at) {
+                if (seen_ink[at] != 0U) {
+                    ++found;
+                }
+            }
+            if (found + 1U < TRAIT_LOGO_INKS) {
+                fprintf(stderr, "trait: gfetch drew %u of the mark's %u "
+                                "colours - the rest never reached the "
+                                "screen\n", found, TRAIT_LOGO_INKS - 1U);
                 return 1;
             }
-            printf("proof: the mark came out in the drawing's own reds - "
-                   "%u pixels of #%06X and %u of #%06X, both averaged "
-                   "out of the PNG rather than chosen\n",
-                   body, TRAIT_LOGO_BODY, tongue, TRAIT_LOGO_TONGUE);
+            printf("proof: the mark came out in all %u of its own "
+                   "colours over %u pixels, every one of them a cell "
+                   "the generator coloured rather than a class this "
+                   "project decided on\n", found, drawn);
         }
         trait_shell_draw_root();
         trait_shell_draw();

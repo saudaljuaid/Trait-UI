@@ -56,43 +56,42 @@ reaches and the sides it does not, because flat shading is what is left
 when the shades run out.
 
 `gfetch` prints the mark and the facts, the way every fetch has since
-screenfetch. The mark is the OpenRFS fish reduced to characters from the
-owner's own drawing, and inked in that drawing's own two reds — they are
-the mean of every pixel that came out body and every pixel that came out
-tongue, so they are sampled rather than picked. They are the only two
-colours on this desktop outside the sixteen, and that is the reason.
+screenfetch. The mark is the OpenRFS fish, and it is CAPTURED rather
+than computed: characters and colours together, out of
+[coddy.tech's ASCII art generator](https://coddy.tech/tools/ascii-art-generator)
+run over the owner's drawing in image mode with Color on, Invert off and
+the width at exactly 45. `assets/logo/SOURCE.txt` records every setting
+so it can be redone.
 
-The fish's black outline is not drawn. Every line in the drawing is
-thinner than a cell at this size, so inking one black on a black
-terminal takes a bite out of the fish rather than drawing a line; the
-silhouette does not need an edge drawn round it when it is red on black.
-The one exception is black that borders the white of an eye, which is a
-pupil.
+It used to be built in two halves and the halves were the problem. The
+characters came from asciiart.eu's "Black and White" set, and reading
+that page's own source settles what that set is:
 
-The ASCII itself is not this project's work: it is asciiart.eu's
-converter, run over the mark with its "Black and White" character set at
-32 columns, and `assets/logo/SOURCE.txt` records every setting so it can
-be redone. The reduction that used to be here classified each cell into
-one of five things, which cannot render an edge running diagonally
-through a cell — and most of a drawing's edges do.
+```js
+blockelement: "\u2588"
+```
 
-Two of the converter's other sets were tried and read as noise: a tonal
-gradient wants a denser grid than an 8x16 bitmap font gives it. The
-block set does not, because it draws a shape and leaves the tone to the
-colour.
+One character, plus a space for the gradient's other end. It is a
+**silhouette**, thresholded at pure white — so every feature the mark
+has had to be put back afterwards by classifying the drawing into paper,
+outline, body, tongue and eye, and inking each cell by a vote. That is
+why there was a classifier, why it carried five hand-tuned thresholds,
+and why two of those were measured wrong at different times with nothing
+to catch it.
 
-The edge of the mark is drawn with the full block and the body's inside
-with a shade — every other pixel, the same 50% weave X draws its root
-with — because a fish of nothing but full blocks is a slab of red a
-third of the terminal wide. The eyes and tongue stay solid. Misc-Fixed
-has neither glyph, so `tools/make-font.py` synthesises both at the codes
-after the last: a filled rectangle and a chequer are not typefaces.
+The generator that replaced it does both halves at once — a character
+per cell out of a real gradient, a colour per cell out of the source
+pixels — so there is nothing left here to classify and nothing to
+average. `tools/make-logo.py` reduces the capture's 251 distinct colours
+to a palette of fifteen, because a terminal cell carries one byte of
+attribute and not three, and emits the characters, the indices and the
+palette. The two the fish is a face because of — the white of an eye and
+the blue inside it — come through as cells like any other.
 
-Which white is paper and which is an eye is answered by a flood fill
-from the border: paper is the white you can reach from the edge. That
-matters because the website's build of the mark lifts white to
-transparency, and the fish's eyes are white, so in that file they are
-holes.
+The harness checks it the only way that means anything: it counts how
+many of the fifteen reach the framebuffer and fails unless all of them
+do. A mark that arrives with fifteen colours and leaves with four has
+been flattened somewhere between the table and the glass.
 
 The facts are read from the things they name — the theme from the theme,
 the font from the generated face's metrics, the package count from the
@@ -209,7 +208,7 @@ file that defines it, and the table says which file.
 | An icon at the foot per iconified window, a titled menu | fvwm |
 | The launcher's strip, padding, colours, `>` and keys | `dmenu.c` and `dmenu.1`, suckless — `bh = drw->fonts->h + 2`, `lrpad = drw->fonts->h`, prompt in `SchemeSel` |
 | The text: Misc-Fixed 6x13, 7x14, 9x18 and 8x16 | `xfonts-cyrillic`, the KOI8-R builds of the X11 bitmap faces — see `assets/fonts/SOURCE.txt` |
-| The mark gfetch prints | the owner's own drawing — see `assets/logo/SOURCE.txt` |
+| The mark gfetch prints | the owner's own drawing, through coddy.tech's generator at width 45 with colour on — see `assets/logo/SOURCE.txt` |
 | The icons | `gentoo` 0.20.7-4, `usr/share/gentoo/icons/`, Johan Hanson 1998 — see `assets/icons/gentoo/SOURCE.txt` |
 | The Clearlooks palette | `gtk2-engines`, `Clearlooks/gtk-2.0/gtkrc` |
 | File manager 640×480, `sort=name;ascending` | `lxde-common`, `/etc/xdg/pcmanfm/LXDE/pcmanfm.conf` |

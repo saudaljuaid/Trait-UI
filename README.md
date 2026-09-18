@@ -262,7 +262,8 @@ happen ahead of time:
 ```sh
 python3 tools/make-font.py <font.pcf.gz> src/trait_font_<WxH>.h trait_font_<WxH>
 python3 tools/make-gears.py src/trait_gears_art.h
-python3 tools/make-logo.py assets/logo/openrfs-logo.txt assets/logo/openrfs-mark-flat.png src/trait_logo.h
+python3 tools/make-logo.py assets/logo/openrfs-logo-2026.json src/trait_logo.h
+python3 tools/make-relief.py
 python3 tools/make-icons.py assets/icons/gentoo src/trait_files_art.h
 ```
 
@@ -306,8 +307,14 @@ beside it.
 
 - `assets/icons/gentoo/` — the gentoo file manager's icons, vendored byte
   for byte: `gentoo` 0.20.7-4, Johan Hanson 1998, GPL-2+.
-- `assets/logo/onion.png` and `assets/wallpaper/wallpaper.png` — the
-  project owner's own artwork.
+- `assets/logo/openrfs-logo-2026.jpeg` — the project owner's own drawing
+  of the fish, and the only piece of artwork in this repository.
+
+The onion mark, the `trait.svg` menu button, the drawn file-manager icon
+and the wallpaper were all deleted: every one of them was the project
+under an earlier name, and nothing had read any of them for some time —
+the root has been the X server's own weave since the fvwm pass, so
+there was nothing left to decode a wallpaper for.
 
 ## What is not here
 

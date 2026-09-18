@@ -11,13 +11,17 @@
  * the machine, and nothing in them is a colour somebody liked.
  *
  * The fourth is NOT a GTK theme and does not pretend to be one - it is
- * this desktop's own, and it is here because the desktop has an identity
- * that the LXDE defaults do not carry.  Its colours are not invented
- * either: they are SAMPLED from the owner's artwork.  The selection gold
- * is #B08020, one of the onion's own ambers; the ground is the
- * wallpaper's #212121 charcoal, read out of the corner of the PNG.  A
- * theme whose accent is guessed at sits next to the wallpaper and argues
- * with it.
+ * this desktop's own, and it is here because the desktop had an identity
+ * that the LXDE defaults do not carry.  Its colours were not invented
+ * either: they were SAMPLED from the artwork of the time.  The selection
+ * gold is #B08020, one of the onion mark's ambers; the ground is
+ * #212121, read out of the corner of the wallpaper PNG.
+ *
+ * NEITHER FILE IS IN THIS REPOSITORY ANY MORE.  The onion was the mark
+ * before the fish and the wallpaper has not been decoded since the root
+ * became the X weave, so both were deleted.  That is still where these
+ * numbers came from and it is no longer something you can check here,
+ * which is worth knowing before trusting the sentence above.
  */
 static const struct trait_palette PALETTES[] = {
     /* Clearlooks: gtk2-engines, usr/share/themes/Clearlooks/gtk-2.0/gtkrc */
@@ -47,7 +51,8 @@ static const struct trait_palette PALETTES[] = {
      * Trait.  Sampled, not chosen:
      *   #212121  the wallpaper's ground, from the corner of the PNG
      *   #B08020  the onion's amber, its sixth most common opaque colour
-     *   #503000  the onion's darkest amber, which the title ramp ends on
+     *   #503000  the onion's darkest amber, which the title ramp ended on
+     * (both files are gone from the tree - see above)
      * The selected foreground is dark because the selection is GOLD and
      * white on gold is the one pairing this palette could get wrong.
      */

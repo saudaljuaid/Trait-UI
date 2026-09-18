@@ -1,4 +1,10 @@
-# Trait OS
+# OpenRFS — the desktop
+
+The system is OpenRFS. The C prefix below is still `trait_`, which is
+what it was called while it was being written; renaming a thousand
+symbols would change no pixel and break every patch in flight, so the
+name lives in what the desktop SAYS - `uname`, the prompt, the window
+titles, gfetch - and the symbols keep theirs.
 
 ## The look
 
@@ -17,6 +23,18 @@ and view angles out of Brian Paul's `glxgears.c` and projects them, and
 to be. Each gear is two of the sixteen colours, the face the light
 reaches and the sides it does not, because flat shading is what is left
 when the shades run out.
+
+`gfetch` prints the mark and the facts, the way every fetch has since
+screenfetch. The mark is the OpenRFS fish reduced to characters from the
+owner's own drawing; the facts are read from the things they name - the
+theme from the theme, the font from the generated face's metrics, the
+package count from the package manager - so there is no figure in it
+that cannot be traced.
+
+The terminal is see-through, which is the pseudo-transparency an X
+terminal has always had: no compositor and no alpha channel, just a
+window that is drawn after what is behind it and mixes with what it
+finds. One switch on the Desktop page makes it opaque.
 
 No panel, no dock, no tray, no clock. You reach the menu by pressing the
 root and it opens where the pointer is; you reach a window by clicking it
@@ -80,6 +98,7 @@ file that defines it, and the table says which file.
 | The three gears, their radii, tooth counts and view angles | Mesa demos, `src/xdemos/glxgears.c`, Brian Paul — see `assets/gears/SOURCE.txt` |
 | A flat root, an icon at the foot per iconified window, a titled menu | fvwm, which is what `startx` gives you on OpenBSD |
 | The text: Misc-Fixed 6x13, 7x14, 9x18 and 8x16 | `xfonts-cyrillic`, the KOI8-R builds of the X11 bitmap faces — see `assets/fonts/SOURCE.txt` |
+| The mark gfetch prints | the owner's own drawing — see `assets/logo/SOURCE.txt` |
 | The icons | `gentoo` 0.20.7-4, `usr/share/gentoo/icons/`, Johan Hanson 1998 — see `assets/icons/gentoo/SOURCE.txt` |
 | The Clearlooks palette | `gtk2-engines`, `Clearlooks/gtk-2.0/gtkrc` |
 | File manager 640×480, `sort=name;ascending` | `lxde-common`, `/etc/xdg/pcmanfm/LXDE/pcmanfm.conf` |
@@ -133,6 +152,7 @@ happen ahead of time:
 ```sh
 python3 tools/make-font.py <font.pcf.gz> src/trait_font_<WxH>.h trait_font_<WxH>
 python3 tools/make-gears.py src/trait_gears_art.h
+python3 tools/make-logo.py assets/logo/openrfs-mark-512.png src/trait_logo.h 32 15
 python3 tools/make-icons.py assets/icons/gentoo src/trait_files_art.h
 ```
 

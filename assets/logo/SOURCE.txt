@@ -1,27 +1,27 @@
+openrfs-mark-512.png is the OpenRFS mark.
+
+  512 x 512 RGBA, sha256
+  11b2b75982dc550277bed8eef32f2b701a076384f49d99bf6aeeff94888599fb
+
+Saud Aljuaid's own drawing of the OpenRFS fish. It is copied here from
+the website repository, where it is produced from the original
+assets/img/logo-source.jpeg (1600 x 1049, the drawing itself) by that
+repository's tools/make-mark.py, which trims the image to its ink and
+lifts the white ground to transparency. Nothing is recoloured,
+outlined, rotated or composited.
+
+tools/make-logo.py reduces this file to the characters gfetch prints,
+and src/trait_logo.h is the result. Four things in the drawing become
+four characters - the paper, the black outline, the red body and the
+pink tongue - because a luminance ramp turns a flat red fish into a
+featureless blob.
+
+---
+
 trait.svg is this project's own mark, drawn to the proportions of the
-logo the project was given.  No part of it is taken from another icon
-set, and it is the panel's menu button - which is where LXDE puts its own
-lxde-icon.png.  That file is vendored in ../icons/lxpanel/ as well,
-because the panel's geometry was measured off it.
+logo the project was given. It is unused since the panel it was the
+menu button for was deleted, and is kept because it is original work.
 
-Both SVGs carry their fill and stroke on the ROOT <svg> element rather
-than on a <g>.  That is a portability constraint, not a style: Phipia
-OS's tools/svgpath.py inherits paint from the root or from each shape and
-from nothing in between, so paint on a group rasterizes to an empty icon
-while still rendering correctly in a browser.  See the integration
-section of the README.
+files.svg is this project's own as well.
 
-files.svg is this project's own too: the Files application's mark, drawn
-in the same geometry as trait.svg - the same shear, the same rounding -
-as a drawer with two sheets standing in it.  Grey rather than a bright
-folder, because the desktop it sits on is the grey Debian one and a
-saturated mark would be the only loud thing on the bar.  It is NOT
-nuoveXT2's file-manager.png, which is still vendored beside it and is
-what the panel drew before this.
-
-logout-banner.png WAS here, at lxsession-logout's own 352x125, and is
-gone with the dialog it sat on.  A page has no session to end: the dialog
-closed every window and called that logging out, which is a control doing
-something other than what it is named, so the whole thing was removed
-rather than kept for its picture.  tools/banner.html and
-tools/make-banner.py went with it.
+onion.png has its own note beside it in onion-SOURCE.txt.

@@ -296,6 +296,10 @@ static void populate_settings(void)
                    "Open on a single click");
     row.setting = TRAIT_SET_SINGLE_CLICK;
     (void)trait_settings_add_row(1U, &row);
+    (void)snprintf(row.label, TRAIT_SETTINGS_TEXT_BYTES,
+                   "See through the terminal");
+    row.setting = TRAIT_SET_TERM_SHEER;
+    (void)trait_settings_add_row(1U, &row);
 
     /* ---- Keyboard ---- */
     memset(&row, 0, sizeof(row));
@@ -483,10 +487,15 @@ int main(int argc, char **argv)
      * was pressed. With no panel there is nowhere else for the menu to
      * be, which is how fvwm and twm have always worked.
      */
-    (void)trait_shell_open(TRAIT_APP_TERMINAL,
-        (struct trait_rect){ 96U, 90U, 560U, 320U });
+    /* Files first, then the terminal ON TOP of it: the terminal is
+     * see-through, and a see-through window over bare root only shows
+     * you the root. */
     (void)trait_shell_open(TRAIT_APP_FILES,
-        (struct trait_rect){ 470U, 330U, 620U, 400U });
+        (struct trait_rect){ 300U, 120U, 620U, 400U });
+    (void)trait_shell_open(TRAIT_APP_GEARS,
+        (struct trait_rect){ 760U, 400U, 320U, 320U });
+    (void)trait_shell_open(TRAIT_APP_TERMINAL,
+        (struct trait_rect){ 140U, 300U, 560U, 320U });
     /*
      * twm's root menu: what you can start, and nothing else.  There is
      * no Restart or Exit on it, which twm has, because this shell does
@@ -505,7 +514,8 @@ int main(int argc, char **argv)
 
     trait_shell_draw_root();
     trait_shell_draw();
-    if (!trait_shell_root_press(300U, 470U)) {
+    /* Bare root, below and left of every window in this session. */
+    if (!trait_shell_root_press(80U, 520U)) {
         fprintf(stderr, "trait: a press on bare root was not the root\n");
         return 1;
     }
@@ -520,7 +530,7 @@ int main(int argc, char **argv)
             fprintf(stderr, "trait: the root menu has no bounds\n");
             return 1;
         }
-        if (menu.x < 300U || menu.y < 470U) {
+        if (menu.x < 80U || menu.y < 520U) {
             fprintf(stderr, "trait: the menu did not open where the "
                     "press was\n");
             return 1;
@@ -648,7 +658,7 @@ int main(int argc, char **argv)
         memset(&term, 0, sizeof(term));
         term.frame = (struct trait_rect){ 160U, 150U, 560U, 340U };
         term.active = true;
-        trait_window_set_title(&term, "user@trait: ~");
+        trait_window_set_title(&term, "user@openrfs: ~");
 
         trait_shell_draw_root();
         trait_window_draw(&screen, &term);
@@ -689,6 +699,12 @@ int main(int argc, char **argv)
             return 1;
         }
 
+        /* The windows above are drawn straight onto the surface rather
+         * than opened in the shell, but the shell still holds the ones
+         * the session block opened - and a press that lands on one of
+         * those is not a press on the root. */
+        trait_shell_reset(&screen);
+        trait_shell_set_screen(whole());
         trait_shell_draw_root();
         if (!trait_shell_root_press(320U, 520U)) {
             fprintf(stderr, "trait: the root refused the press\n");
@@ -859,7 +875,77 @@ int main(int argc, char **argv)
                 fprintf(stderr, "trait: the typed command did not run\n");
                 return 1;
             }
-            printf("proof: %u keystrokes went through the shell to the "
+            /* gfetch, which is the one command that prints a picture. */
+        trait_terminal_run("gfetch");
+        {
+            uint32_t rows = trait_terminal_row_count();
+            uint32_t seen = 0U;
+            uint32_t at;
+
+            for (at = 0U; at < rows; ++at) {
+                const char *line = trait_terminal_row(at);
+
+                if (strstr(line, "OS      OpenRFS") != NULL ||
+                        strstr(line, "Misc-Fixed") != NULL) {
+                    ++seen;
+                }
+            }
+            if (seen != 2U) {
+                fprintf(stderr, "trait: gfetch printed %u of its two "
+                                "checked facts\n", seen);
+                return 1;
+            }
+        }
+        trait_shell_draw_root();
+        trait_shell_draw();
+        if (!emit(out, "gfetch.png", whole())) {
+            return 1;
+        }
+
+        /*
+         * AND YOU CAN SEE THROUGH IT.  There is no compositor, so the
+         * only way this can be true is that the terminal read the
+         * framebuffer back and mixed with it - which means the proof is
+         * a pixel that is NEITHER the terminal's black NOR the root.
+         */
+        {
+            struct trait_rect client =
+                trait_window_client(trait_shell_window(term));
+            uint32_t root;
+            uint32_t sheer;
+            uint32_t solid;
+            uint32_t sample_x = client.x + client.width - 4U;
+            uint32_t sample_y = client.y + client.height - 4U;
+
+            root = trait_surface_read(&screen, 4U, 4U);
+            sheer = trait_surface_read(&screen, sample_x, sample_y);
+            if (sheer == 0x000000U || sheer == root) {
+                fprintf(stderr, "trait: the terminal's ground is #%06X - "
+                                "neither mixed with the root #%06X nor "
+                                "anything else\n", sheer, root);
+                return 1;
+            }
+            /* Off, and it is the terminal's black exactly. */
+            trait_terminal_set_transparent(false);
+            trait_shell_draw_root();
+            trait_shell_draw();
+            solid = trait_surface_read(&screen, sample_x, sample_y);
+            if (solid != 0x000000U) {
+                fprintf(stderr, "trait: an opaque terminal drew #%06X, "
+                                "not black\n", solid);
+                return 1;
+            }
+            trait_terminal_set_transparent(true);
+            trait_shell_draw_root();
+            trait_shell_draw();
+            printf("proof: gfetch printed the mark and its facts, and the "
+                   "terminal's ground over a #%06X root reads #%06X "
+                   "rather than #000000 - it is mixed with what is "
+                   "behind it, and the switch makes it black again\n",
+                   root, sheer);
+        }
+
+        printf("proof: %u keystrokes went through the shell to the "
                    "focused window and %u frames came out; the command "
                    "line survived a backspace and ran as \"%s\"\n",
                    handled, run.frames, trait_terminal_row(0U));

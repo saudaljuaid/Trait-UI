@@ -107,7 +107,7 @@ static bool dragging_entry;
 static uint32_t drag_node;
 
 static const char *const TITLES[TRAIT_APP_COUNT] = {
-    "user", "user@trait: ~", "Task Manager", "Desktop Preferences",
+    "user", "user@openrfs: ~", "Task Manager", "Desktop Preferences",
     "Package Manager", "glxgears"
 };
 

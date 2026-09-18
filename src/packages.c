@@ -61,6 +61,22 @@ bool trait_packages_add(const char *name, const char *summary,
     return true;
 }
 
+/* How many are ON the machine, which is not how many are listed: the
+ * list is the repository and `installed` is the answer to the question
+ * a fetch asks. */
+uint32_t trait_packages_installed_count(void)
+{
+    uint32_t found = 0U;
+    uint32_t at;
+
+    for (at = 0U; at < package_count; ++at) {
+        if (packages[at].installed) {
+            ++found;
+        }
+    }
+    return found;
+}
+
 uint32_t trait_packages_count(void)
 {
     return package_count;

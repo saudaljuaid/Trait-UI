@@ -45,6 +45,17 @@ const char *trait_terminal_input(void);
 void trait_terminal_print(const char *line);
 /* Runs a command line: echoes it after the prompt, then its output. */
 void trait_terminal_run(const char *command);
+
+/*
+ * TRANSPARENCY, the way a terminal has always had it: the window is
+ * drawn after what is behind it, so its ground is mixed with what is
+ * already in the framebuffer rather than composited by a server that
+ * is not here.  Off makes it opaque; nothing else changes.
+ */
+void trait_terminal_set_opacity(uint32_t alpha);
+uint32_t trait_terminal_opacity(void);
+bool trait_terminal_transparent(void);
+void trait_terminal_set_transparent(bool sheer);
 uint32_t trait_terminal_row_count(void);
 const char *trait_terminal_row(uint32_t at);
 

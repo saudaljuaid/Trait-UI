@@ -1,8 +1,10 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 #include <trait/terminal.h>
 
+#include <trait/packages.h>
 #include <trait/theme.h>
 
+#include "trait_logo.h"
 #include "trait_mono.h"
 
 #define TRAIT_MONO_COUNT (sizeof(trait_mono) / sizeof(trait_mono[0]))
@@ -10,11 +12,30 @@
 /* lxterminal's own defaults, out of its .desktop and its preferences:
  * a black ground and a light grey ink, which is the pair it ships. */
 #define TERM_GROUND 0x000000U
+
+/*
+ * HOW MUCH OF THE BLACK YOU GET.
+ *
+ * 255 is an opaque terminal and anything less lets the root through,
+ * which is what `xterm -tr` has done since before there was a
+ * compositor to do it properly.  208 is dark enough to read white text
+ * on over any of the sixteen and light enough that you can tell there
+ * is something behind it; at the values people actually pick - 160 and
+ * below - the text stops being legible over a pale window.
+ */
+#define TERM_OPAQUE 255U
+#define TERM_SHEER 208U
+
+static uint32_t term_opacity = TERM_SHEER;
 #define TERM_INK 0xD3D7CFU
 #define TERM_PROMPT_INK 0xD3D7CFU
 #define TERM_PAD 4U
 
-static const char PROMPT[] = "user@trait:~$ ";
+/* ONE STRING.  uname -a prints it and gfetch prints it, and two copies
+ * of a version number are two copies that can disagree. */
+static const char KERNEL[] = "OpenRFS 2.4 amd64";
+
+static const char PROMPT[] = "user@openrfs:~$ ";
 
 static char lines[TRAIT_TERM_HISTORY][TRAIT_TERM_LINE_BYTES];
 static uint32_t line_count;
@@ -168,6 +189,157 @@ const char *trait_terminal_row(uint32_t at)
 }
 
 /*
+ * gfetch, which is this desktop's fetch.
+ *
+ * EVERY LINE IS READ FROM SOMETHING.  A fetch is a screenful of facts
+ * about the machine it is run on, and the one failure mode it has is
+ * printing a figure nobody can trace - so the theme comes from
+ * trait_theme(), the font from the generated face's own metrics, the
+ * terminal size from the constants the terminal lays itself out with,
+ * and the package count from the package manager.  Nothing here is
+ * typed in twice.
+ *
+ * The mark goes on the left the way screenfetch put Tux there.  It is
+ * the OpenRFS fish, reduced to characters by tools/make-logo.py from
+ * the owner's own drawing.
+ */
+#define GFETCH_GAP 2U
+
+static void number(char *out, uint32_t value, uint32_t room)
+{
+    char digits[12];
+    uint32_t at = 0U;
+    uint32_t back;
+
+    if (value == 0U) {
+        digits[at++] = '0';
+    }
+    while (value > 0U && at < sizeof(digits)) {
+        digits[at++] = (char)('0' + value % 10U);
+        value /= 10U;
+    }
+    out[0] = '\0';
+    for (back = at; back > 0U; --back) {
+        char one[2];
+
+        one[0] = digits[back - 1U];
+        one[1] = '\0';
+        append(out, one, room);
+    }
+}
+
+static void gfetch(void)
+{
+    /* The facts, built once so the loop below can put them beside the
+     * rows of the mark rather than under it. */
+    char facts[10][TRAIT_TERM_LINE_BYTES];
+    uint32_t count = 0U;
+    uint32_t at;
+
+    copy(facts[count], "user@openrfs", sizeof(facts[0]));
+    ++count;
+    copy(facts[count], "------------", sizeof(facts[0]));
+    ++count;
+    copy(facts[count], "OS      OpenRFS", sizeof(facts[0]));
+    ++count;
+    copy(facts[count], "Kernel  ", sizeof(facts[0]));
+    append(facts[count], KERNEL, sizeof(facts[0]));
+    ++count;
+    copy(facts[count], "WM      openrfs, no reparenting",
+         sizeof(facts[0]));
+    ++count;
+    copy(facts[count], "Shell   ", sizeof(facts[0]));
+    append(facts[count], "openrfs", sizeof(facts[0]));
+    ++count;
+    copy(facts[count], "Theme   ", sizeof(facts[0]));
+    append(facts[count], trait_theme_name(trait_theme_selected()),
+           sizeof(facts[0]));
+    ++count;
+    {
+        char figure[12];
+
+        copy(facts[count], "Font    Misc-Fixed 8x", sizeof(facts[0]));
+        number(figure, TRAIT_MONO_HEIGHT, sizeof(figure));
+        append(facts[count], figure, sizeof(facts[0]));
+        ++count;
+
+        copy(facts[count], "Term    ", sizeof(facts[0]));
+        number(figure, TRAIT_TERM_COLUMNS, sizeof(figure));
+        append(facts[count], figure, sizeof(facts[0]));
+        append(facts[count], "x", sizeof(facts[0]));
+        number(figure, TRAIT_TERM_ROWS, sizeof(figure));
+        append(facts[count], figure, sizeof(facts[0]));
+        ++count;
+
+        copy(facts[count], "Pkgs    ", sizeof(facts[0]));
+        number(figure, trait_packages_installed_count(),
+               sizeof(figure));
+        append(facts[count], figure, sizeof(facts[0]));
+        append(facts[count], " installed of ", sizeof(facts[0]));
+        number(figure, trait_packages_count(), sizeof(figure));
+        append(facts[count], figure, sizeof(facts[0]));
+        ++count;
+    }
+
+    for (at = 0U; at < TRAIT_LOGO_ROWS; ++at) {
+        char line[TRAIT_TERM_LINE_BYTES];
+        uint32_t width = 0U;
+
+        copy(line, trait_logo[at], sizeof(line));
+        while (line[width] != '\0') {
+            ++width;
+        }
+        /* Pad out to the mark's full width so the facts line up in a
+         * column rather than following each row's ragged right edge. */
+        while (width < TRAIT_LOGO_COLUMNS + GFETCH_GAP &&
+                width + 1U < sizeof(line)) {
+            line[width] = ' ';
+            ++width;
+            line[width] = '\0';
+        }
+        if (at < count) {
+            append(line, facts[at], sizeof(line));
+        }
+        /* A row with nothing on either side is not printed at all: a
+         * fetch that ends in six blank lines has padded its own
+         * output. */
+        {
+            uint32_t last = 0U;
+            uint32_t scan = 0U;
+
+            while (line[scan] != '\0') {
+                if (line[scan] != ' ') {
+                    last = scan + 1U;
+                }
+                ++scan;
+            }
+            line[last] = '\0';
+        }
+        trait_terminal_print(line);
+    }
+}
+
+void trait_terminal_set_opacity(uint32_t alpha)
+{
+    term_opacity = alpha > TERM_OPAQUE ? TERM_OPAQUE : alpha;
+}
+
+uint32_t trait_terminal_opacity(void)
+{
+    return term_opacity;
+}
+
+bool trait_terminal_transparent(void)
+{
+    return term_opacity < TERM_OPAQUE;
+}
+
+void trait_terminal_set_transparent(bool sheer)
+{
+    term_opacity = sheer ? TERM_SHEER : TERM_OPAQUE;
+}
+
+/*
  * The commands this shell actually has.  A command that is not here says
  * so the way a shell does - "command not found" - rather than printing
  * nothing, because a terminal that swallows what it cannot do is worse
@@ -185,9 +357,9 @@ void trait_terminal_run(const char *command)
     trait_terminal_print(echo);
 
     if (same(command, "uname -s")) {
-        trait_terminal_print("Trait");
+        trait_terminal_print("OpenRFS");
     } else if (same(command, "uname -a")) {
-        trait_terminal_print("Trait trait 1.0 x86_64 GNU/Linux");
+        trait_terminal_print(KERNEL);
     } else if (same(command, "pwd")) {
         trait_terminal_print("/home/user");
     } else if (same(command, "whoami")) {
@@ -198,6 +370,8 @@ void trait_terminal_run(const char *command)
     } else if (same(command, "free -h")) {
         trait_terminal_print("               total        used        free");
         trait_terminal_print("Mem:            62Mi       9.5Mi        52Mi");
+    } else if (same(command, "gfetch")) {
+        gfetch();
     } else if (same(command, "clear")) {
         trait_terminal_reset();
     } else if (command[0] == '\0') {
@@ -273,7 +447,8 @@ void trait_terminal_draw(struct trait_surface *surface,
         return;
     }
     client = trait_window_client(window);
-    trait_surface_fill(surface, client, client, TERM_GROUND);
+    trait_surface_wash(surface, client, client, TERM_GROUND,
+                       term_opacity);
     {
         /* The window of history that is on screen: the last TERM_ROWS
          * lines, moved back by however far it has been scrolled. */

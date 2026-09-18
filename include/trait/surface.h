@@ -41,6 +41,13 @@ uint32_t trait_surface_read(const struct trait_surface *surface,
 void trait_surface_fill(struct trait_surface *surface,
     struct trait_rect clip, struct trait_rect box, uint32_t colour);
 
+/* A fill that reads the surface back and mixes with it, which is the
+ * pseudo-transparency an X terminal has always had: no compositor, no
+ * alpha channel, just drawing after whatever is behind you. */
+void trait_surface_wash(struct trait_surface *surface,
+    struct trait_rect clip, struct trait_rect box, uint32_t colour,
+    uint32_t alpha);
+
 /* Straight (unpremultiplied) source-over, which is what the icon planes
  * carry and what a framebuffer without an alpha channel needs. */
 uint32_t trait_blend(uint32_t under, uint32_t over, uint32_t alpha);

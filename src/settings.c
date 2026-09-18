@@ -4,6 +4,7 @@
 #include <trait/font.h>
 #include <trait/files.h>
 #include <trait/shell.h>
+#include <trait/terminal.h>
 #include <trait/theme.h>
 
 #define TAB_HEIGHT 24U
@@ -202,6 +203,9 @@ static void refresh(struct trait_settings_row *row)
     case TRAIT_SET_SINGLE_CLICK:
         row->on = trait_files_single_click();
         break;
+    case TRAIT_SET_TERM_SHEER:
+        row->on = trait_terminal_transparent();
+        break;
     case TRAIT_SET_NOTHING:
     default:
         break;
@@ -245,6 +249,10 @@ bool trait_settings_press(uint32_t page, uint32_t row)
         return true;
     case TRAIT_SET_SINGLE_CLICK:
         trait_files_set_single_click(!trait_files_single_click());
+        refresh(target);
+        return true;
+    case TRAIT_SET_TERM_SHEER:
+        trait_terminal_set_transparent(!trait_terminal_transparent());
         refresh(target);
         return true;
     case TRAIT_SET_NOTHING:

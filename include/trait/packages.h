@@ -44,6 +44,7 @@ void trait_packages_reset(void);
 bool trait_packages_add(const char *name, const char *summary,
     const char *menu_name, bool installed);
 uint32_t trait_packages_count(void);
+uint32_t trait_packages_installed_count(void);
 const struct trait_package *trait_packages_at(uint32_t index);
 
 void trait_packages_mark(uint32_t index, enum trait_package_mark mark);

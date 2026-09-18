@@ -73,6 +73,7 @@ def main():
     # table below carries it as that code.
     BLOCK_IN = "\u2588"
     BLOCK_OUT = chr(127)
+    SHADE_CH = chr(128)
     lines = [line.rstrip("\n").replace(BLOCK_IN, BLOCK_OUT) for line in
              art.read_text().rstrip("\n").split("\n")]
     if not lines or not any(line.strip() for line in lines):
@@ -173,56 +174,101 @@ def main():
             line.append(cell)
         grid.append(line)
 
-    # THERE IS NO BLACK IN IT, and that is the whole difference between
-    # a fish and a mess at this size.
+    # SOLID AT THE EDGE, HALF INK IN THE MIDDLE.
     #
-    # The drawing is built out of black: the outside edge, the mouth,
-    # the fins, the rims of the eyes.  A cell here is thirty-odd pixels
-    # of the mark, so every one of those lines is thinner than the cell
-    # it lands in - and a black cell on a black terminal is a bite taken
-    # out of the fish wherever a line runs through it.  Keeping only the
-    # ones that bound something was tried, and so was keeping only the
-    # ones that make a pupil; both leave a mass of black around the eyes,
-    # which is where this drawing's lines are thickest.
+    # A fish of nothing but full blocks is a slab of red a third of the
+    # terminal wide, and beside a column of facts it reads as a block of
+    # colour rather than as a mark.  Drawing only the contour was tried
+    # and is the other failure: at twelve rows the outline of a shape
+    # this busy comes apart into strokes that do not join up.
     #
-    # So the line is not drawn, with ONE exception: black that borders
-    # the white of an eye is a pupil, and an eye without one is a white
-    # block.  Everywhere else the line becomes the body it runs through -
-    # including round the outside, where it is not needed at all, since
-    # the fish is red and the terminal is black and a silhouette does
-    # not have to draw its own edge.
+    # So the boundary cells - where what a cell is differs from one of
+    # the four around it - keep the full block, and everything inside
+    # takes the shade, which is every other pixel.  The shape is the
+    # same and there is half as much of it, and the contour between the
+    # fish and its tongue and between an eye and its pupil is drawn
+    # solid along with the silhouette.
+    #
+    # Black is dropped on the way.  Every line in the drawing is thinner
+    # than a cell here, so a black cell on a black terminal is a gap in
+    # the outline rather than a line in it; the contour it would have
+    # drawn is already being drawn by the change on either side of it.
+    edge = []
+    for row in range(rows):
+        line = []
+        for column in range(columns):
+            cell = grid[row][column]
+            if cell == OUTLINE:
+                # Which side of the line is this? Whatever most of its
+                # neighbours are, so a rim inks as the thing it rims.
+                near = {}
+                for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                    y, x = row + dy, column + dx
+                    was = grid[y][x] if 0 <= y < rows and 0 <= x < columns \
+                        else PAPER
+                    if was != OUTLINE:
+                        near[was] = near.get(was, 0) + 1
+                cell = max(near, key=lambda key: near[key]) if near else BODY
+            line.append(cell)
+        edge.append(line)
     for row in range(rows):
         for column in range(columns):
-            if grid[row][column] != OUTLINE:
-                continue
-            pupil = False
+            grid[row][column] = edge[row][column]
+
+    # Which cells are on a boundary, so the edge can be drawn solid and
+    # the middle can be drawn at half the ink.
+    rim = []
+    for row in range(rows):
+        line = []
+        for column in range(columns):
+            cell = grid[row][column]
+            on = False
             for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
                 y, x = row + dy, column + dx
-                if 0 <= y < rows and 0 <= x < columns \
-                        and grid[y][x] == EYE:
-                    pupil = True
-            if not pupil:
-                grid[row][column] = BODY
+                near = grid[y][x] if 0 <= y < rows and 0 <= x < columns \
+                    else PAPER
+                if near != cell:
+                    on = True
+            line.append(on and cell != PAPER)
+        rim.append(line)
 
+    # The contour decides what is DRAWN as well as what is inked: a
+    # cell the fill dropped has to lose its block too, or it is still a
+    # block and merely a differently coloured one.
+    drawing = []
     inks = []
     for row in range(rows):
+        shown = []
         codes = []
         for column in range(columns):
             cell = grid[row][column]
             drawn = lines[row][column] if column < len(lines[row]) else " "
             if drawn == " ":
                 # Nothing is drawn there, so nothing is inked there.
+                shown.append(" ")
                 codes.append(0)
             elif cell == PAPER:
                 # The converter drew a block over pixels the classifier
                 # calls paper - the edge running diagonally through the
                 # cell.  The art is right about there being something
                 # there, so it is drawn, and it is drawn as the body.
+                shown.append(drawn if rim[row][column] else SHADE_CH)
                 codes.append(INK[BODY])
             else:
+                # ONLY THE BODY THINS OUT.  The eyes and the tongue are
+                # small and are the whole of what makes the mark read as
+                # a face; chequering them muddies them without taking
+                # any weight off the thing that was too heavy, which is
+                # the slab of red they sit in.
+                shown.append(drawn if rim[row][column] or cell != BODY
+                             else SHADE_CH)
                 codes.append(INK[cell])
+        drawing.append("".join(shown).rstrip())
         inks.append("".join(str(code) for code in
-                            codes[:len(lines[row])]))
+                            codes)[:len(drawing[-1])])
+    lines = drawing
+    rows = len(lines)
+    columns = max(len(line) for line in lines) if lines else 0
 
     def mean(cell):
         total = sums[cell]
@@ -263,6 +309,7 @@ def main():
     for line in lines:
         text.append('    "%s",' % "".join(
             "\\177" if ch == BLOCK_OUT else
+            "\\200" if ch == SHADE_CH else
             ("\\\\" if ch == "\\" else ('\\"' if ch == '"' else ch))
             for ch in line))
     text += [

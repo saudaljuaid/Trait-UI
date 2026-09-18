@@ -48,9 +48,14 @@ through a cell — and most of a drawing's edges do.
 Two of the converter's other sets were tried and read as noise: a tonal
 gradient wants a denser grid than an 8x16 bitmap font gives it. The
 block set does not, because it draws a shape and leaves the tone to the
-colour. Misc-Fixed has no block glyph, so `tools/make-font.py`
-synthesises one at the code after the last — a solid rectangle is not a
-typeface.
+colour.
+
+The edge of the mark is drawn with the full block and the body's inside
+with a shade — every other pixel, the same 50% weave X draws its root
+with — because a fish of nothing but full blocks is a slab of red a
+third of the terminal wide. The eyes and tongue stay solid. Misc-Fixed
+has neither glyph, so `tools/make-font.py` synthesises both at the codes
+after the last: a filled rectangle and a chequer are not typefaces.
 
 Which white is paper and which is an eye is answered by a flood fill
 from the border: paper is the white you can reach from the edge. That

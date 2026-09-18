@@ -32,14 +32,21 @@ from PIL import Image, PcfFontFile
 
 FIRST, LAST = 32, 126
 
-# ONE GLYPH THAT IS NOT IN THE FONT, at the code after the last.
+# TWO GLYPHS THAT ARE NOT IN THE FONT, at the codes after the last.
 #
-# Misc-Fixed has no full block and neither does any other X bitmap face
-# here; U+2588 lives above the range these were drawn for.  A terminal
-# wants one - it is how you draw a picture out of characters - and a
-# solid rectangle is not a typeface, so synthesising it is not the same
-# as redrawing somebody's letterforms.  gfetch is what asked.
+# Misc-Fixed has no full block and no shade, and neither does any other
+# X bitmap face here; U+2588 and U+2592 live above the range these were
+# drawn for.  A terminal wants both - they are how you draw a picture
+# out of characters - and a filled rectangle and a chequer of every
+# other pixel are not typefaces, so synthesising them is not the same as
+# redrawing somebody's letterforms.  gfetch is what asked.
+#
+# The shade is the 50% weave X has drawn its root with since before
+# there were wallpapers: every other pixel, period two.  Half the ink of
+# the block at the same shape, which is what a picture wants for its
+# middle when its edge is already solid.
 BLOCK = 127
+SHADE = 128
 
 
 def load(path):
@@ -81,9 +88,14 @@ def main():
         glyphs.append((code, chr(code), advance, width,
                        list(cell.get_flattened_data())))
 
-    # The block, filling the cell the face defines.
-    block = [255] * (glyphs[0][3] * height)
-    glyphs.append((BLOCK, "\u2588", glyphs[0][2], glyphs[0][3], block))
+    # The block, filling the cell the face defines, and the shade,
+    # filling every other pixel of it.
+    width = glyphs[0][3]
+    block = [255] * (width * height)
+    shade = [255 if (x + y) % 2 == 0 else 0
+             for y in range(height) for x in range(width)]
+    glyphs.append((BLOCK, "\u2588", glyphs[0][2], width, block))
+    glyphs.append((SHADE, "\u2592", glyphs[0][2], width, shade))
 
     lines = [
         "/* SPDX-License-Identifier: GPL-3.0-only */",
@@ -106,8 +118,9 @@ def main():
         "#include <stdint.h>",
         "",
         f"#define {prefix.upper()}_FIRST {FIRST}U",
-        f"#define {prefix.upper()}_LAST {BLOCK}U",
+        f"#define {prefix.upper()}_LAST {SHADE}U",
         f"#define {prefix.upper()}_BLOCK {BLOCK}U",
+        f"#define {prefix.upper()}_SHADE {SHADE}U",
         f"#define {prefix.upper()}_ASCENT {ascent}U",
         f"#define {prefix.upper()}_DESCENT {descent}U",
         f"#define {prefix.upper()}_HEIGHT {height}U",

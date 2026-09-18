@@ -58,6 +58,22 @@ outline, body, tongue and eye holds most of it, and each class is inked
 in the mean of every source pixel that fell into it. So the fish is
 drawn in the fish's own reds rather than in anything anybody picked.
 
+SOLID AT THE EDGE, HALF INK IN THE MIDDLE. A fish of nothing but full
+blocks is a slab of red a third of the terminal wide, and beside a
+column of facts it reads as a block of colour rather than as a mark.
+Drawing only the contour was tried and is the other failure: at twelve
+rows the outline of a shape this busy comes apart into strokes that do
+not join up. So the boundary cells keep the full block and the BODY's
+interior takes a shade - every other pixel, which is the same 50% weave
+X has drawn its root with since before there were wallpapers. The eyes
+and the tongue stay solid, because they are small and are the whole of
+what makes the mark read as a face.
+
+Neither the block nor the shade is in Misc-Fixed - U+2588 and U+2592 are
+above the range it was drawn for - so tools/make-font.py synthesises
+both at the codes after the last. A filled rectangle and a chequer of
+every other pixel are not typefaces.
+
 TWO THINGS THAT LOOKED WRONG AND WHY.
 
 The drawing is built out of black lines - the outside edge, the mouth,

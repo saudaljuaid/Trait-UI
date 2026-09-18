@@ -18,8 +18,9 @@
 #include <stdint.h>
 
 #define TRAIT_MONO_FIRST 32U
-#define TRAIT_MONO_LAST 127U
+#define TRAIT_MONO_LAST 128U
 #define TRAIT_MONO_BLOCK 127U
+#define TRAIT_MONO_SHADE 128U
 #define TRAIT_MONO_ASCENT 14U
 #define TRAIT_MONO_DESCENT 2U
 #define TRAIT_MONO_HEIGHT 16U
@@ -1080,6 +1081,17 @@ static const uint8_t trait_mono_127[] = {
      255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
      255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
 };
+/* 128 '▒' advance 8 */
+static const uint8_t trait_mono_128[] = {
+     255,   0, 255,   0, 255,   0, 255,   0,   0, 255,   0, 255,   0, 255,   0, 255,
+     255,   0, 255,   0, 255,   0, 255,   0,   0, 255,   0, 255,   0, 255,   0, 255,
+     255,   0, 255,   0, 255,   0, 255,   0,   0, 255,   0, 255,   0, 255,   0, 255,
+     255,   0, 255,   0, 255,   0, 255,   0,   0, 255,   0, 255,   0, 255,   0, 255,
+     255,   0, 255,   0, 255,   0, 255,   0,   0, 255,   0, 255,   0, 255,   0, 255,
+     255,   0, 255,   0, 255,   0, 255,   0,   0, 255,   0, 255,   0, 255,   0, 255,
+     255,   0, 255,   0, 255,   0, 255,   0,   0, 255,   0, 255,   0, 255,   0, 255,
+     255,   0, 255,   0, 255,   0, 255,   0,   0, 255,   0, 255,   0, 255,   0, 255,
+};
 
 #ifndef TRAIT_GLYPH_DEFINED
 #define TRAIT_GLYPH_DEFINED
@@ -1187,6 +1199,7 @@ static const struct trait_glyph trait_mono[] = {
     { trait_mono_125, 8U, 8U },
     { trait_mono_126, 8U, 8U },
     { trait_mono_127, 8U, 8U },
+    { trait_mono_128, 8U, 8U },
 };
 
 #endif /* TRAIT_MONO_H */

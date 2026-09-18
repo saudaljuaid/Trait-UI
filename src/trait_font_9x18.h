@@ -18,8 +18,9 @@
 #include <stdint.h>
 
 #define TRAIT_FONT_9X18_FIRST 32U
-#define TRAIT_FONT_9X18_LAST 127U
+#define TRAIT_FONT_9X18_LAST 128U
 #define TRAIT_FONT_9X18_BLOCK 127U
+#define TRAIT_FONT_9X18_SHADE 128U
 #define TRAIT_FONT_9X18_ASCENT 14U
 #define TRAIT_FONT_9X18_DESCENT 4U
 #define TRAIT_FONT_9X18_HEIGHT 18U
@@ -1368,6 +1369,20 @@ static const uint8_t trait_font_9x18_127[] = {
      255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
      255, 255,
 };
+/* 128 '▒' advance 9 */
+static const uint8_t trait_font_9x18_128[] = {
+     255,   0, 255,   0, 255,   0, 255,   0, 255,   0, 255,   0, 255,   0, 255,   0,
+     255,   0, 255,   0, 255,   0, 255,   0, 255,   0, 255,   0, 255,   0, 255,   0,
+     255,   0, 255,   0, 255,   0, 255,   0, 255,   0, 255,   0, 255,   0, 255,   0,
+     255,   0, 255,   0, 255,   0, 255,   0, 255,   0, 255,   0, 255,   0, 255,   0,
+     255,   0, 255,   0, 255,   0, 255,   0, 255,   0, 255,   0, 255,   0, 255,   0,
+     255,   0, 255,   0, 255,   0, 255,   0, 255,   0, 255,   0, 255,   0, 255,   0,
+     255,   0, 255,   0, 255,   0, 255,   0, 255,   0, 255,   0, 255,   0, 255,   0,
+     255,   0, 255,   0, 255,   0, 255,   0, 255,   0, 255,   0, 255,   0, 255,   0,
+     255,   0, 255,   0, 255,   0, 255,   0, 255,   0, 255,   0, 255,   0, 255,   0,
+     255,   0, 255,   0, 255,   0, 255,   0, 255,   0, 255,   0, 255,   0, 255,   0,
+     255,   0,
+};
 
 #ifndef TRAIT_GLYPH_DEFINED
 #define TRAIT_GLYPH_DEFINED
@@ -1475,6 +1490,7 @@ static const struct trait_glyph trait_font_9x18[] = {
     { trait_font_9x18_125, 9U, 9U },
     { trait_font_9x18_126, 9U, 9U },
     { trait_font_9x18_127, 9U, 9U },
+    { trait_font_9x18_128, 9U, 9U },
 };
 
 #endif /* TRAIT_FONT_9X18_H */
